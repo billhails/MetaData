@@ -26,3 +26,10 @@ npm run init-db # first time - creates the empty database
 npm run dev     # run the application on http://localhost:4000/graphql
 ```
 
+## TODO
+
+Lots, but specifically
+* enumeration data type
+* deferred data retrieval
+* pagination
+* mutation
