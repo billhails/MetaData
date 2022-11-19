@@ -1,0 +1,18 @@
+const { v4: uuidv4 } = require('uuid');
+
+// {{ warning }}
+
+class {{ entity.get_name() }} {
+    constructor({ id{% for field in entity.get_fields() %}, {{ field.get_name() }}{% endfor %}{% for reference in entity.get_references() %}, {{ reference.get_name() }}{% endfor %}{% for union in entity.get_unions() %}, {{ union.get_name() }}, {{ union.get_name() }}_type{% endfor %} }) {
+        this.id = id || uuidv4();
+        {% for field in entity.get_fields() %}this.{{ field.get_name() }} = {{ field.get_name() }};
+{% endfor %}
+        {% for reference in entity.get_references() %}this.{{ reference.get_name() }} = {{ reference.get_name() }};
+{% endfor %}
+        {% for union in entity.get_unions() %}this.{{ union.get_name() }} = {{ union.get_name() }};
+        this.{{ union.get_name() }}_type = {{ union.get_name() }}_type;
+{% endfor %}
+    }
+}
+
+module.exports = {{ entity.get_name() }};

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- schema name is required -->
+<schema name="demo">
+    <entity name="users">
+        <!-- descriptions end up in the graphql docs -->
+        <description>A user of the service.</description>
+        <!-- fields are the components of entities -->
+        <field name="display_name" type="small_string"/>
+    </entity>
+
+    <entity name="posts">
+        <description>A post by a user.</description>
+        <field name="body" type="string"/>
+        <!-- a reference is a foreign key, essentially -->
+        <reference name="owner" references="users"/>
+    </entity>
+
+    <entity name="comments">
+        <description>A comment on a user, post or other comment.</description>
+        <field name="body" type="string"/>
+        <!-- unions are discriminated foregn keys, this "about" union can refer to a user, post or comment -->
+        <union name="about">
+            <reference name="user" references="users"/>
+            <reference name="post" references="posts"/>
+            <reference name="comment" references="comments"/>
+        </union>
+    </entity>
+
+    <entity name="categories">
+        <description>Categories of Posts</description>
+        <field name="label" type="string"/>
+    </entity>
+
+    <!-- associations are many-to-many relationships -->
+    <association name="friends" lhs="users" rhs="users"/>
+
+    <association name="posts_categories" lhs="posts" rhs="categories"/>
+</schema>

@@ -1,0 +1,66 @@
+{% macro graphQLType(type) -%}
+GraphQLString
+{%- endmacro %}
+const {
+  GraphQLEnumType,
+  GraphQLInterfaceType,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLObjectType,
+} = require('graphql/type/definition');
+const { GraphQLString } = require('graphql/type/scalars');
+const { GraphQLSchema } = require('graphql/type/schema');
+
+// {{ warning }}
+
+{% for entity in schema.get_entities() %}
+const {{ entity.get_name() }}Type = new GraphQLObjectType ({
+  name: '{{ entity.get_name() }}',
+  description: '{{ entity.get_description() }}',
+  fields: () => ({
+    id: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: '{{ entity.get_name() }} id.',
+    },
+{% for field in entity.get_fields() %}
+    {{ field.get_name() }}: {
+      type: new GraphQLNonNull({{ graphQLType(field.get_type()) }})
+    },
+{% endfor %}
+{% for reference in entity.get_references() %}
+    {{ reference.get_name() }}: {
+      type: new GraphQLNonNull({{ reference.get_referenced().get_name() }}Type),
+      resolve: ({{ entity.get_name() }}) => data.get_{{ reference.get_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+    },
+{% endfor %}
+{% for referrer in entity.get_referrers() %}
+    {{ referrer.get_referrer_name() }}: {
+      type: new GraphQLList({{ referrer.get_entity().get_name() }}Type),
+      resolve: ({{ entity.get_name() }}) => data.get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+    },
+{% endfor %}
+  })
+});
+{% endfor %}
+
+const queryType = new GraphQLObjectType({
+  name: 'Query',
+  fields: () => ({
+{% for entity in schema.get_entities() %}
+    {{ entity.get_name() }}: {
+      type: {{ entity.get_name() }}Type,
+      args: {
+        id: {
+          description: '{{ entity.get_name() }} id',
+          type: new GraphQLNonNull(GraphQLString),
+        }
+      },
+      resolve: (_source, { id }) => data.get_{{ entity.get_name() }}_by_id(id),
+    },
+{% endfor %}
+  })
+});
+
+module.exports = new GraphQLSchema({
+  query: queryType
+});

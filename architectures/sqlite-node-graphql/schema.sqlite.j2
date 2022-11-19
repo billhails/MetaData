@@ -1,0 +1,50 @@
+-- {{ warning }}
+
+{% macro sqlite_type(type, name) -%}
+{% if type == "string" -%}TEXT
+{%- elif type == "small_string" -%}TEXT
+{%- elif type == "guid" -%}TEXT CHECK(LENGTH({{ name }} == 36))
+{%- else -%}???
+{% endif %}
+{%- endmacro -%}
+
+.open {{ schema.get_name() }}.db
+
+PRAGMA foreign_keys = OFF;
+
+{% for entity in schema.get_entities() %}
+DROP TABLE IF EXISTS {{ entity.name }};
+
+CREATE TABLE {{ entity.name }} (
+    id {{ sqlite_type("guid", "id") }} PRIMARY KEY
+{% for field in entity.get_fields() %}
+,
+    {{ field.get_name() }} {{ sqlite_type(field.get_type(), field.get_name()) }} NOT NULL
+{% endfor %}
+{% for reference in entity.get_references() %}
+,
+    {{ reference.get_name() }} {{ sqlite_type("guid", reference.get_name()) }} NOT NULL
+{% endfor %}
+{% for union in entity.get_unions() %}
+,
+    {{ union.get_name() }}_type TEXT CHECK({{ union.get_name() }}_type IN ({%- for ref in union.get_references() %}{% if not loop.first %}, {% endif %}'{{ ref.get_name() }}'{% endfor -%})) NOT NULL,
+    {{ union.get_name() }} {{ sqlite_type("guid", union.get_name()) }} NOT NULL
+{% endfor %}
+{% for reference in entity.get_references() %}
+,
+    FOREIGN KEY ({{ reference.get_name() }}) REFERENCES {{ reference.get_referenced().get_name() }}(id)
+{% endfor %}
+);
+{% endfor %}
+
+{% for association in schema.get_associations() %}
+CREATE TABLE {{ association.get_name() }} (
+    {{ association.get_lhs().get_name() }}_lhs_id {{ sqlite_type("guid", association.get_lhs().get_name() ~ "_lhs_id") }} NOT NULL,
+    {{ association.get_rhs().get_name() }}_rhs_id {{ sqlite_type("guid", association.get_rhs().get_name() ~ "_rhs_id") }} NOT NULL,
+    FOREIGN KEY ({{ association.get_lhs().get_name() }}_lhs_id) REFERENCES {{ association.get_lhs().get_name() }}(id),
+    FOREIGN KEY ({{ association.get_rhs().get_name() }}_rhs_id) REFERENCES {{ association.get_rhs().get_name() }}(id)
+);
+{% endfor %}
+
+
+PRAGMA foreign_keys = ON;

@@ -1,0 +1,26 @@
+{
+  "name": "{{ schema.get_name() }}",
+  "version": "1.0.0",
+  "description": "{{ warning }}",
+  "main": "core.js",
+  "scripts": {
+    "test": "jest",
+    "init-db": "sqlite3 < ./schema.sqlite",
+    "dev": "node core.js"
+  },
+  "keywords": [
+    "API"
+  ],
+  "author": "Generated from architecture {{ architecture }}",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-graphql": "^0.12.0",
+    "graphql": "^15.8.0",
+    "sqlite3": "^5.1.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.3.1"
+  }
+}

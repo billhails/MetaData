@@ -1,0 +1,54 @@
+const sqlite3 = require('sqlite3').verbose();
+const util = require('util');
+const Model = require('./Model');
+
+// {{ warning }}
+
+class Data {
+    constructor() {
+        this.db = new sqlite3.Database('./{{ schema.get_name() }}.db');
+        this.get = util.promisify(this.db.get);
+        this.run = util.promisify(this.db.run);
+    }
+
+{% for entity in schema.get_entities() %}
+    /**
+     * @param {String} id
+     * @returns {Model.{{ entity.get_name() }}}
+     */
+    async get_{{ entity.get_name() }}_by_id(id) {
+      return this.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
+        .then(row => new Model.{{ entity.get_name() }}(row));
+    }
+
+    /**
+     * @param {Model.{{ entity.get_name() }}} model
+     */
+    async create_{{ entity.get_name() }}(model) {
+        const sql = `
+        INSERT INTO {{ entity.get_name() }}(
+          id{% for field in entity.get_fields() %}, {{ field.get_name() }}{% endfor %}
+          {%- for reference in entity.get_references() %}, {{ reference.get_name() }}{% endfor %}
+          {%- for union in entity.get_unions() %}, {{ union.get_name() }}, {{ union.get_name() }}_type{% endfor %}
+        )
+        VALUES (?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
+        `;
+        const params = [
+           model.id{% for field in entity.get_fields() %}, model.{{ field.get_name() }}{% endfor %}
+          {%- for reference in entity.get_references() %}, model.{{ reference.get_name() }}{% endfor %}
+          {%- for union in entity.get_unions() %}, model.{{ union.get_name() }}, model.{{ union.get_name() }}_type{% endfor %}
+        ]
+        return this.run(sql, params);
+    }
+
+    /**
+     * @param {String} id
+     */
+    async delete_{{ entity.get_name() }}_by_id(id) {
+        return this.run('DELETE FROM {{ entity.get_name() }} WHERE id = ?', [id]);
+    }
+
+{% endfor %}
+}
+
+module.exports = Data;
