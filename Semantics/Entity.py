@@ -20,6 +20,7 @@ class Entity(Container):
         self.unions = {}
         self.lhs_associations = {}
         self.rhs_associations = {}
+        self.all_associations = {}
         self.referrers = {}
 
     def build(self, schema):
@@ -55,9 +56,14 @@ class Entity(Container):
 
     def accept_rhs_association(self, association):
         self.rhs_associations[association.get_name()] = association
+        self.all_associations[association.get_name()] = association
 
     def accept_lhs_association(self, association):
         self.lhs_associations[association.get_name()] = association
+        self.all_associations[association.get_name()] = association
+
+    def get_associations(self):
+        return self.all_associations.values()
 
     def accept_referrer(self, reference):
         name = reference.get_referrer_name()

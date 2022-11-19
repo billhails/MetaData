@@ -1,27 +1,30 @@
 const sqlite3 = require('sqlite3').verbose();
+const { open: openSqlite } = require('sqlite');
 const util = require('util');
 const Model = require('./Model');
 
 // {{ warning }}
 
 class Data {
-    constructor() {
-        this.db = new sqlite3.Database('./{{ schema.get_name() }}.db');
-        this.get = util.promisify(this.db.get);
-        this.run = util.promisify(this.db.run);
+    constructor(db) {
+        this.db = db;
     }
 
 {% for entity in schema.get_entities() %}
     /**
+     * fetch entity
+     *
      * @param {String} id
      * @returns {Model.{{ entity.get_name() }}}
      */
     async get_{{ entity.get_name() }}_by_id(id) {
-      return this.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
+      return this.db.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
         .then(row => new Model.{{ entity.get_name() }}(row));
     }
 
     /**
+     * insert entity
+     *
      * @param {Model.{{ entity.get_name() }}} model
      */
     async create_{{ entity.get_name() }}(model) {
@@ -38,17 +41,71 @@ class Data {
           {%- for reference in entity.get_references() %}, model.{{ reference.get_name() }}{% endfor %}
           {%- for union in entity.get_unions() %}, model.{{ union.get_name() }}, model.{{ union.get_name() }}_type{% endfor %}
         ]
-        return this.run(sql, params);
+        return this.db.run(sql, params);
     }
 
     /**
+     * delete entity
+     *
      * @param {String} id
      */
     async delete_{{ entity.get_name() }}_by_id(id) {
-        return this.run('DELETE FROM {{ entity.get_name() }} WHERE id = ?', [id]);
+        return this.db.run('DELETE FROM {{ entity.get_name() }} WHERE id = ?', [id]);
     }
 
+{% for reference in entity.get_references() %}
+    /**
+     * fetch reference
+     *
+     * @param {Model.{{ entity.get_name() }}} model
+     */
+    async get_{{ reference.get_name() }}_for_{{ entity.get_name() }}(model) {
+        return this.db.get('SELECT * FROM {{ reference.get_referenced().get_name() }} WHERE id = ?', [model.{{ reference.get_name() }}])
+        .then(row => new Model.{{ entity.get_name() }}(row));
+    }
 {% endfor %}
+
+{% for union in entity.get_unions() %}
+    /**
+     * fetch union
+     *
+     * @param {Model.{{ entity.get_name() }}} model
+     */
+    async get_{{ union.get_name() }}_for_{{ entity.get_name() }}(model) {
+        switch (model.{{ union.get_name() }}_type) {
+{% for reference in union.get_references() %}
+            case '{{ reference.get_name() }}':
+                return this.db.get(
+                    'SELECT * FROM {{ reference.get_referenced().get_name() }} WHERE id = ?',
+                    [model.{{ union.get_name() }}]
+                ).then(row => new Model.{{ reference.get_referenced().get_name() }}(row));
+{% endfor %}
+        }
+    }
+{% endfor %}
+
+{% for referrer in entity.get_referrers() %}
+    /**
+     * fetch referrer
+     *
+     * @param {Model.{{ entity.get_name() }}} model
+     */
+    async get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}(model) {
+        return this.db.all(
+            'SELECT * FROM {{ referrer.get_entity().get_name() }} WHERE {{ referrer.get_name() }} = ?',
+            [model.id]
+        ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row);
+    }
+{% endfor %}
+
+{% endfor %}
+
+    static async build() {
+        return openSqlite(
+            filename: './{{ schema.get_name() }}.db',
+            driver: sqlite3.Database
+        ).then(db -> new Data(db))
+    }
 }
 
 module.exports = Data;

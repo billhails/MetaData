@@ -1,17 +1,36 @@
+// {{ warning }}
 {% macro graphQLType(type) -%}
 GraphQLString
-{%- endmacro %}
+{%- endmacro -%}
+
 const {
   GraphQLEnumType,
   GraphQLInterfaceType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
+  GraphQLUnionType
 } = require('graphql/type/definition');
-const { GraphQLString } = require('graphql/type/scalars');
+const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
 const { GraphQLSchema } = require('graphql/type/schema');
 
-// {{ warning }}
+{% for entity in schema.get_entities() %}
+{% for union in entity.get_unions() %}
+const {{ entity.get_name() }}_{{ union.get_name() }}Type = new GraphQLUnionType({
+  name: '{{ union.get_name() }}',
+  types: () => ([
+{% for reference in union.get_references() %}{{ reference.get_referenced().get_name() }}Type, {% endfor %}
+  ]),
+  resolveType(value) {
+{% for reference in union.get_references() %}
+    if (value instanceof Model.{{ reference.get_referenced().get_name() }}) {
+      return {{ reference.get_referenced().get_name() }}Type;
+    }
+{% endfor %}
+  }
+});
+{% endfor %}
+{% endfor %}
 
 {% for entity in schema.get_entities() %}
 const {{ entity.get_name() }}Type = new GraphQLObjectType ({
@@ -19,7 +38,7 @@ const {{ entity.get_name() }}Type = new GraphQLObjectType ({
   description: '{{ entity.get_description() }}',
   fields: () => ({
     id: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: new GraphQLNonNull(GraphQLID),
       description: '{{ entity.get_name() }} id.',
     },
 {% for field in entity.get_fields() %}
@@ -33,10 +52,22 @@ const {{ entity.get_name() }}Type = new GraphQLObjectType ({
       resolve: ({{ entity.get_name() }}) => data.get_{{ reference.get_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
     },
 {% endfor %}
+{% for union in entity.get_unions() %}
+    {{ union.get_name() }}: {
+      type: new GraphQLNonNull({{ entity.get_name() }}_{{ union.get_name() }}Type),
+      resolve: ({{ entity.get_name() }}) => data.get_{{ union.get_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+    },
+{% endfor %}
 {% for referrer in entity.get_referrers() %}
     {{ referrer.get_referrer_name() }}: {
       type: new GraphQLList({{ referrer.get_entity().get_name() }}Type),
       resolve: ({{ entity.get_name() }}) => data.get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+    },
+{% endfor %}
+{% for association in entity.get_associations() %}
+    {{ association.get_other_name_for_entity(entity) }}: {
+      type: new GraphQLList({{ association.get_other(entity).get_name() }}Type),
+      resolve: ({{ entity.get_name() }}) => data.get_{{ association.get_other_name_for_entity(entity) }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
     },
 {% endfor %}
   })
@@ -52,7 +83,7 @@ const queryType = new GraphQLObjectType({
       args: {
         id: {
           description: '{{ entity.get_name() }} id',
-          type: new GraphQLNonNull(GraphQLString),
+          type: new GraphQLNonNull(GraphQLID),
         }
       },
       resolve: (_source, { id }) => data.get_{{ entity.get_name() }}_by_id(id),
