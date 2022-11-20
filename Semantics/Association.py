@@ -23,7 +23,7 @@ class Association(Semantics):
     def get_rhs(self):
         return self.rhs
 
-    def get_other_name_for_entity(self, entity):
+    def get_name_for_other_entity(self, entity):
         if self.self_referential:
             return self.get_name()
         if entity == self.lhs:
@@ -34,3 +34,22 @@ class Association(Semantics):
         if entity == self.lhs:
             return self.rhs
         return self.lhs
+
+    def get_lhs_column(self):
+        return self.lhs.get_name() + '_lhs_id'
+
+    def get_rhs_column(self):
+        return self.rhs.get_name() + '_rhs_id'
+
+    def get_this_column(self, entity):
+        if entity == self.lhs:
+            return self.get_lhs_column()
+        return self.get_rhs_column()
+
+    def get_other_column(self, entity):
+        if entity == self.lhs:
+            return self.get_rhs_column()
+        return self.get_lhs_column()
+
+    def is_self_referential(self):
+        return self.self_referential

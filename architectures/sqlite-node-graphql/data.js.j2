@@ -94,17 +94,54 @@ class Data {
         return this.db.all(
             'SELECT * FROM {{ referrer.get_entity().get_name() }} WHERE {{ referrer.get_name() }} = ?',
             [model.id]
-        ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row);
+        ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row)));
+    }
+{% endfor %}
+
+{% for association in entity.get_associations() %}
+    /**
+     * fetch association
+     *
+     * @param {Model.{{ entity.get_name() }}} model
+     */
+    async get_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() }}(model) {
+        return this.db.all(
+{% if association.is_self_referential() %}
+            `
+    SELECT {{ entity.get_name() }}.*
+      FROM {{ association.get_name() }}
+      JOIN {{ entity.get_name() }}
+        ON {{ association.get_name() }}.{{ association.get_rhs_column() }} = {{ entity.get_name() }}.id
+     WHERE {{ association.get_name() }}.{{ association.get_lhs_column() }} = ?
+     UNION
+    SELECT {{ entity.get_name() }}.*
+      FROM {{ association.get_name() }}
+      JOIN {{ entity.get_name() }}
+        ON {{ association.get_name() }}.{{ association.get_lhs_column() }} = {{ entity.get_name() }}.id
+     WHERE {{ association.get_name() }}.{{ association.get_rhs_column() }} = ?
+            `,
+            [model.id, model.id]
+{% else %}
+            `
+    SELECT {{ association.get_other(entity).get_name() }}.*
+      FROM {{ association.get_name() }}
+      JOIN {{ association.get_other(entity).get_name() }}
+        ON {{ association.get_name() }}.{{ association.get_other_column(entity) }} = {{ association.get_other(entity).get_name() }}.id
+     WHERE {{ association.get_name() }}.{{ association.get_this_column(entity) }} = ?
+            `,
+            [model.id]
+{% endif %}
+        )
     }
 {% endfor %}
 
 {% endfor %}
 
     static async build() {
-        return openSqlite(
+        return openSqlite({
             filename: './{{ schema.get_name() }}.db',
             driver: sqlite3.Database
-        ).then(db -> new Data(db))
+        }).then(db => new Data(db))
     }
 }
 

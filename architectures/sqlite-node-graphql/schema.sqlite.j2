@@ -39,10 +39,10 @@ CREATE TABLE {{ entity.name }} (
 
 {% for association in schema.get_associations() %}
 CREATE TABLE {{ association.get_name() }} (
-    {{ association.get_lhs().get_name() }}_lhs_id {{ sqlite_type("guid", association.get_lhs().get_name() ~ "_lhs_id") }} NOT NULL,
-    {{ association.get_rhs().get_name() }}_rhs_id {{ sqlite_type("guid", association.get_rhs().get_name() ~ "_rhs_id") }} NOT NULL,
-    FOREIGN KEY ({{ association.get_lhs().get_name() }}_lhs_id) REFERENCES {{ association.get_lhs().get_name() }}(id),
-    FOREIGN KEY ({{ association.get_rhs().get_name() }}_rhs_id) REFERENCES {{ association.get_rhs().get_name() }}(id)
+    {{ association.get_lhs_column() }} {{ sqlite_type("guid", association.get_lhs_column()) }} NOT NULL,
+    {{ association.get_rhs_column() }} {{ sqlite_type("guid", association.get_rhs_column()) }} NOT NULL,
+    FOREIGN KEY ({{ association.get_lhs_column() }}) REFERENCES {{ association.get_lhs().get_name() }}(id),
+    FOREIGN KEY ({{ association.get_rhs_column() }}) REFERENCES {{ association.get_rhs().get_name() }}(id)
 );
 {% endfor %}
 
