@@ -2,6 +2,6 @@
 
 module.exports = {
 {% for entity in schema.get_entities() %}
-  "{{ entity.get_name() }}": require('./{{entity.get_name() }}'){% if not loop.last %},{% endif %}
+  "{{ entity.get_name() }}": require('./entities/{{entity.get_name() }}'),
 {% endfor %}
 };

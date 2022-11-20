@@ -18,11 +18,12 @@
     <entity name="comments">
         <description>A comment on a user, post or other comment.</description>
         <field name="body" type="string"/>
+        <reference name="owner" references="users"/>
         <!-- unions are discriminated foregn keys, this "about" union can refer to a user, post or comment -->
         <union name="about">
-            <reference name="user" references="users"/>
+            <reference name="user" references="users" inverse="comments_about_me"/>
             <reference name="post" references="posts"/>
-            <reference name="comment" references="comments"/>
+            <reference name="comment" references="comments" inverse="replies"/>
         </union>
     </entity>
 

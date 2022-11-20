@@ -25,3 +25,9 @@ class Reference(Semantics):
 
     def get_referenced(self):
         return self.entity_to
+
+    def is_union(self):
+        return self.union is not None
+
+    def get_union(self):
+        return self.union

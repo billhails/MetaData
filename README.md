@@ -44,7 +44,9 @@ Lots, but specifically
 * auth
 * business logic
 * enumeration data type
+* more data types
 * deferred data retrieval
 * pagination
 * mutation
 * local template overrides
+* OpenTracing or OpenTelemetry metrics

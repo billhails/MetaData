@@ -4,7 +4,7 @@ const { buildSchema } = require('graphql');
 
 // Construct a schema, using GraphQL schema language
 const make_schema = require('./GraphQL/Schema');
-const Data = require('./data');
+const Data = require('./Utils/data');
 
 const app = express();
 

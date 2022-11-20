@@ -1,0 +1,21 @@
+const { v4: uuidv4 } = require('uuid');
+const logger = require('../../Utils/logger');
+const util = require('util');
+
+// {{ warning }}
+
+class {{ entity.get_name() }} {
+    constructor(args) {
+        this.id = args.id || uuidv4();
+        {% for field in entity.get_fields() %}this.{{ field.get_name() }} = args.{{ field.get_name() }};
+{% endfor %}
+        {% for reference in entity.get_references() %}this.{{ reference.get_name() }} = args.{{ reference.get_name() }};
+{% endfor %}
+        {% for union in entity.get_unions() %}this.{{ union.get_name() }} = args.{{ union.get_name() }};
+        this.{{ union.get_name() }}_type = args.{{ union.get_name() }}_type;
+{% endfor %}
+        logger.debug(`new Model.{{ entity.get_name() }} ${util.inspect(args)}`);
+    }
+}
+
+module.exports = {{ entity.get_name() }};
