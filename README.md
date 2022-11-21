@@ -41,11 +41,12 @@ npm run dev     # run the application on http://localhost:4000/graphql
 ## TODO
 
 Lots, but specifically
+* tests (generated)
 * auth
 * business logic
 * enumeration data type
 * more data types
-* deferred data retrieval
+* deferred data retrieval - done (but dataloader is sub-optimal)
 * pagination
 * mutation
 * local template overrides

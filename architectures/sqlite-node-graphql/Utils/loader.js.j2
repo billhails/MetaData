@@ -1,0 +1,82 @@
+// {{ warning }}
+
+const DataLoader = require('dataloader');
+const util = require('util');
+const logger = require('./logger');
+
+module.exports = (data) => {
+{% for entity in schema.get_entities() %}
+    // entity
+    const {{ entity.get_name() }}Loader = new DataLoader(async ids => data.batch_get_{{ entity.get_name() }}(ids));
+
+{%     for referrer in entity.get_referrers() %}
+    // referrer
+    const {{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader = new DataLoader(async ids => {
+
+        const referrers = await data.batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids);
+        return ids.map(id => {
+            const id_referrers = {};
+            referrers.forEach(
+                referrer => {
+                    if (referrer.{{ referrer.get_column_name() }} == id) {
+                        id_referrers[referrer.id] = referrer;
+                    }
+                }
+            );
+            return Object.values(id_referrers);
+        });
+    });
+{%     endfor %}
+
+{%     for association in entity.get_associations() %}
+{%         if association.is_self_referential() %}
+    // self-referential association
+    const {{ association.get_name() }}Loader = new DataLoader(async ids => {
+        // Bit of a hack, the result of the query is a set of sets, each input id corresponds to a row of output ids,
+        // rather than a single entity with that id as primary key
+        const associations = await data.batch_get_{{ association.get_name() }}_associations(ids);
+        // essentially associations is a list of pairs
+        return ids.map(id => {
+            const associates = {};
+            associations.forEach(association => {
+                if (association.{{ association.get_lhs_column() }} == id) {
+                    associates[association.{{ association.get_rhs_column() }}] = true;
+                }
+                if (association.{{ association.get_rhs_column() }} == id) {
+                    associates[association.{{ association.get_lhs_column() }}] = true;
+                }
+            });
+            return Object.keys(associates);
+        });
+    });
+{%         else %}
+    // non-self-referential association
+    const {{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_Loader = new DataLoader(async ids => {
+        const associations = await data.batch_get_{{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}(ids);
+        return ids.map(id => {
+            const associates = {};
+            associations.forEach(association => {
+                if (association.{{ association.get_this_column(entity) }} == id) {
+                    associates[association.{{ association.get_other_column(entity) }}] = true;
+                }
+            });
+            return Object.keys(associates);
+        });
+    });
+{%         endif %}
+{%     endfor %}
+{% endfor %}
+
+
+    return {
+{% for entity in schema.get_entities() %}
+        {{ entity.get_name() }}Loader,
+{%     for referrer in entity.get_referrers() %}
+        {{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader,
+{%     endfor %}
+{%     for association in entity.get_associations() %}
+        {{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader,
+{%     endfor %}
+{% endfor %}
+    };
+};

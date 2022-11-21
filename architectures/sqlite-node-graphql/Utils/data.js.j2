@@ -39,6 +39,20 @@ class Data {
     }
 
     /**
+     * batch fetch entities for dataloader
+     *
+     * @param {[String]} ids
+     * @returns {[Model.{{ entity.get_name() }}]}
+     */
+    async batch_get_{{ entity.get_name() }}(ids) {
+        const rows = await this.all(
+            `SELECT * from {{ entity.get_name() }} WHERE id IN (${ Array(ids.length).fill('?').join(', ') })`,
+            ids
+        ).then(rows => rows.reduce((acc, row) => ({ ...acc, [row.id]: row }), {}));
+        return ids.map(id => rows[id] ? new Model.{{ entity.get_name() }}(rows[id]) : null);
+    }
+
+    /**
      * insert entity
      *
      * @param {Model.{{ entity.get_name() }}} model
@@ -69,7 +83,7 @@ class Data {
         return this.run('DELETE FROM {{ entity.get_name() }} WHERE id = ?', [id]);
     }
 
-{% for reference in entity.get_references() %}
+{%     for reference in entity.get_references() %}
     /**
      * fetch reference
      *
@@ -79,9 +93,9 @@ class Data {
         return this.get('SELECT * FROM {{ reference.get_referenced().get_name() }} WHERE id = ?', [model.{{ reference.get_name() }}])
         .then(row => new Model.{{ reference.get_referenced().get_name() }}(row));
     }
-{% endfor %}
+{%     endfor %}
 
-{% for union in entity.get_unions() %}
+{%     for union in entity.get_unions() %}
     /**
      * fetch union
      *
@@ -89,18 +103,18 @@ class Data {
      */
     async get_{{ union.get_name() }}_for_{{ entity.get_name() }}(model) {
         switch (model.{{ union.get_name() }}_type) {
-{% for reference in union.get_references() %}
+{%         for reference in union.get_references() %}
             case '{{ reference.get_name() }}':
                 return this.get(
                     'SELECT * FROM {{ reference.get_referenced().get_name() }} WHERE id = ?',
                     [model.{{ union.get_name() }}]
                 ).then(row => new Model.{{ reference.get_referenced().get_name() }}(row));
-{% endfor %}
+{%         endfor %}
         }
     }
-{% endfor %}
+{%     endfor %}
 
-{% for referrer in entity.get_referrers() %}
+{%     for referrer in entity.get_referrers() %}
     /**
      * fetch referrer
      *
@@ -108,20 +122,40 @@ class Data {
      */
     async get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}(model) {
         return this.all(
-{% if referrer.is_union() %}
+{%         if referrer.is_union() %}
             `SELECT * FROM {{ referrer.get_entity().get_name() }}
              WHERE {{ referrer.get_union().get_name() }} = ?
              AND {{ referrer.get_union().get_name() }}_type = "{{ referrer.get_name() }}"
              `,
-{% else %}
+{%         else %}
             'SELECT * FROM {{ referrer.get_entity().get_name() }} WHERE {{ referrer.get_name() }} = ?',
-{% endif %}
+{%         endif %}
             [model.id]
         ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row)));
     }
-{% endfor %}
 
-{% for association in entity.get_associations() %}
+    /**
+     * fetch referrers
+     *
+     * @param {[string]} ids
+     */
+    async batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids) {
+        return this.all(
+{%         if referrer.is_union() %}
+            `SELECT * FROM {{ referrer.get_entity().get_name() }}
+             WHERE {{ referrer.get_union().get_name() }} IN (${ Array(ids.length).fill('?').join(', ') })
+             AND {{ referrer.get_union().get_name() }}_type = "{{ referrer.get_name() }}"
+             `,
+{%         else %}
+            `SELECT * FROM {{ referrer.get_entity().get_name() }}
+            WHERE {{ referrer.get_name() }} IN (${ Array(ids.length).fill('?').join(', ') })`,
+{%         endif %}
+            ids
+        ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row)));
+    }
+{%     endfor %}
+
+{%     for association in entity.get_associations() %}
     /**
      * fetch association
      *
@@ -129,7 +163,7 @@ class Data {
      */
     async get_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() }}(model) {
         return this.all(
-{% if association.is_self_referential() %}
+{%         if association.is_self_referential() %}
             `
     SELECT {{ entity.get_name() }}.*
       FROM {{ association.get_name() }}
@@ -144,7 +178,7 @@ class Data {
      WHERE {{ association.get_name() }}.{{ association.get_rhs_column() }} = ?
             `,
             [model.id, model.id]
-{% else %}
+{%         else %}
             `
     SELECT {{ association.get_other(entity).get_name() }}.*
       FROM {{ association.get_name() }}
@@ -153,10 +187,39 @@ class Data {
      WHERE {{ association.get_name() }}.{{ association.get_this_column(entity) }} = ?
             `,
             [model.id]
-{% endif %}
+{%         endif %}
         ).then(rows => rows.map(row => new Model.{{ association.get_other(entity).get_name() }}(row)));
     }
-{% endfor %}
+
+    /**
+     * fetch associations
+     *
+     * @param {[string]} ids
+     */
+{%         if association.is_self_referential() %}
+    async batch_get_{{ association.get_name() }}_associations(ids) {
+        return this.all(`
+    SELECT *
+      FROM {{ association.get_name() }}
+     WHERE {{ association.get_lhs_column() }} IN (${ Array(ids.length).fill('?').join(', ') })
+     UNION
+    SELECT *
+      FROM {{ association.get_name() }}
+     WHERE {{ association.get_rhs_column() }} IN (${ Array(ids.length).fill('?').join(', ') })
+        `,
+        [...ids, ...ids]);
+    }
+{%         else %}
+    async batch_get_{{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}(ids) {
+        return this.all(`
+    SELECT *
+      FROM {{ association.get_name() }}
+     WHERE {{ association.get_this_column(entity) }} IN (${ Array(ids.length).fill('?').join(', ') })
+        `,
+        ids);
+    }
+{%         endif %}
+{%     endfor %}
 
 {% endfor %}
 

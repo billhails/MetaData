@@ -1,0 +1,44 @@
+// {{ warning }}
+
+const logger = require('./logger');
+const util = require('util');
+
+class DataLoaderResolver {
+    constructor(loader) {
+        this.loader = loader;
+    }
+{% for entity in schema.get_entities() %}
+    async resolve_{{ entity.get_name() | singular }}(entity) {
+        return this.loader.{{ entity.get_name() }}Loader.load(entity.id);
+    }
+{%     for reference in entity.get_references() %}
+    async resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.loader.{{ reference.get_referenced().get_name() }}Loader.load(entity.{{ reference.get_name() }})
+    }
+{%     endfor %}
+{%     for union in entity.get_unions() %}
+{%        set method %}resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
+    async {{ method }}(entity) {
+        switch (entity.{{ union.get_name() }}_type) {
+{%         for reference in union.get_references() %}
+            case "{{ reference.get_name() }}":
+                return this.loader.{{ reference.get_referenced().get_name() }}Loader.load(entity.{{ union.get_name() }});
+{%         endfor %}
+        }
+    }
+{%     endfor %}
+{%     for referrer in entity.get_referrers() %}
+    async resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.loader.{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader.load(entity.id)
+    }
+{%     endfor %}
+{%     for association in entity.get_associations() %}
+    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity) {
+        const associations = await this.loader.{{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader.load(entity.id);
+        return associations.map(row => this.loader.{{ association.get_other(entity).get_name() }}Loader.load(row));
+    }
+{%     endfor %}
+{% endfor %}
+}
+
+module.exports = DataLoaderResolver;

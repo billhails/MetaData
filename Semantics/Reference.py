@@ -31,3 +31,8 @@ class Reference(Semantics):
 
     def get_union(self):
         return self.union
+
+    def get_column_name(self):
+        if self.is_union():
+            return self.union.get_name()
+        return self.get_name()

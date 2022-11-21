@@ -13,7 +13,7 @@ const {
 const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
 const { GraphQLSchema } = require('graphql/type/schema');
 
-const make_schema = (data) => {
+const make_schema = (resolver) => {
 {% for entity in schema.get_entities() %}
 {% for union in entity.get_unions() %}
     const {{ entity.get_name() }}_{{ union.get_name() }}Type = new GraphQLUnionType({
@@ -49,25 +49,25 @@ const make_schema = (data) => {
 {% for reference in entity.get_references() %}
         {{ reference.get_name() }}: {
           type: new GraphQLNonNull({{ reference.get_referenced().get_name() }}Type),
-          resolve: ({{ entity.get_name() }}) => data.get_{{ reference.get_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+          resolve: entity => resolver.resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
         },
 {% endfor %}
 {% for union in entity.get_unions() %}
         {{ union.get_name() }}: {
           type: new GraphQLNonNull({{ entity.get_name() }}_{{ union.get_name() }}Type),
-          resolve: ({{ entity.get_name() }}) => data.get_{{ union.get_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+          resolve: entity => resolver.resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
         },
 {% endfor %}
 {% for referrer in entity.get_referrers() %}
         {{ referrer.get_referrer_name() }}: {
           type: new GraphQLList({{ referrer.get_entity().get_name() }}Type),
-          resolve: ({{ entity.get_name() }}) => data.get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+          resolve: entity => resolver.resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}(entity)
         },
 {% endfor %}
 {% for association in entity.get_associations() %}
         {{ association.get_name_for_other_entity(entity) }}: {
           type: new GraphQLList({{ association.get_other(entity).get_name() }}Type),
-          resolve: ({{ entity.get_name() }}) => data.get_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() }}({{ entity.get_name() }})
+          resolve: entity => resolver.resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity)
         },
 {% endfor %}
       })
@@ -86,7 +86,7 @@ const make_schema = (data) => {
               type: new GraphQLNonNull(GraphQLID),
             }
           },
-          resolve: (_source, { id }) => data.get_{{ entity.get_name() }}_by_id(id),
+          resolve: (_source, entity) => resolver.resolve_{{ entity.get_name() | singular }}(entity),
         },
 {% endfor %}
       })

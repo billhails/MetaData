@@ -26,12 +26,12 @@ class Association(Semantics):
     def get_name_for_other_entity(self, entity):
         if self.self_referential:
             return self.get_name()
-        if entity == self.lhs:
+        if self.is_lhs(entity):
             return self.rhs.get_name()
         return self.lhs.get_name()
 
     def get_other(self, entity):
-        if entity == self.lhs:
+        if self.is_lhs(entity):
             return self.rhs
         return self.lhs
 
@@ -42,14 +42,17 @@ class Association(Semantics):
         return self.rhs.get_name() + '_rhs_id'
 
     def get_this_column(self, entity):
-        if entity == self.lhs:
+        if self.is_lhs(entity):
             return self.get_lhs_column()
         return self.get_rhs_column()
 
     def get_other_column(self, entity):
-        if entity == self.lhs:
+        if self.is_lhs(entity):
             return self.get_rhs_column()
         return self.get_lhs_column()
 
     def is_self_referential(self):
         return self.self_referential
+
+    def is_lhs(self, entity):
+        return entity == self.lhs

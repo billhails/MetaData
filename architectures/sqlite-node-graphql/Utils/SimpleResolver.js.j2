@@ -1,0 +1,32 @@
+class SimpleResolver {
+    constructor(data) {
+        this.data = data;
+    }
+{% for entity in schema.get_entities() %}
+    async resolve_{{ entity.get_name() | singular }}(entity) {
+        return this.data.get_{{ entity.get_name() }}_by_id(entity.id);
+    }
+{%     for reference in entity.get_references() %}
+    async resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.data.get_{{ reference.get_name() }}_for_{{ entity.get_name() }}(entity);
+    }
+{%     endfor %}
+{%     for union in entity.get_unions() %}
+    async resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.data.get_{{ union.get_name() }}_for_{{ entity.get_name() }}(entity);
+    }
+{%     endfor %}
+{%     for referrer in entity.get_referrers() %}
+    async resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.data.get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}(entity);
+    }
+{%     endfor %}
+{% for association in entity.get_associations() %}
+    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}(entity) {
+        return this.data.get_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() }}(entity);
+    }
+{%     endfor %}
+{% endfor %}
+}
+
+module.exports = SimpleResolver;
