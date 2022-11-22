@@ -6,14 +6,23 @@ const logger = require('./logger');
 
 module.exports = (data) => {
 {% for entity in schema.get_entities() %}
-    // entity
-    const {{ entity.get_name() }}Loader = new DataLoader(async ids => data.batch_get_{{ entity.get_name() }}(ids));
+    // single entity
+    const {{ entity.get_name() | singular }}Loader = new DataLoader(async ids => data.batch_get_{{ entity.get_name() }}(ids));
+
+    // list of entities
+    const {{ entity.get_name() }}Loader = {
+        load: async args => {
+            const entities = await data.page_get_{{ entity.get_name() }}(args);
+            entities.forEach(entity => {{ entity.get_name() | singular }}Loader.prime(entity.id, entity));
+            return entities;
+        }
+    }
 
 {%     for referrer in entity.get_referrers() %}
     // referrer
     const {{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader = new DataLoader(async ids => {
-
         const referrers = await data.batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids);
+        referrers.forEach(referrer => {{ referrer.get_entity().get_name() | singular }}Loader.prime(referrer.id, referrer));
         return ids.map(id => {
             const id_referrers = {};
             referrers.forEach(
@@ -70,6 +79,7 @@ module.exports = (data) => {
 
     return {
 {% for entity in schema.get_entities() %}
+        {{ entity.get_name() | singular }}Loader,
         {{ entity.get_name() }}Loader,
 {%     for referrer in entity.get_referrers() %}
         {{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader,
