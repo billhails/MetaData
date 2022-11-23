@@ -35,17 +35,19 @@ class Data {
      * @returns {Model.{{ entity.get_name() }}}
      */
     async get_{{ entity.get_name() | singular }}_by_id(id) {
-      return this.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
-        .then(row => new Model.{{ entity.get_name() }}(row));
+        logger.debug(`get_{{ entity.get_name() | singular }}_by_id(${uti.inspect(id)})`);
+        return this.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
+            .then(row => new Model.{{ entity.get_name() }}(row));
     }
 
     /**
-     * batch fetch entities for dataloader
+     * batch fetch entities for loader
      *
      * @param {[String]} ids
      * @returns {[Model.{{ entity.get_name() }}]}
      */
     async batch_get_{{ entity.get_name() }}(ids) {
+        logger.debug(`batch_get_{{ entity.get_name() }}(${util.inspect(ids)})`);
         const rows = await this.all(
             `SELECT * from {{ entity.get_name() }} WHERE id IN (${ Array(ids.length).fill('?').join(', ') })`,
             ids
@@ -154,23 +156,37 @@ class Data {
     }
 
     /**
-     * fetch referrers
+     * fetch referrers for loader
      *
      * @param {[string]} ids
      */
-    async batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids) {
-        return this.all(
+    async batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids_and_args) {
+        logger.debug('batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(${util.inspect(ids_and_args)}');
+        const subqueries = [];
+        const args = [];
+        ids_and_args.forEach(id_and_arg => {
+            const limit = id_and_arg.args.take || 5;
+            const offset = id_and_arg.args.skip || 0;
+            const id = id_and_arg.id;
+            const subquery = `
+                SELECT * FROM (
 {%         if referrer.is_union() %}
-            `SELECT * FROM {{ referrer.get_entity().get_name() }}
-             WHERE {{ referrer.get_union().get_name() }} IN (${ Array(ids.length).fill('?').join(', ') })
-             AND {{ referrer.get_union().get_name() }}_type = "{{ referrer.get_name() }}"
-             `,
+                SELECT * FROM {{ referrer.get_entity().get_name() }}
+                 WHERE {{ referrer.get_union().get_name() }} = ?
+                   AND {{ referrer.get_union().get_name() }}_type = "{{ referrer.get_name() }}"
 {%         else %}
-            `SELECT * FROM {{ referrer.get_entity().get_name() }}
-            WHERE {{ referrer.get_name() }} IN (${ Array(ids.length).fill('?').join(', ') })`,
+                SELECT * FROM {{ referrer.get_entity().get_name() }}
+                 WHERE {{ referrer.get_name() }} = ?
 {%         endif %}
-            ids
-        ).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row)));
+                 LIMIT ?
+                OFFSET ?
+                )
+            `;
+            subqueries.push(subquery);
+            args.push(id, limit, offset);
+        });
+
+        return this.all(subqueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ referrer.get_entity().get_name() }}(row)));
     }
 {%     endfor %}
 
@@ -211,31 +227,64 @@ class Data {
     }
 
     /**
-     * fetch associations
+     * fetch associations for loader
      *
      * @param {[string]} ids
      */
 {%         if association.is_self_referential() %}
-    async batch_get_{{ association.get_name() }}_associations(ids) {
-        return this.all(`
-    SELECT *
-      FROM {{ association.get_name() }}
-     WHERE {{ association.get_lhs_column() }} IN (${ Array(ids.length).fill('?').join(', ') })
-     UNION
-    SELECT *
-      FROM {{ association.get_name() }}
-     WHERE {{ association.get_rhs_column() }} IN (${ Array(ids.length).fill('?').join(', ') })
-        `,
-        [...ids, ...ids]);
+    async batch_get_{{ association.get_name() }}_associations(ids_and_args) {
+        logger.debug(`batch_get_{{ association.get_name() }}_associations(${util.inspect(ids_and_args)})`);
+        const subqueries = [];
+        const args = [];
+        ids_and_args.forEach(id_and_arg => {
+            const id = id_and_arg.id;
+            const limit = id_and_arg.args.take || 5;
+            const offset = id_and_arg.args.skip || 0;
+            const subquery = `
+            SELECT * FROM (
+                SELECT *
+                  FROM {{ association.get_name() }}
+                 WHERE {{ association.get_lhs_column() }} = ?
+                 LIMIT ?
+                OFFSET ?
+            )
+            UNION ALL
+            SELECT * FROM (
+                SELECT *
+                  FROM {{ association.get_name() }}
+                 WHERE {{ association.get_rhs_column() }} = ?
+                 LIMIT ?
+                OFFSET ?
+            )
+            `;
+            subqueries.push(subquery);
+            args.push(id, limit, offset, id, limit, offset);
+        });
+
+        return this.all(subqueries.join('UNION ALL'), args);
     }
 {%         else %}
-    async batch_get_{{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}(ids) {
-        return this.all(`
-    SELECT *
-      FROM {{ association.get_name() }}
-     WHERE {{ association.get_this_column(entity) }} IN (${ Array(ids.length).fill('?').join(', ') })
-        `,
-        ids);
+    async batch_get_{{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}(ids_and_args) {
+        logger.debug(`batch_get_{{ association.get_name() }}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}(${util.inspect(ids_and_args)})`);
+        const subqueries = [];
+        const args = [];
+        ids_and_args.forEach(id_and_arg => {
+            const id = id_and_arg.id;
+            const limit = id_and_arg.args.take || 5;
+            const offset = id_and_arg.args.skip || 0;
+            const subquery = `
+            SELECT * FROM (
+                SELECT *
+                  FROM {{ association.get_name() }}
+                 WHERE {{ association.get_this_column(entity) }} = ?
+                 LIMIT ?
+                OFFSET ?
+            );
+            `;
+            subqueries.push(subquery);
+            args.push(id, limit, offset);
+        });
+        return this.all(subqueries.join('UNION ALL'), args);
     }
 {%         endif %}
 {%     endfor %}
