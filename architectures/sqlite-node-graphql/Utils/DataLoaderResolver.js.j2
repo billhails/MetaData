@@ -4,27 +4,24 @@ const logger = require('./logger');
 const util = require('util');
 
 class DataLoaderResolver {
-    constructor(loader) {
-        this.loader = loader;
+    constructor(loaders) {
+        this.loaders = loaders;
     }
 {% for entity in schema.get_entities() %}
 {%     set method %}resolve_{{ entity.get_name() | singular }}{% endset %}
     async {{ method }}(args) {
-        const loader = this.loader.{{ entity.get_name() | singular }}Loader;
-        return loader.load(args.id);
+        return this.loaders.{{ entity.get_name() | singular }}Loader.load(args.id);
     }
 
 {%     set method %}resolve_{{ entity.get_name() }}{% endset %}
     async {{ method }}(args) {
-        const loader = this.loader.{{ entity.get_name() }}Loader;
-        return loader.load(args);
+        return this.loaders.{{ entity.get_name() }}Loader.load(args);
     }
 
 {%     for reference in entity.get_references() %}
 {%         set method %}resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
     async {{ method }}(entity) {
-        const loader = this.loader.{{ reference.get_referenced().get_name() | singular }}Loader;
-        return loader.load(entity.{{ reference.get_name() }})
+        return this.loaders.{{ reference.get_referenced().get_name() | singular }}Loader.load(entity.{{ reference.get_name() }})
     }
 {%     endfor %}
 
@@ -34,7 +31,7 @@ class DataLoaderResolver {
         switch (entity.{{ union.get_name() }}_type) {
 {%         for reference in union.get_references() %}
             case "{{ reference.get_name() }}":
-                return this.loader.{{ reference.get_referenced().get_name() | singular }}Loader.load(entity.{{ union.get_name() }});
+                return this.loaders.{{ reference.get_referenced().get_name() | singular }}Loader.load(entity.{{ union.get_name() }});
 {%         endfor %}
         }
     }
@@ -43,21 +40,16 @@ class DataLoaderResolver {
 {%     for referrer in entity.get_referrers() %}
 {%         set method %}resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
     async {{ method }}(entity, args) {
-        logger.debug(`* {{ method }}(${entity}, ${args})`);
-        const l1 = this.loader;
-        logger.debug(`* * {{ method }} ${l1}`);
-        const loader = l1.{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader;
-        logger.debug(`* * * {{ method }} ${loader}`);
-        return loader.load(entity.id)
+        return this.loaders.{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader.load(entity.id, args)
     }
 {%     endfor %}
 
 {%     for association in entity.get_associations() %}
-    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity) {
-        const loader1 = this.loader.{{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader;
-        const associations = await loader1.load(entity.id);
-        const loader2 = this.loader.{{ association.get_other(entity).get_name() | singular }}Loader;
-        return associations.map(row => loader2.load(row));
+    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity, args) {
+        const associations = await this.loaders
+            .{{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader
+            .load(entity.id, args);
+        return associations.map(row => this.loaders.{{ association.get_other(entity).get_name() | singular }}Loader.load(row));
     }
 {%     endfor %}
 {% endfor %}

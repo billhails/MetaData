@@ -23,7 +23,7 @@ module.exports = (data) => {
     const {{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader = new DataLoader(async ids => {
         const referrers = await data.batch_get_{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}(ids);
         referrers.forEach(referrer => {{ referrer.get_entity().get_name() | singular }}Loader.prime(referrer.id, referrer));
-        return ids.map(id => {
+        return ids.map(id => { // maps [lhs_id, lhs_id, ... ] to [[rhs_entity, rhs_entity, ...], [rhs_entity, ...], ...]
             const id_referrers = {};
             referrers.forEach(
                 referrer => {
