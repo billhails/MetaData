@@ -52,6 +52,10 @@ class DataLoaderResolver {
         return associations.map(row => this.loaders.{{ association.get_other(entity).get_name() | singular }}Loader.load(row));
     }
 {%     endfor %}
+    async resolve_create_{{ entity.get_name() }}(args) {
+        logger.debug(`resolve_create_{{ entity.get_name() }}(${util.inspect(args)})`);
+        return this.loaders.data.create_{{ entity.get_name() | singular }}(args);
+    }
 {% endfor %}
 }
 

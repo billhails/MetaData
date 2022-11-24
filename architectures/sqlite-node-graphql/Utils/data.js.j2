@@ -14,17 +14,26 @@ class Data {
 
     async get(query, params) {
         logger.debug(`get: ${query} ${params}`);
-        return this.db.get(query, params);
+        return this.db.get(query, params).catch(error => {
+            logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
+            throw(error);
+        });
     }
 
     async run(query, params) {
         logger.debug(`run: ${query} ${params}`);
-        return this.db.run(query, params);
+        return this.db.run(query, params).catch(error => {
+            logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
+            throw(error);
+        });
     }
 
     async all(query, params) {
         logger.debug(`all: ${query} ${params}`);
-        return this.db.all(query, params);
+        return this.db.all(query, params).catch(error => {
+            logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
+            throw(error);
+        });
     }
 
 {% for entity in schema.get_entities() %}
@@ -73,12 +82,48 @@ class Data {
         ).then(rows => rows.map(row => new Model.{{ entity.get_name() }}(row)));
     }
 
+{%     for union in entity.get_unions() %}
+    /**
+     * validate that an entry in the appropriate table exists
+     *
+     * @param {string} id
+     * @param {string} type
+     * @throws {Error}
+     */
+    async validate_union_{{ entity.get_name() }}_{{ union.get_name() }}(id, type) {
+        let table;
+        switch (type) {
+{%        for reference in union.get_references() %}
+            case "{{ reference.get_name() }}":
+                table = "{{ reference.get_referenced().get_name() }}";
+                break;
+{%        endfor %}
+        }
+        const row = await this.get(`
+                SELECT count(*) as c
+                  FROM ${table}
+                 WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (parseInt(row.c) != 1) {
+            throw new Error(`union {{ entity.get_name() }}.{{ union.get_name() }} reference failed, no ${type} with id ${id}`);
+        }
+    }
+{%     endfor %}
+
     /**
      * insert entity
      *
-     * @param {Model.{{ entity.get_name() }}} model
+     * @param {object} args
+     * @returns {Model.{{ entity.get_name() }}}
      */
-    async create_{{ entity.get_name() | singular }}(model) {
+    async create_{{ entity.get_name() | singular }}(args) {
+        const model = new Model.{{ entity.get_name() }}(args);
+{%     for union in entity.get_unions() %}
+        await this.validate_union_{{ entity.get_name() }}_{{ union.get_name() }}(model.{{ union.get_name() }}, model.{{ union.get_name() }}_type);
+{%     endfor %}
         const sql = `
         INSERT INTO {{ entity.get_name() }}(
           id{% for field in entity.get_fields() %}, {{ field.get_name() }}{% endfor %}
@@ -92,7 +137,8 @@ class Data {
           {%- for reference in entity.get_references() %}, model.{{ reference.get_name() }}{% endfor %}
           {%- for union in entity.get_unions() %}, model.{{ union.get_name() }}, model.{{ union.get_name() }}_type{% endfor %}
         ]
-        return this.run(sql, params);
+        await this.run(sql, params);
+        return model;
     }
 
     /**
@@ -279,7 +325,7 @@ class Data {
                  WHERE {{ association.get_this_column(entity) }} = ?
                  LIMIT ?
                 OFFSET ?
-            );
+            )
             `;
             subqueries.push(subquery);
             args.push(id, limit, offset);

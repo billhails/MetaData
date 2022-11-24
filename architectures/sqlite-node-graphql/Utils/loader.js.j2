@@ -175,5 +175,6 @@ module.exports = (data) => {
         {{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader,
 {%     endfor %}
 {% endfor %}
+        data
     };
 };
