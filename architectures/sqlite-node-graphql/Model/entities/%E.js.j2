@@ -14,12 +14,14 @@ class {{ entity.get_name() }} {
     this.{{ reference.get_name() }} = args.{{ reference.get_name() }};
 {% endfor %}
 {% for union in entity.get_unions() %}
-        if (typeof args.{{ union.get_name() }} == "string") {
-            this.{{ union.get_name() }} = args.{{ union.get_name() }};
-            this.{{ union.get_name() }}_type = args.{{ union.get_name() }}_type;
-        } else {
-            this.{{ union.get_name() }} = args.{{ union.get_name() }}.{{ union.get_name() }};
-            this.{{ union.get_name() }}_type = args.{{ union.get_name() }}.{{ union.get_name() }}_type;
+        if (args.{{ union.get_name() }}) {
+            if (typeof args.{{ union.get_name() }} == "string") {
+                this.{{ union.get_name() }} = args.{{ union.get_name() }};
+                this.{{ union.get_name() }}_type = args.{{ union.get_name() }}_type;
+            } else {
+                this.{{ union.get_name() }} = args.{{ union.get_name() }}.id;
+                this.{{ union.get_name() }}_type = args.{{ union.get_name() }}.type;
+            }
         }
 {% endfor %}
     }

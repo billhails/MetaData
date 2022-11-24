@@ -44,7 +44,7 @@ class Data {
      * @returns {Model.{{ entity.get_name() }}}
      */
     async get_{{ entity.get_name() | singular }}_by_id(id) {
-        logger.debug(`get_{{ entity.get_name() | singular }}_by_id(${uti.inspect(id)})`);
+        logger.debug(`get_{{ entity.get_name() | singular }}_by_id(${util.inspect(id)})`);
         return this.get('SELECT * FROM {{ entity.get_name() }} WHERE id = ?', [id])
             .then(row => new Model.{{ entity.get_name() }}(row));
     }
@@ -139,6 +139,60 @@ class Data {
         ]
         await this.run(sql, params);
         return model;
+    }
+
+    /**
+     * update entity
+     *
+     * @param {string} id
+     * @param {object} args
+     * @returns {Model.{{ entity.get_name() }}}
+     */
+    async update_{{ entity.get_name() | singular }}(id, args) {
+        const model = new Model.{{ entity.get_name() }}({id, ...args});
+{%     for union in entity.get_unions() %}
+        if ("{{ union.get_name() }}" in model) {
+            await this.validate_union_{{ entity.get_name() }}_{{ union.get_name() }}(model.{{ union.get_name() }}, model.{{ union.get_name() }}_type);
+        }
+{%     endfor %}
+
+        const fields = [];
+        const params = [];
+
+{%     for field in entity.get_fields() %}
+        if ('{{ field.get_name() }}' in args) {
+            fields.push("{{ field.get_name() }} = ?");
+            params.push(model.{{ field.get_name() }});
+        }
+{%     endfor %}
+{%     for reference in entity.get_references() %}
+        if ('{{ reference.get_name() }}' in args) {
+            fields.push("{{ reference.get_name() }} = ?");
+            params.push(model.{{ reference.get_name() }});
+        }
+{%     endfor %}
+{%     for union in entity.get_unions() %}
+        if ('{{ union.get_name() }}' in args) {
+            fields.push("{{ union.get_name() }} = ?");
+            params.push(model.{{ union.get_name() }});
+            fields.push("{{ union.get_name() }}_type = ?");
+            params.push(model.{{ union.get_name() }}_type);
+        }
+{%     endfor %}
+
+        params.push(model.id);
+
+        if (fields.length) {
+            const sql = `
+            UPDATE {{ entity.get_name() }} SET
+            ${fields.join(', ')}
+             WHERE id = ?
+            `;
+
+            await this.run(sql, params);
+        }
+
+        return this.get_{{ entity.get_name() | singular }}_by_id(id);
     }
 
     /**

@@ -87,5 +87,5 @@ Lots, but specifically
   * more data types
   * deferred data retrieval - done (but dataloader is sub-optimal)
   * pagination - basic pagination done
-  * mutation - done
+  * mutation - done for add
   * OpenTracing or OpenTelemetry metrics

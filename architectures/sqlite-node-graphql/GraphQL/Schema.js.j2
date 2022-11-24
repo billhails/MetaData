@@ -1,7 +1,5 @@
 // {{ warning }}
-{% macro graphQLType(type) -%}
-GraphQLString
-{%- endmacro -%}
+{% macro graphQLType(type) %}GraphQLString{% endmacro %}
 const {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -18,12 +16,19 @@ const { printSchema } = require('graphql/utilities');
 const logger = require('../Utils/logger');
 const Model = require('../Model');
 
-const make_schema = (resolver) => {
+{% macro graphQLType(type) %}GraphQLString{% endmacro %}
+{% macro union_enum_type(entity, union) %}{{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}EnumType{% endmacro %}
+{% macro union_type(entity, union) %}{{ entity.get_name() }}_{{ union.get_name() }}Type{% endmacro %}
+{% macro entity_type(entity) %}{{ entity.get_name() }}Type{% endmacro %}
+{% macro entity_input_type(entity) %}{{ entity.get_name() }}InputType{% endmacro %}
+{% macro union_input_type(entity, union) %}{{ entity.get_name() }}_{{ union.get_name() }}InputType{% endmacro %}
+{% macro entity_update_type(entity) %}{{ entity.get_name() }}UpdateType{% endmacro %}
 
+const make_schema = (resolver) => {
 {% for entity in schema.get_entities() %}
 
 {%     for union in entity.get_unions() %}
-    const {{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}EnumType = new GraphQLEnumType({
+    const {{ union_enum_type(entity, union) }} = new GraphQLEnumType({
         name: '{{ union.get_name() }}Type',
         values: {
 {%         for reference in union.get_references() %}
@@ -33,23 +38,23 @@ const make_schema = (resolver) => {
     });
 
 
-    const {{ entity.get_name() }}_{{ union.get_name() }}Type = new GraphQLUnionType({
+    const {{ union_type(entity, union) }} = new GraphQLUnionType({
       name: '{{ union.get_name() }}',
       types: () => ([
-{%         for reference in union.get_references() %}{{ reference.get_referenced().get_name() }}Type, {% endfor %}
+{%         for reference in union.get_references() %}{{ entity_type(reference.get_referenced()) }}, {% endfor %}
       ]),
       resolveType(value) {
 {%             for reference in union.get_references() %}
         if (value instanceof Model.{{ reference.get_referenced().get_name() }}) {
-          return {{ reference.get_referenced().get_name() }}Type;
+          return {{ entity_type(reference.get_referenced()) }};
         }
 {%         endfor %}
       }
     });
 {%     endfor %}
 
-    const {{ entity.get_name() }}Type = new GraphQLObjectType ({
-      name: '{{ entity.get_name() | capitalize }}',
+    const {{ entity_type(entity) }} = new GraphQLObjectType ({
+      name: '{{ entity.get_name() | capitalize | singular }}',
       description: '{{ entity.get_description() }}',
       fields: () => ({
         id: {
@@ -63,19 +68,19 @@ const make_schema = (resolver) => {
 {%     endfor %}
 {%     for reference in entity.get_references() %}
         {{ reference.get_name() }}: {
-          type: new GraphQLNonNull({{ reference.get_referenced().get_name() }}Type),
+          type: new GraphQLNonNull({{ entity_type(reference.get_referenced()) }}),
           resolve: entity => resolver.resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
         },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
         {{ union.get_name() }}: {
-          type: new GraphQLNonNull({{ entity.get_name() }}_{{ union.get_name() }}Type),
+          type: new GraphQLNonNull({{ union_type(entity, union) }}),
           resolve: entity => resolver.resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
         },
 {%     endfor %}
 {%     for referrer in entity.get_referrers() %}
         {{ referrer.get_referrer_name() }}: {
-          type: new GraphQLList({{ referrer.get_entity().get_name() }}Type),
+          type: new GraphQLList({{ entity_type(referrer.get_entity()) }}),
           args: {
             take: {
               description: 'limit',
@@ -91,7 +96,7 @@ const make_schema = (resolver) => {
 {%     endfor %}
 {%     for association in entity.get_associations() %}
         {{ association.get_name_for_other_entity(entity) }}: {
-          type: new GraphQLList({{ association.get_other(entity).get_name() }}Type),
+          type: new GraphQLList({{ entity_type(association.get_other(entity)) }}),
           args: {
             take: {
               description: 'limit',
@@ -109,22 +114,22 @@ const make_schema = (resolver) => {
     });
 
 {%     for union in entity.get_unions() %}
-    const {{ entity.get_name() }}_{{ union.get_name() }}InputType = new GraphQLInputObjectType({
+    const {{ union_input_type(entity, union) }} = new GraphQLInputObjectType({
         name: 'Add{{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}',
         description: 'input object to create {{ entity.get_name() }} {{ union.get_name() }} unions.',
         fields: () => ({
-            {{ union.get_name() }}: {
+            id: {
                 type: new GraphQLNonNull(GraphQLID)
             },
-            {{ union.get_name() }}_type: {
-                type: new GraphQLNonNull({{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}EnumType)
+            type: {
+                type: new GraphQLNonNull({{ union_enum_type(entity, union) }})
             }
         })
     });
 {%     endfor %}
 
-    const {{ entity.get_name() }}InputType = new GraphQLInputObjectType({
-        name: 'Add{{ entity.get_name() | capitalize }}',
+    const {{ entity_input_type(entity) }} = new GraphQLInputObjectType({
+        name: 'Add{{ entity.get_name() | capitalize | singular }}',
         description: 'input object to create a new {{ entity.get_name() }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
@@ -133,26 +138,48 @@ const make_schema = (resolver) => {
             },
 {%     endfor %}
 {%     for reference in entity.get_references() %}
-        {{ reference.get_name() }}: {
-          type: new GraphQLNonNull(GraphQLID)
-        },
+            {{ reference.get_name() }}: {
+              type: new GraphQLNonNull(GraphQLID)
+            },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
-        {{ union.get_name() }}: {
-          type: new GraphQLNonNull({{ entity.get_name() }}_{{ union.get_name() }}InputType)
-        },
+            {{ union.get_name() }}: {
+              type: new GraphQLNonNull({{ union_input_type(entity, union) }})
+            },
 {%     endfor %}
         }),
     });
-{% endfor %}
 
+    const {{ entity_update_type(entity) }} = new GraphQLInputObjectType({
+        name: 'Update{{ entity.get_name() | capitalize | singular }}',
+        description: 'input object to update an existing {{ entity.get_name() }}',
+        fields: () => ({
+{%     for field in entity.get_fields() %}
+            {{ field.get_name() }}: {
+                type: {{ graphQLType(field.get_type()) }}
+            },
+{%     endfor %}
+{%     for reference in entity.get_references() %}
+            {{ reference.get_name() }}: {
+              type: GraphQLID
+            },
+{%     endfor %}
+{%     for union in entity.get_unions() %}
+            {{ union.get_name() }}: {
+              type: {{ union_input_type(entity, union) }}
+            },
+{%     endfor %}
+        }),
+    });
+
+{% endfor %}
 
     const queryType = new GraphQLObjectType({
       name: 'Query',
       fields: () => ({
 {% for entity in schema.get_entities() %}
         {{ entity.get_name() | singular}}: {
-          type: {{ entity.get_name() }}Type,
+          type: {{ entity_type(entity) }},
           args: {
             id: {
               description: '{{ entity.get_name() }} id',
@@ -162,7 +189,7 @@ const make_schema = (resolver) => {
           resolve: (_source, args) => resolver.resolve_{{ entity.get_name() | singular }}(args),
         },
         {{ entity.get_name() }}: {
-          type: new GraphQLList({{ entity.get_name() }}Type),
+          type: new GraphQLList({{ entity_type(entity) }}),
           args: {
             take: {
               description: 'limit',
@@ -183,14 +210,26 @@ const make_schema = (resolver) => {
         name: 'Mutation',
         fields: () => ({
 {% for entity in schema.get_entities() %}
-            'create{{ entity.get_name() | capitalize }}': {
-                type: {{ entity.get_name() }}Type,
+            'create{{ entity.get_name() | capitalize | singular }}': {
+                type: {{ entity_type(entity) }},
                 args: {
                     input: {
-                        type: new GraphQLNonNull({{ entity.get_name() }}InputType)
+                        type: new GraphQLNonNull({{ entity_input_type(entity) }})
                     }
                 },
                 resolve: (_, {input}) => resolver.resolve_create_{{ entity.get_name() }}(input),
+            },
+            'update{{ entity.get_name() | capitalize | singular }}': {
+                type: {{ entity_type(entity) }},
+                args: {
+                    id: {
+                         type: new GraphQLNonNull(GraphQLID)
+                    },
+                    input: {
+                        type: new GraphQLNonNull({{ entity_update_type(entity) }})
+                    }
+                },
+                resolve: (_, {id, input}) => resolver.resolve_update_{{ entity.get_name() }}(id, input),
             },
 {% endfor %}
         })

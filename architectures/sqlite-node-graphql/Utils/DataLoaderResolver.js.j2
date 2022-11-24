@@ -56,6 +56,11 @@ class DataLoaderResolver {
         logger.debug(`resolve_create_{{ entity.get_name() }}(${util.inspect(args)})`);
         return this.loaders.data.create_{{ entity.get_name() | singular }}(args);
     }
+
+    async resolve_update_{{ entity.get_name() }}(id, args) {
+        logger.debug(`resolve_update_{{ entity.get_name() }}(${id}, ${util.inspect(args)})`);
+        return this.loaders.data.update_{{ entity.get_name() | singular }}(id, args);
+    }
 {% endfor %}
 }
 
