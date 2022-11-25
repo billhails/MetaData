@@ -32,7 +32,7 @@ CREATE TABLE {{ entity.name }} (
 {% endfor %}
 {% for reference in entity.get_references() %}
 ,
-    FOREIGN KEY ({{ reference.get_name() }}) REFERENCES {{ reference.get_referenced().get_name() }}(id)
+    FOREIGN KEY ({{ reference.get_name() }}) REFERENCES {{ reference.get_referenced().get_name() }}(id) ON DELETE CASCADE
 {% endfor %}
 );
 {% endfor %}
@@ -41,8 +41,9 @@ CREATE TABLE {{ entity.name }} (
 CREATE TABLE {{ association.get_name() }} (
     {{ association.get_lhs_column() }} {{ sqlite_type("guid", association.get_lhs_column()) }} NOT NULL,
     {{ association.get_rhs_column() }} {{ sqlite_type("guid", association.get_rhs_column()) }} NOT NULL,
-    FOREIGN KEY ({{ association.get_lhs_column() }}) REFERENCES {{ association.get_lhs().get_name() }}(id),
-    FOREIGN KEY ({{ association.get_rhs_column() }}) REFERENCES {{ association.get_rhs().get_name() }}(id)
+    FOREIGN KEY ({{ association.get_lhs_column() }}) REFERENCES {{ association.get_lhs().get_name() }}(id) ON DELETE CASCADE,
+    FOREIGN KEY ({{ association.get_rhs_column() }}) REFERENCES {{ association.get_rhs().get_name() }}(id) ON DELETE CASCADE,
+    CONSTRAINT no_duplicate_{{ association.get_name() }} UNIQUE ({{ association.get_lhs_column() }}, {{ association.get_rhs_column() }}) ON CONFLICT IGNORE
 );
 {% endfor %}
 

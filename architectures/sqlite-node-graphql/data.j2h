@@ -1,14 +1,16 @@
 {# defines method names declared in the data layer and called from the resolver and the loader #}
-{% macro page_get_entity(entity) %}pageGet{{ entity.get_name() | capitalize }}{% endmacro %}
-{% macro batch_get_entity(entity) %}batchGet{{ entity.get_name() | capitalize }}{% endmacro %}
-{% macro batch_get_referrer(referrer) %}batchGet{{ referrer.get_entity().get_name() | capitalize }}By{{ referrer.get_name() | capitalize }}{% endmacro %}
-{% macro batch_get_association(entity, association) %}batchGet{{ association.get_name() | capitalize }}{% if association.is_self_referential() %}Associations{% else %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}{% endmacro %}
-{% macro get_entity(entity) %}get{{ entity.get_name() | singular | capitalize }}ById{% endmacro %}
-{% macro validate_union(entity, union) %}validateUnion{{ entity.get_name() | capitalize}}{{ union.get_name() | capitalize }}{% endmacro %}
-{% macro create_entity(entity) %}create{{ entity.get_name() | singular | capitalize }}{% endmacro %}
-{% macro update_entity(entity) %}update{{ entity.get_name() | singular | capitalize }}{% endmacro %}
-{% macro delete_entity(entity) %}delete{{ entity.get_name() | singular | capitalize }}ById{% endmacro %}
-{% macro get_reference_for_entity(entity, reference) %}get{{ reference.get_name() | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
-{% macro get_union_for_entity(entity, union) %}get{{ union.get_name() | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
-{% macro get_referrer_for_entity(entity, referrer) %}get{{ referrer.get_referrer_name() | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
-{% macro get_association_for_entity(entity, association) %}get{{ association.get_name_for_other_entity(entity) | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
+{% macro page_get_entity(entity) %}pageGet{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro batch_get_entity(entity) %}batchGet{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro batch_get_referrer(referrer) %}batchGet{{ referrer.get_entity().get_name() | mixed_case }}By{{ referrer.get_name() | mixed_case }}{% endmacro %}
+{% macro batch_get_association(entity, association) %}batchGet{{ association.get_name() | mixed_case }}{% if association.is_self_referential() %}Associations{% else %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}{% endmacro %}
+{% macro get_entity(entity) %}get{{ entity.get_name() | singular | mixed_case }}ById{% endmacro %}
+{% macro validate_union(entity, union) %}validateUnion{{ entity.get_name() | mixed_case}}{{ union.get_name() | mixed_case }}{% endmacro %}
+{% macro create_entity(entity) %}create{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro update_entity(entity) %}update{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro delete_entity(entity) %}delete{{ entity.get_name() | singular | mixed_case }}ById{% endmacro %}
+{% macro get_reference_for_entity(entity, reference) %}get{{ reference.get_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro get_union_for_entity(entity, union) %}get{{ union.get_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro get_referrer_for_entity(entity, referrer) %}get{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro get_association_for_entity(entity, association) %}get{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
+{% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
+{% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}

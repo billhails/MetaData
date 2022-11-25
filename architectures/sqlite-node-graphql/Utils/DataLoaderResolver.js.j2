@@ -60,6 +60,16 @@ class DataLoaderResolver {
     async {{ resolve.delete_entity(entity) }}(id) {
         return this.loaders.data.{{ data.delete_entity(entity) }}(id);
     }
+
+{% endfor %}
+{% for association in schema.get_associations() %}
+    async {{ resolve.create_association(association) }}(args) {
+        return this.loaders.data.{{ data.create_association(association) }}(args);
+    }
+
+    async {{ resolve.delete_association(association) }}(args) {
+        return this.loaders.data.{{ data.delete_association(association) }}(args);
+    }
 {% endfor %}
 }
 

@@ -6,6 +6,8 @@ import shutil
 
 inflection = inflect.engine()
 
+def mixed_case(string):
+    return ''.join([s.capitalize() for s in string.split('_')])
 
 class MetaDataLoader(BaseLoader):
     def __init__(self, input_root):
@@ -29,6 +31,7 @@ class TemplateProcessor:
         self.output_root = output_root
         self.environment = Environment(autoescape=False, loader=MetaDataLoader(self.input_root), undefined=StrictUndefined)
         self.environment.filters["singular"] = inflection.singular_noun
+        self.environment.filters["mixed_case"] = mixed_case
 
     def __process_template(self, template, target, data):
         data['warning'] = "Automatically generated from {} - DO NOT EDIT".format(template)

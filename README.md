@@ -87,6 +87,7 @@ Lots, but specifically
   * enumeration data type
   * more data types
   * deferred data retrieval - done (but dataloader is sub-optimal)
+    * separate dataloader per request - or cache management
   * pagination - basic pagination done
   * mutation - done for add
   * OpenTracing or OpenTelemetry metrics

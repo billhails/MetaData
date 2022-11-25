@@ -18,7 +18,7 @@ const logger = require('../Utils/logger');
 const Model = require('../Model');
 
 {% macro graphQLType(type) %}GraphQLString{% endmacro %}
-{% macro union_enum_type(entity, union) %}{{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}EnumType{% endmacro %}
+{% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}EnumType{% endmacro %}
 {% macro union_type(entity, union) %}{{ entity.get_name() }}_{{ union.get_name() }}Type{% endmacro %}
 {% macro entity_type(entity) %}{{ entity.get_name() }}Type{% endmacro %}
 {% macro entity_input_type(entity) %}{{ entity.get_name() }}InputType{% endmacro %}
@@ -55,7 +55,7 @@ const make_schema = (resolver) => {
 {%     endfor %}
 
     const {{ entity_type(entity) }} = new GraphQLObjectType ({
-      name: '{{ entity.get_name() | capitalize | singular }}',
+      name: '{{ entity.get_name() | mixed_case | singular }}',
       description: '{{ entity.get_description() }}',
       fields: () => ({
         id: {
@@ -116,7 +116,7 @@ const make_schema = (resolver) => {
 
 {%     for union in entity.get_unions() %}
     const {{ union_input_type(entity, union) }} = new GraphQLInputObjectType({
-        name: 'Add{{ entity.get_name() | capitalize }}{{ union.get_name() | capitalize }}',
+        name: 'Add{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}',
         description: 'input object to create {{ entity.get_name() }} {{ union.get_name() }} unions.',
         fields: () => ({
             id: {
@@ -130,7 +130,7 @@ const make_schema = (resolver) => {
 {%     endfor %}
 
     const {{ entity_input_type(entity) }} = new GraphQLInputObjectType({
-        name: 'Add{{ entity.get_name() | capitalize | singular }}',
+        name: 'Add{{ entity.get_name() | mixed_case | singular }}',
         description: 'input object to create a new {{ entity.get_name() }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
@@ -152,7 +152,7 @@ const make_schema = (resolver) => {
     });
 
     const {{ entity_update_type(entity) }} = new GraphQLInputObjectType({
-        name: 'Update{{ entity.get_name() | capitalize | singular }}',
+        name: 'Update{{ entity.get_name() | mixed_case | singular }}',
         description: 'input object to update an existing {{ entity.get_name() }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
@@ -211,7 +211,7 @@ const make_schema = (resolver) => {
         name: 'Mutation',
         fields: () => ({
 {% for entity in schema.get_entities() %}
-            'create{{ entity.get_name() | capitalize | singular }}': {
+            'create{{ entity.get_name() | mixed_case | singular }}': {
                 type: {{ entity_type(entity) }},
                 args: {
                     input: {
@@ -220,7 +220,7 @@ const make_schema = (resolver) => {
                 },
                 resolve: (_, {input}) => resolver.{{ resolve.create_entity(entity) }}(input),
             },
-            'update{{ entity.get_name() | capitalize | singular }}': {
+            'update{{ entity.get_name() | mixed_case | singular }}': {
                 type: {{ entity_type(entity) }},
                 args: {
                     id: {
@@ -232,7 +232,7 @@ const make_schema = (resolver) => {
                 },
                 resolve: (_, {id, input}) => resolver.{{ resolve.update_entity(entity) }}(id, input),
             },
-            'delete{{ entity.get_name() | capitalize | singular }}': {
+            'delete{{ entity.get_name() | mixed_case | singular }}': {
                 type: GraphQLBoolean,
                 args: {
                     id: {
@@ -240,6 +240,32 @@ const make_schema = (resolver) => {
                     },
                 },
                 resolve: (_, {id}) => resolver.{{ resolve.delete_entity(entity) }}(id)
+            },
+{% endfor %}
+{% for association in schema.get_associations() %}
+            'create{{ association.get_name() | mixed_case }}Association': {
+                type: GraphQLBoolean,
+                args: {
+                    {{ association.get_lhs_column() }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                    {{ association.get_rhs_column() }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                },
+                resolve: (_, args) => resolver.{{ resolve.create_association(association) }}(args)
+            },
+            'delete{{ association.get_name() | mixed_case }}Association': {
+                type: GraphQLBoolean,
+                args: {
+                    {{ association.get_lhs_column() }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                    {{ association.get_rhs_column() }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                },
+                resolve: (_, args) => resolver.{{ resolve.delete_association(association) }}(args)
             },
 {% endfor %}
         })

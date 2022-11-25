@@ -102,7 +102,7 @@ class Data {
 {%        endfor %}
         }
         const row = await this.get(`
-                SELECT count(*) as c
+                SELECT count(*) AS c
                   FROM ${table}
                  WHERE id = ?
             `,
@@ -391,6 +391,56 @@ class Data {
 {%     endfor %}
 
 {% endfor %}
+
+{% for association in schema.get_associations() %}
+    async {{ data.create_association(association) }}(args) {
+{%     if association.is_self_referential() %}
+        // check the inverse association doesn't already exist
+        const row = await this.get(`
+                SELECT count(*) AS c
+                  FROM {{ association.get_name() }}
+                 WHERE {{ association.get_lhs_column() }} = ?
+                   AND {{ association.get_rhs_column() }} = ?
+            `,
+            [args.{{ association.get_rhs_column() }}, args.{{ association.get_lhs_column() }}]
+        );
+        if (parseInt(row.c) > 0) {
+            return true;
+        }
+{%     endif %}
+        return this.run(`
+            INSERT INTO {{ association.get_name() }}({{ association.get_lhs_column() }}, {{ association.get_rhs_column() }})
+                 VALUES (?, ?)
+            `,
+            [args.{{ association.get_lhs_column() }}, args.{{ association.get_rhs_column() }}]
+        ).then(() => true);
+    }
+
+    async {{ data.delete_association(association) }}(args) {
+{%     if association.is_self_referential() %}
+        return this.run(`
+            DELETE FROM {{ association.get_name() }}
+                  WHERE ({{ association.get_lhs_column() }} = ? AND {{ association.get_rhs_column() }} = ?)
+                     OR ({{ association.get_rhs_column() }} = ? AND {{ association.get_lhs_column() }} = ?)
+            `,
+            [
+                args.{{ association.get_lhs_column() }},
+                args.{{ association.get_rhs_column() }},
+                args.{{ association.get_lhs_column() }},
+                args.{{ association.get_rhs_column() }}
+            ]
+        ).then(() => true);
+{%     else %}
+        return this.run(`
+            DELETE FROM {{ association.get_name() }}
+                  WHERE {{ association.get_lhs_column() }} = ? AND {{ association.get_rhs_column() }} = ?
+            `,
+            [args.{{ association.get_lhs_column() }}, args.{{ association.get_rhs_column() }}]
+        ).then(() => true);
+{%     endif %}
+    }
+{% endfor %}
+
 
     static async build() {
         return openSqlite({
