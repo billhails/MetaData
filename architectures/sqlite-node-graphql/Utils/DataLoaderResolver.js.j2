@@ -1,5 +1,9 @@
 // {{ warning }}
 
+{% import 'resolver.j2h' as resolve %}
+{% import 'loader.j2h' as loader %}
+{% import 'data.j2h' as data %}
+
 const logger = require('./logger');
 const util = require('util');
 
@@ -8,58 +12,53 @@ class DataLoaderResolver {
         this.loaders = loaders;
     }
 {% for entity in schema.get_entities() %}
-{%     set method %}resolve_{{ entity.get_name() | singular }}{% endset %}
-    async {{ method }}(args) {
-        return this.loaders.{{ entity.get_name() | singular }}Loader.load(args.id);
+    async {{ resolve.entity(entity) }}(args) {
+        return this.loaders.{{ loader.entity(entity) }}.load(args.id);
     }
 
-{%     set method %}resolve_{{ entity.get_name() }}{% endset %}
-    async {{ method }}(args) {
-        return this.loaders.{{ entity.get_name() }}Loader.load(args);
+    async {{ resolve.entities(entity) }}(args) {
+        return this.loaders.{{ loader.entities(entity) }}.load(args);
     }
 
 {%     for reference in entity.get_references() %}
-{%         set method %}resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
-    async {{ method }}(entity) {
-        return this.loaders.{{ reference.get_referenced().get_name() | singular }}Loader.load(entity.{{ reference.get_name() }})
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity) {
+        return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ reference.get_name() }})
     }
 {%     endfor %}
 
 {%     for union in entity.get_unions() %}
-{%        set method %}resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
-    async {{ method }}(entity) {
+    async {{ resolve.union_for_entity(entity, union) }}(entity) {
         switch (entity.{{ union.get_name() }}_type) {
 {%         for reference in union.get_references() %}
             case "{{ reference.get_name() }}":
-                return this.loaders.{{ reference.get_referenced().get_name() | singular }}Loader.load(entity.{{ union.get_name() }});
+                return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ union.get_name() }});
 {%         endfor %}
         }
     }
 {%     endfor %}
 
 {%     for referrer in entity.get_referrers() %}
-{%         set method %}resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}{% endset %}
-    async {{ method }}(entity, args) {
-        return this.loaders.{{ referrer.get_entity().get_name() }}_by_{{ referrer.get_name() }}Loader.load(entity.id, args)
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args) {
+        return this.loaders.{{ loader.referrer(referrer) }}.load(entity.id, args)
     }
 {%     endfor %}
 
 {%     for association in entity.get_associations() %}
-    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity, args) {
-        const associations = await this.loaders
-            .{{ association.get_name() }}{% if not association.is_self_referential() %}_{% if association.is_lhs(entity) %}lhs{% else %}rhs{% endif %}_{% endif %}Loader
-            .load(entity.id, args);
-        return associations.map(row => this.loaders.{{ association.get_other(entity).get_name() | singular }}Loader.load(row));
+    async {{ resolve.association_for_entity(entity, association) }}(entity, args) {
+        const associations = await this.loaders.{{ loader.association_for_entity(entity, association) }}.load(entity.id, args);
+        return associations.map(row => this.loaders.{{ loader.other_entity(entity, association) }}.load(row));
     }
 {%     endfor %}
-    async resolve_create_{{ entity.get_name() }}(args) {
-        logger.debug(`resolve_create_{{ entity.get_name() }}(${util.inspect(args)})`);
-        return this.loaders.data.create_{{ entity.get_name() | singular }}(args);
+    async {{ resolve.create_entity(entity) }}(args) {
+        return this.loaders.data.{{ data.create_entity(entity) }}(args);
     }
 
-    async resolve_update_{{ entity.get_name() }}(id, args) {
-        logger.debug(`resolve_update_{{ entity.get_name() }}(${id}, ${util.inspect(args)})`);
-        return this.loaders.data.update_{{ entity.get_name() | singular }}(id, args);
+    async {{ resolve.update_entity(entity) }}(id, args) {
+        return this.loaders.data.{{ data.update_entity(entity) }}(id, args);
+    }
+
+    async {{ resolve.delete_entity(entity) }}(id) {
+        return this.loaders.data.{{ data.delete_entity(entity) }}(id);
     }
 {% endfor %}
 }

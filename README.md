@@ -62,8 +62,9 @@ the directory specified by the `--output` argument to the builder. The templates
 templates and are processed to the equivalent output file with the `.j2` suffix stripped.
 Normally files are processed passing in a top-level `schema` object representing the entire application
 specification, however `.j2` files with a `%E` embedded in their name are instead processed
-repeatedly for each `entity` in the schema, and written to separate files with the `%E` replaced by the
-entity name. Files without a `.j2` suffix are copied to the output verbatim.
+repeatedly for each `entity` in the schema, and written to separate files with the `%E` replaced by each
+entity name. Files with a `.j2h` suffix are considered macros and ignored
+(though they can be imported). Files without a `.j2` suffix are copied to the output verbatim.
 
 ### Semantics
 

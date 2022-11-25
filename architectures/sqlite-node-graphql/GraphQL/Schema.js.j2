@@ -1,5 +1,6 @@
 // {{ warning }}
 {% macro graphQLType(type) %}GraphQLString{% endmacro %}
+{% import 'resolver.j2h' as resolve %}
 const {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -9,7 +10,7 @@ const {
   GraphQLUnionType,
   GraphQLInputObjectType,
 } = require('graphql/type/definition');
-const { GraphQLInt } = require('graphql/type');
+const { GraphQLInt, GraphQLBoolean } = require('graphql/type');
 const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
 const { GraphQLSchema } = require('graphql/type/schema');
 const { printSchema } = require('graphql/utilities');
@@ -69,13 +70,13 @@ const make_schema = (resolver) => {
 {%     for reference in entity.get_references() %}
         {{ reference.get_name() }}: {
           type: new GraphQLNonNull({{ entity_type(reference.get_referenced()) }}),
-          resolve: entity => resolver.resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
+          resolve: entity => resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity)
         },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
         {{ union.get_name() }}: {
           type: new GraphQLNonNull({{ union_type(entity, union) }}),
-          resolve: entity => resolver.resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}(entity)
+          resolve: entity => resolver.{{ resolve.union_for_entity(entity, union) }}(entity)
         },
 {%     endfor %}
 {%     for referrer in entity.get_referrers() %}
@@ -91,7 +92,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (entity, args) => resolver.resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}(entity, args)
+          resolve: (entity, args) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args)
         },
 {%     endfor %}
 {%     for association in entity.get_associations() %}
@@ -107,7 +108,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (entity, args) => resolver.resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}_association(entity, args)
+          resolve: (entity, args) => resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args)
         },
 {%     endfor %}
       })
@@ -186,7 +187,7 @@ const make_schema = (resolver) => {
               type: new GraphQLNonNull(GraphQLID),
             }
           },
-          resolve: (_source, args) => resolver.resolve_{{ entity.get_name() | singular }}(args),
+          resolve: (_source, args) => resolver.{{ resolve.entity(entity) }}(args),
         },
         {{ entity.get_name() }}: {
           type: new GraphQLList({{ entity_type(entity) }}),
@@ -200,7 +201,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (_source, args) => resolver.resolve_{{ entity.get_name() }}(args),
+          resolve: (_source, args) => resolver.{{ resolve.entities(entity) }}(args),
         },
 {% endfor %}
       })
@@ -217,7 +218,7 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull({{ entity_input_type(entity) }})
                     }
                 },
-                resolve: (_, {input}) => resolver.resolve_create_{{ entity.get_name() }}(input),
+                resolve: (_, {input}) => resolver.{{ resolve.create_entity(entity) }}(input),
             },
             'update{{ entity.get_name() | capitalize | singular }}': {
                 type: {{ entity_type(entity) }},
@@ -229,7 +230,16 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull({{ entity_update_type(entity) }})
                     }
                 },
-                resolve: (_, {id, input}) => resolver.resolve_update_{{ entity.get_name() }}(id, input),
+                resolve: (_, {id, input}) => resolver.{{ resolve.update_entity(entity) }}(id, input),
+            },
+            'delete{{ entity.get_name() | capitalize | singular }}': {
+                type: GraphQLBoolean,
+                args: {
+                    id: {
+                         type: new GraphQLNonNull(GraphQLID)
+                    },
+                },
+                resolve: (_, {id}) => resolver.{{ resolve.delete_entity(entity) }}(id)
             },
 {% endfor %}
         })

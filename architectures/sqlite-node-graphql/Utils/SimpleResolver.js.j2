@@ -1,29 +1,34 @@
+// {{ warning }}
+
+{% import 'resolver.j2h' as resolve %}
+{% import 'data.j2h' as data %}
+
 class SimpleResolver {
     constructor(data) {
         this.data = data;
     }
 {% for entity in schema.get_entities() %}
-    async resolve_{{ entity.get_name() | singular }}(entity) {
-        return this.data.get_{{ entity.get_name() }}_by_id(entity.id);
+    async {{ resolve.entity(entity) }}(entity) {
+        return this.data.{{ data.get_entity(entity) }}(entity.id);
     }
 {%     for reference in entity.get_references() %}
-    async resolve_{{ reference.get_name() }}_for_{{ entity.get_name() | singular }}(entity) {
-        return this.data.get_{{ reference.get_name() }}_for_{{ entity.get_name() }}(entity);
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity) {
+        return this.data.{{ data.get_reference_for_entity(entity, reference) }}(entity);
     }
 {%     endfor %}
 {%     for union in entity.get_unions() %}
-    async resolve_{{ union.get_name() }}_for_{{ entity.get_name() | singular }}(entity) {
-        return this.data.get_{{ union.get_name() }}_for_{{ entity.get_name() }}(entity);
+    async {{ resolve.union_for_entity(entity, union) }}(entity) {
+        return this.data.{{ data.get_union_for_entity(entity, union) }}(entity);
     }
 {%     endfor %}
 {%     for referrer in entity.get_referrers() %}
-    async resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}(entity) {
-        return this.data.get_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() }}(entity);
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity) {
+        return this.data.{{ data.get_referrer_for_entity(entity, referrer) }}(entity);
     }
 {%     endfor %}
 {% for association in entity.get_associations() %}
-    async resolve_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() | singular }}(entity) {
-        return this.data.get_{{ association.get_name_for_other_entity(entity) }}_for_{{ entity.get_name() }}(entity);
+    async {{ resolve.association_for_entity(entity, association) }}(entity) {
+        return this.data.{{ data.get_association_for_entity(entity, association) }}(entity);
     }
 {%     endfor %}
 {% endfor %}

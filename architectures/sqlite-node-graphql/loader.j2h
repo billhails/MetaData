@@ -1,0 +1,7 @@
+{# defines method names declared in the loader and called from the resolver #}
+{% macro entity(entity) %}{{ entity.get_name() | singular }}Loader{% endmacro %}
+{% macro entities(entity) %}{{ entity.get_name() }}Loader{% endmacro %}
+{% macro reference(reference) %}{{ reference.get_referenced().get_name() | singular }}Loader{% endmacro %}
+{% macro referrer(referrer) %}{{ referrer.get_entity().get_name() }}By{{ referrer.get_name() | capitalize }}Loader{% endmacro %}
+{% macro association_for_entity(entity, association) %}{{ association.get_name() }}{% if not association.is_self_referential() %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}Loader{% endmacro %}
+{% macro other_entity(entity, association) %}{{ association.get_other(entity).get_name() | singular }}Loader{% endmacro %}

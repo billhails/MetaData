@@ -1,0 +1,10 @@
+{# defines method names declared in the resolver and called from the schema #}
+{% macro reference_for_entity(entity, reference) %}resolve{{ reference.get_name() | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
+{% macro union_for_entity(entity, union) %}resolve{{ union.get_name() | capitalize }}For{{ entity.get_name() | singular | capitalize }}{% endmacro %}
+{% macro referrer_for_entity(entity, referrer) %}resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}{% endmacro %}
+{% macro association_for_entity(entity, association) %}resolve{{ association.get_name_for_other_entity(entity) | capitalize }}For{{ entity.get_name() | singular | capitalize }}Association{% endmacro %}
+{% macro entity(entity) %}resolve{{ entity.get_name() | singular | capitalize }}{% endmacro %}
+{% macro entities(entity) %}resolve{{ entity.get_name() | capitalize }}{% endmacro %}
+{% macro create_entity(entity) %}resolveCreate{{ entity.get_name() | capitalize }}{% endmacro %}
+{% macro update_entity(entity) %}resolveUpdate{{ entity.get_name() | capitalize }}{% endmacro %}
+{% macro delete_entity(entity) %}resolveDelete{{ entity.get_name() | capitalize }}{% endmacro %}
