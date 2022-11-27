@@ -1,30 +1,51 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../../Utils/logger');
 const util = require('util');
 
-// {{ warning }}
+{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/database.j2h' as database %}
+{% import 'macros/model.j2h' as model %}
 
-class {{ entity.get_name() }} {
+class {{ model.name(entity) }} {
     constructor(args) {
         this.id = args.id || uuidv4();
 {% for field in entity.get_fields() %}
-        this.{{ field.get_name() }} = args.{{ field.get_name() }};
+        this.{{ arguments.field_label(field) }} = args.{{ arguments.field_label(field) }};
 {% endfor %}
 {% for reference in entity.get_references() %}
-    this.{{ reference.get_name() }} = args.{{ reference.get_name() }};
+    this.{{ arguments.field_label(reference) }} = args.{{ arguments.field_label(reference) }};
 {% endfor %}
 {% for union in entity.get_unions() %}
-        if (args.{{ union.get_name() }}) {
-            if (typeof args.{{ union.get_name() }} == "string") {
-                this.{{ union.get_name() }} = args.{{ union.get_name() }};
-                this.{{ union.get_name() }}_type = args.{{ union.get_name() }}_type;
+        if (args.{{ arguments.field_label(union) }}) {
+            if (typeof args.{{ database.name(union) }} == "string") {
+                this.{{ arguments.field_label(union) }} = args.{{ arguments.field_label(union) }};
+                this.{{ arguments.field_type(union) }} = args.{{ arguments.field_type(union) }};
             } else {
-                this.{{ union.get_name() }} = args.{{ union.get_name() }}.id;
-                this.{{ union.get_name() }}_type = args.{{ union.get_name() }}.type;
+                this.{{ arguments.field_label(union) }} = args.{{ arguments.field_label(union) }}.id;
+                this.{{ arguments.field_type(union) }} = args.{{ arguments.field_type(union) }}.type;
             }
         }
 {% endfor %}
     }
 }
 
-module.exports = {{ entity.get_name() }};
+module.exports = {{ model.name(entity) }};

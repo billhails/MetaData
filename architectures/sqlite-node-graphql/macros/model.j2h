@@ -15,15 +15,8 @@
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  #}
-// {{ warning }}
 
-{% import 'macros/model.j2h' as model %}
+{# naming conventions for models #}
 
-module.exports = {
-{% for entity in schema.get_entities() %}
-    {{ model.name(entity) }}: require('./entities/{{ entity.get_name() }}'),
-{% endfor %}
-{% for association in schema.get_associations() %}
-    {{ model.association(association) }}: require('./associations/{{ association.get_name() }}'),
-{% endfor %}
-};
+{% macro name(thing) %}{{ thing.get_name() | mixed_case }}{% endmacro %}
+{% macro association(thing) %}{{ thing.get_name() | mixed_case }}Association{% endmacro %}

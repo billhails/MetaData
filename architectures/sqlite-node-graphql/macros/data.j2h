@@ -1,3 +1,20 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
 {# defines method names declared in the data layer and called from the resolver and the loader #}
 {% macro page_get_entity(entity) %}pageGet{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro batch_get_entity(entity) %}batchGet{{ entity.get_name() | mixed_case }}{% endmacro %}
@@ -14,3 +31,4 @@
 {% macro get_association_for_entity(entity, association) %}get{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
 {% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}
+{% macro get_entity_fields(entity) %}get{{ entity.get_name() | singular | mixed_case }}Fields{% endmacro %}

@@ -1,8 +1,27 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
 // {{ warning }}
 
-{% import 'resolver.j2h' as resolve %}
-{% import 'loader.j2h' as loader %}
-{% import 'data.j2h' as data %}
+{% import 'macros/resolver.j2h' as resolve %}
+{% import 'macros/loader.j2h' as loader %}
+{% import 'macros/data.j2h' as data %}
+{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/database.j2h' as database %}
 
 const logger = require('./logger');
 const util = require('util');
@@ -11,6 +30,11 @@ class DataLoaderResolver {
     constructor(loaders) {
         this.loaders = loaders;
     }
+
+    clearAll() {
+        this.loaders.clearAll();
+    }
+
 {% for entity in schema.get_entities() %}
     async {{ resolve.entity(entity) }}(args) {
         return this.loaders.{{ loader.entity(entity) }}.load(args.id);
@@ -22,16 +46,16 @@ class DataLoaderResolver {
 
 {%     for reference in entity.get_references() %}
     async {{ resolve.reference_for_entity(entity, reference) }}(entity) {
-        return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ reference.get_name() }})
+        return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})
     }
 {%     endfor %}
 
 {%     for union in entity.get_unions() %}
     async {{ resolve.union_for_entity(entity, union) }}(entity) {
-        switch (entity.{{ union.get_name() }}_type) {
+        switch (entity.{{ arguments.field_label(union) }}Type) {
 {%         for reference in union.get_references() %}
-            case "{{ reference.get_name() }}":
-                return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ union.get_name() }});
+            case "{{ database.name(reference) }}":
+                return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(union) }});
 {%         endfor %}
         }
     }

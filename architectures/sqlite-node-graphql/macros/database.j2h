@@ -15,15 +15,11 @@
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  #}
-// {{ warning }}
+{# by abstracting out all names, even literal ones, we know we are not using literal names anywhere outside of the macros #}
 
-{% import 'macros/model.j2h' as model %}
-
-module.exports = {
-{% for entity in schema.get_entities() %}
-    {{ model.name(entity) }}: require('./entities/{{ entity.get_name() }}'),
-{% endfor %}
-{% for association in schema.get_associations() %}
-    {{ model.association(association) }}: require('./associations/{{ association.get_name() }}'),
-{% endfor %}
-};
+{% macro name(thing) %}{{ thing.get_name() }}{% endmacro %}
+{% macro type_name(thing) %}{{ name(thing) }}_type{% endmacro %}
+{% macro lhs(association) %}{{ association.get_lhs_column() }}{% endmacro %}
+{% macro rhs(association) %}{{ association.get_rhs_column() }}{% endmacro %}
+{% macro this_column(entity, association) %}{{ association.get_this_column(entity) }}{% endmacro %}
+{% macro other_column(entity, association) %}{{ association.get_other_column(entity) }}{% endmacro %}

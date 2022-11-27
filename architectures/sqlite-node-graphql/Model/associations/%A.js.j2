@@ -17,13 +17,18 @@
  #}
 // {{ warning }}
 
+const logger = require('../../Utils/logger');
+const util = require('util');
+
+{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/database.j2h' as database %}
 {% import 'macros/model.j2h' as model %}
 
-module.exports = {
-{% for entity in schema.get_entities() %}
-    {{ model.name(entity) }}: require('./entities/{{ entity.get_name() }}'),
-{% endfor %}
-{% for association in schema.get_associations() %}
-    {{ model.association(association) }}: require('./associations/{{ association.get_name() }}'),
-{% endfor %}
-};
+class {{ model.association(association) }} {
+    constructor(args) {
+        this.{{ arguments.lhs(association) }} = args.{{ arguments.lhs(association) }};
+        this.{{ arguments.rhs(association) }} = args.{{ arguments.rhs(association) }};
+    }
+}
+
+module.exports = {{ model.association(association) }};

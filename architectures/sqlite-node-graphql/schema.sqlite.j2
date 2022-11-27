@@ -1,3 +1,20 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
 -- {{ warning }}
 
 {% macro sqlite_type(type, name) -%}
@@ -8,42 +25,44 @@
 {% endif %}
 {%- endmacro -%}
 
+{% import 'macros/database.j2h' as database %}
+
 .open {{ schema.get_name() }}.db
 
 PRAGMA foreign_keys = OFF;
 
 {% for entity in schema.get_entities() %}
-DROP TABLE IF EXISTS {{ entity.name }};
+DROP TABLE IF EXISTS {{ database.name(entity) }};
 
-CREATE TABLE {{ entity.name }} (
+CREATE TABLE {{ database.name(entity) }} (
     id {{ sqlite_type("guid", "id") }} PRIMARY KEY
 {% for field in entity.get_fields() %}
 ,
-    {{ field.get_name() }} {{ sqlite_type(field.get_type(), field.get_name()) }} NOT NULL
+    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL
 {% endfor %}
 {% for reference in entity.get_references() %}
 ,
-    {{ reference.get_name() }} {{ sqlite_type("guid", reference.get_name()) }} NOT NULL
+    {{ database.name(reference) }} {{ sqlite_type("guid", database.name(reference)) }} NOT NULL
 {% endfor %}
 {% for union in entity.get_unions() %}
 ,
-    {{ union.get_name() }}_type TEXT CHECK({{ union.get_name() }}_type IN ({%- for ref in union.get_references() %}{% if not loop.first %}, {% endif %}'{{ ref.get_name() }}'{% endfor -%})) NOT NULL,
-    {{ union.get_name() }} {{ sqlite_type("guid", union.get_name()) }} NOT NULL
+    {{ database.type_name(union) }} TEXT CHECK({{ database.type_name(union) }} IN ({%- for ref in union.get_references() %}{% if not loop.first %}, {% endif %}'{{ database.name(ref) }}'{% endfor -%})) NOT NULL,
+    {{ database.name(union) }} {{ sqlite_type("guid", database.name(union)) }} NOT NULL
 {% endfor %}
 {% for reference in entity.get_references() %}
 ,
-    FOREIGN KEY ({{ reference.get_name() }}) REFERENCES {{ reference.get_referenced().get_name() }}(id) ON DELETE CASCADE
+    FOREIGN KEY ({{ database.name(reference) }}) REFERENCES {{ database.name(reference.get_referenced()) }}(id) ON DELETE CASCADE
 {% endfor %}
 );
 {% endfor %}
 
 {% for association in schema.get_associations() %}
-CREATE TABLE {{ association.get_name() }} (
-    {{ association.get_lhs_column() }} {{ sqlite_type("guid", association.get_lhs_column()) }} NOT NULL,
-    {{ association.get_rhs_column() }} {{ sqlite_type("guid", association.get_rhs_column()) }} NOT NULL,
-    FOREIGN KEY ({{ association.get_lhs_column() }}) REFERENCES {{ association.get_lhs().get_name() }}(id) ON DELETE CASCADE,
-    FOREIGN KEY ({{ association.get_rhs_column() }}) REFERENCES {{ association.get_rhs().get_name() }}(id) ON DELETE CASCADE,
-    CONSTRAINT no_duplicate_{{ association.get_name() }} UNIQUE ({{ association.get_lhs_column() }}, {{ association.get_rhs_column() }}) ON CONFLICT IGNORE
+CREATE TABLE {{ database.name(association) }} (
+    {{ database.lhs(association) }} {{ sqlite_type("guid", database.lhs(association)) }} NOT NULL,
+    {{ database.rhs(association) }} {{ sqlite_type("guid", database.rhs(association)) }} NOT NULL,
+    FOREIGN KEY ({{ database.lhs(association) }}) REFERENCES {{ database.name(association.get_lhs()) }}(id) ON DELETE CASCADE,
+    FOREIGN KEY ({{ database.rhs(association) }}) REFERENCES {{ database.name(association.get_rhs()) }}(id) ON DELETE CASCADE,
+    CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
 {% endfor %}
 

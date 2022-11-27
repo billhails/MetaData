@@ -1,7 +1,26 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
 // {{ warning }}
 
-{% import 'loader.j2h' as loader %}
-{% import 'data.j2h' as data %}
+{% import 'macros/loader.j2h' as loader %}
+{% import 'macros/data.j2h' as data %}
+{% import 'macros/database.j2h' as database %}
+{% import 'macros/schema.j2h' as arguments %}
 
 const DataLoader = require('dataloader');
 const util = require('util');
@@ -26,6 +45,7 @@ class AbstractLoader {
         this.lookup = {};
         this.batch_get = batch_get;
         this.name = name;
+        this.loader = null;
     }
 
     async load(id, args) {
@@ -39,6 +59,9 @@ class AbstractLoader {
         logger.debug(`${this.name} ${msg} ${util.inspect(args)}`);
     }
 
+    clearAll() {
+        this.loader.clearAll();
+    }
 }
 
 class ReferrerLoader extends AbstractLoader {
@@ -147,22 +170,34 @@ module.exports = (data) => {
 {%         if association.is_self_referential() %}
     const {{ loader.association_for_entity(entity, association) }} = new SelfReferentialAssociationLoader({
         batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        lhs_column: '{{ association.get_lhs_column() }}',
-        rhs_column: '{{ association.get_rhs_column() }}',
+        lhs_column: '{{ arguments.lhs(association) }}',
+        rhs_column: '{{ arguments.rhs(association) }}',
         name: '{{ loader.association_for_entity(entity, association) }}'
     });
 
 {%         else %}
     const {{ loader.association_for_entity(entity, association) }} = new AssociationLoader({
         batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        this_column: '{{ association.get_this_column(entity) }}',
-        other_column: '{{ association.get_other_column(entity) }}',
+        this_column: '{{ arguments.this_column(entity, association) }}',
+        other_column: '{{ arguments.other_column(entity, association) }}',
         name: '{{ loader.association_for_entity(entity, association) }}'
     });
 {%         endif %}
 {%     endfor %}
 {% endfor %}
 
+    const clearAll = () => {
+{% for entity in schema.get_entities() %}
+        {{ loader.entity(entity) }}.clearAll();
+        {{ loader.entities(entity) }}.clearAll();
+{%     for referrer in entity.get_referrers() %}
+        {{ loader.referrer(referrer) }}.clearAll();
+{%     endfor %}
+{%     for association in entity.get_associations() %}
+        {{ loader.association_for_entity(entity, association) }}.clearAll();
+{%     endfor %}
+{% endfor %}
+    };
 
     return {
 {% for entity in schema.get_entities() %}
@@ -175,6 +210,7 @@ module.exports = (data) => {
         {{ loader.association_for_entity(entity, association) }},
 {%     endfor %}
 {% endfor %}
-        data
+        data,
+        clearAll
     };
 };

@@ -1,0 +1,53 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+{# declares keys for values (arguments) declared in the schema and used in the data layer #}
+
+{% macro field_label(field) %}{{ field.get_name() | camel_case }}{% endmacro %}
+{% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}
+{% macro referrer_label(referrer) %}{{ referrer.get_referrer_name() | camel_case }}{% endmacro %}
+{% macro association_other_label(entity, association) %}{{ association.get_name_for_other_entity(entity) | camel_case }}{% endmacro %}
+{% macro association_lhs_label(association) %}{{ association.get_lhs_column() | camel_case }}{% endmacro %}
+{% macro association_rhs_label(association) %}{{ association.get_rhs_column() | camel_case }}{% endmacro %}
+
+{% macro lhs(association) %}{{ association.get_lhs_column() | camel_case }}{% endmacro %}
+{% macro rhs(association) %}{{ association.get_rhs_column() | camel_case }}{% endmacro %}
+{% macro this_column(entity, association) %}{{ association.get_this_column(entity) | camel_case }}{% endmacro %}
+{% macro other_column(entity, association) %}{{ association.get_other_column(entity) | camel_case }}{% endmacro %}
+
+{% macro graphql_type(type) %}GraphQLString{% endmacro %}
+
+{% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}Enum{% endmacro %}
+{% macro union_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
+{% macro entity_type(entity) %}{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro singular_entity_label(entity) %}{{ entity.get_name() | singular | camel_case }}{% endmacro %}
+{% macro plural_entity_label(entity) %}{{ entity.get_name() | camel_case }}{% endmacro %}
+
+{% macro add_entity(entity) %}Add{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro add_entity_label(entity) %}add{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+
+{% macro add_union(entity, union) %}Add{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
+
+{% macro add_association_label(association) %}add{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
+
+{% macro update_entity(entity) %}Update{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro update_entity_label(entity) %}update{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+
+{% macro delete_entity(entity) %}Delete{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro delete_entity_label(entity) %}delete{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro delete_association(association) %}Delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
+{% macro delete_association_label(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}

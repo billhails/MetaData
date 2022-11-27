@@ -1,6 +1,27 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
 // {{ warning }}
-{% macro graphQLType(type) %}GraphQLString{% endmacro %}
-{% import 'resolver.j2h' as resolve %}
+
+{% import 'macros/resolver.j2h' as resolve %}
+{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/model.j2h' as model %}
+{% import 'macros/database.j2h' as database %}
+
 const {
   GraphQLEnumType,
   GraphQLInterfaceType,
@@ -17,71 +38,63 @@ const { printSchema } = require('graphql/utilities');
 const logger = require('../Utils/logger');
 const Model = require('../Model');
 
-{% macro graphQLType(type) %}GraphQLString{% endmacro %}
-{% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}EnumType{% endmacro %}
-{% macro union_type(entity, union) %}{{ entity.get_name() }}_{{ union.get_name() }}Type{% endmacro %}
-{% macro entity_type(entity) %}{{ entity.get_name() }}Type{% endmacro %}
-{% macro entity_input_type(entity) %}{{ entity.get_name() }}InputType{% endmacro %}
-{% macro union_input_type(entity, union) %}{{ entity.get_name() }}_{{ union.get_name() }}InputType{% endmacro %}
-{% macro entity_update_type(entity) %}{{ entity.get_name() }}UpdateType{% endmacro %}
-
 const make_schema = (resolver) => {
 {% for entity in schema.get_entities() %}
 
 {%     for union in entity.get_unions() %}
-    const {{ union_enum_type(entity, union) }} = new GraphQLEnumType({
-        name: '{{ union.get_name() }}Type',
+    const {{ arguments.union_enum_type(entity, union) }} = new GraphQLEnumType({
+        name: '{{ arguments.union_enum_type(entity, union) }}',
         values: {
 {%         for reference in union.get_references() %}
-            {{ reference.get_name() }}: { value: '{{ reference.get_name() }}' },
+            {{ arguments.field_label(reference) }}: { value: '{{ database.name(reference) }}' },
 {%         endfor %}
         }
     });
 
 
-    const {{ union_type(entity, union) }} = new GraphQLUnionType({
-      name: '{{ union.get_name() }}',
+    const {{ arguments.union_type(entity, union) }} = new GraphQLUnionType({
+      name: '{{ arguments.union_type(entity, union) }}',
       types: () => ([
-{%         for reference in union.get_references() %}{{ entity_type(reference.get_referenced()) }}, {% endfor %}
+{%         for reference in union.get_references() %}{{ arguments.entity_type(reference.get_referenced()) }}, {% endfor %}
       ]),
       resolveType(value) {
 {%             for reference in union.get_references() %}
-        if (value instanceof Model.{{ reference.get_referenced().get_name() }}) {
-          return {{ entity_type(reference.get_referenced()) }};
+        if (value instanceof Model.{{ model.name(reference.get_referenced()) }}) {
+          return {{ arguments.entity_type(reference.get_referenced()) }};
         }
 {%         endfor %}
       }
     });
 {%     endfor %}
 
-    const {{ entity_type(entity) }} = new GraphQLObjectType ({
-      name: '{{ entity.get_name() | mixed_case | singular }}',
+    const {{ arguments.entity_type(entity) }} = new GraphQLObjectType ({
+      name: '{{ arguments.entity_type(entity) }}',
       description: '{{ entity.get_description() }}',
       fields: () => ({
         id: {
           type: new GraphQLNonNull(GraphQLID),
-          description: '{{ entity.get_name() }} id.',
+          description: '{{ database.name(entity) }} id.',
         },
 {%     for field in entity.get_fields() %}
-        {{ field.get_name() }}: {
-          type: new GraphQLNonNull({{ graphQLType(field.get_type()) }})
+        {{ arguments.field_label(field) }}: {
+          type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
         },
 {%     endfor %}
 {%     for reference in entity.get_references() %}
-        {{ reference.get_name() }}: {
-          type: new GraphQLNonNull({{ entity_type(reference.get_referenced()) }}),
+        {{ arguments.field_label(reference) }}: {
+          type: new GraphQLNonNull({{ arguments.entity_type(reference.get_referenced()) }}),
           resolve: entity => resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity)
         },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
-        {{ union.get_name() }}: {
-          type: new GraphQLNonNull({{ union_type(entity, union) }}),
+        {{ arguments.field_label(union) }}: {
+          type: new GraphQLNonNull({{ arguments.union_type(entity, union) }}),
           resolve: entity => resolver.{{ resolve.union_for_entity(entity, union) }}(entity)
         },
 {%     endfor %}
 {%     for referrer in entity.get_referrers() %}
-        {{ referrer.get_referrer_name() }}: {
-          type: new GraphQLList({{ entity_type(referrer.get_entity()) }}),
+        {{ arguments.referrer_label(referrer) }}: {
+          type: new GraphQLList({{ arguments.entity_type(referrer.get_entity()) }}),
           args: {
             take: {
               description: 'limit',
@@ -96,8 +109,8 @@ const make_schema = (resolver) => {
         },
 {%     endfor %}
 {%     for association in entity.get_associations() %}
-        {{ association.get_name_for_other_entity(entity) }}: {
-          type: new GraphQLList({{ entity_type(association.get_other(entity)) }}),
+        {{ arguments.association_other_label(entity, association) }}: {
+          type: new GraphQLList({{ arguments.entity_type(association.get_other(entity)) }}),
           args: {
             take: {
               description: 'limit',
@@ -115,59 +128,59 @@ const make_schema = (resolver) => {
     });
 
 {%     for union in entity.get_unions() %}
-    const {{ union_input_type(entity, union) }} = new GraphQLInputObjectType({
-        name: 'Add{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}',
-        description: 'input object to create {{ entity.get_name() }} {{ union.get_name() }} unions.',
+    const {{ arguments.add_union(entity, union) }} = new GraphQLInputObjectType({
+        name: '{{ arguments.add_union(entity, union) }}',
+        description: 'input object to create {{ database.name(entity) | singular }} {{ database.name(union) | singular }} unions.',
         fields: () => ({
             id: {
                 type: new GraphQLNonNull(GraphQLID)
             },
             type: {
-                type: new GraphQLNonNull({{ union_enum_type(entity, union) }})
+                type: new GraphQLNonNull({{ arguments.union_enum_type(entity, union) }})
             }
         })
     });
 {%     endfor %}
 
-    const {{ entity_input_type(entity) }} = new GraphQLInputObjectType({
-        name: 'Add{{ entity.get_name() | mixed_case | singular }}',
-        description: 'input object to create a new {{ entity.get_name() }}',
+    const {{ arguments.add_entity(entity) }} = new GraphQLInputObjectType({
+        name: '{{ arguments.add_entity(entity) }}',
+        description: 'input object to create a new {{ database.name(entity) | singular }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
-            {{ field.get_name() }}: {
-                type: new GraphQLNonNull({{ graphQLType(field.get_type()) }})
+            {{ arguments.field_label(field) }}: {
+                type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
             },
 {%     endfor %}
 {%     for reference in entity.get_references() %}
-            {{ reference.get_name() }}: {
+            {{ arguments.field_label(reference) }}: {
               type: new GraphQLNonNull(GraphQLID)
             },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
-            {{ union.get_name() }}: {
-              type: new GraphQLNonNull({{ union_input_type(entity, union) }})
+            {{ arguments.field_label(union) }}: {
+              type: new GraphQLNonNull({{ arguments.add_union(entity, union) }})
             },
 {%     endfor %}
         }),
     });
 
-    const {{ entity_update_type(entity) }} = new GraphQLInputObjectType({
-        name: 'Update{{ entity.get_name() | mixed_case | singular }}',
-        description: 'input object to update an existing {{ entity.get_name() }}',
+    const {{ arguments.update_entity(entity) }} = new GraphQLInputObjectType({
+        name: '{{ arguments.update_entity(entity) }}',
+        description: 'input object to update an existing {{ database.name(entity) | singular }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
-            {{ field.get_name() }}: {
-                type: {{ graphQLType(field.get_type()) }}
+            {{ arguments.field_label(field) }}: {
+                type: {{ arguments.graphql_type(field.get_type()) }}
             },
 {%     endfor %}
 {%     for reference in entity.get_references() %}
-            {{ reference.get_name() }}: {
+            {{ arguments.field_label(reference) }}: {
               type: GraphQLID
             },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
-            {{ union.get_name() }}: {
-              type: {{ union_input_type(entity, union) }}
+            {{ arguments.field_label(union) }}: {
+              type: {{ arguments.add_union(entity, union) }}
             },
 {%     endfor %}
         }),
@@ -179,18 +192,18 @@ const make_schema = (resolver) => {
       name: 'Query',
       fields: () => ({
 {% for entity in schema.get_entities() %}
-        {{ entity.get_name() | singular}}: {
-          type: {{ entity_type(entity) }},
+        {{ arguments.singular_entity_label(entity) }}: {
+          type: {{ arguments.entity_type(entity) }},
           args: {
             id: {
-              description: '{{ entity.get_name() }} id',
+              description: '{{ database.name(entity) | singular }} id',
               type: new GraphQLNonNull(GraphQLID),
             }
           },
           resolve: (_source, args) => resolver.{{ resolve.entity(entity) }}(args),
         },
-        {{ entity.get_name() }}: {
-          type: new GraphQLList({{ entity_type(entity) }}),
+        {{ arguments.plural_entity_label(entity) }}: {
+          type: new GraphQLList({{ arguments.entity_type(entity) }}),
           args: {
             take: {
               description: 'limit',
@@ -211,28 +224,28 @@ const make_schema = (resolver) => {
         name: 'Mutation',
         fields: () => ({
 {% for entity in schema.get_entities() %}
-            'create{{ entity.get_name() | mixed_case | singular }}': {
-                type: {{ entity_type(entity) }},
+            {{ arguments.add_entity_label(entity) }}: {
+                type: {{ arguments.entity_type(entity) }},
                 args: {
                     input: {
-                        type: new GraphQLNonNull({{ entity_input_type(entity) }})
+                        type: new GraphQLNonNull({{ arguments.add_entity(entity) }})
                     }
                 },
                 resolve: (_, {input}) => resolver.{{ resolve.create_entity(entity) }}(input),
             },
-            'update{{ entity.get_name() | mixed_case | singular }}': {
-                type: {{ entity_type(entity) }},
+            {{ arguments.update_entity_label(entity) }}: {
+                type: {{ arguments.entity_type(entity) }},
                 args: {
                     id: {
                          type: new GraphQLNonNull(GraphQLID)
                     },
                     input: {
-                        type: new GraphQLNonNull({{ entity_update_type(entity) }})
+                        type: new GraphQLNonNull({{ arguments.update_entity(entity) }})
                     }
                 },
                 resolve: (_, {id, input}) => resolver.{{ resolve.update_entity(entity) }}(id, input),
             },
-            'delete{{ entity.get_name() | mixed_case | singular }}': {
+            {{ arguments.delete_entity_label(entity) }}: {
                 type: GraphQLBoolean,
                 args: {
                     id: {
@@ -242,26 +255,27 @@ const make_schema = (resolver) => {
                 resolve: (_, {id}) => resolver.{{ resolve.delete_entity(entity) }}(id)
             },
 {% endfor %}
+
 {% for association in schema.get_associations() %}
-            'create{{ association.get_name() | mixed_case }}Association': {
+            {{ arguments.add_association_label(association) }}: {
                 type: GraphQLBoolean,
                 args: {
-                    {{ association.get_lhs_column() }}: {
+                    {{ arguments.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ association.get_rhs_column() }}: {
+                    {{ arguments.association_rhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
                 resolve: (_, args) => resolver.{{ resolve.create_association(association) }}(args)
             },
-            'delete{{ association.get_name() | mixed_case }}Association': {
+            {{ arguments.delete_association_label(association) }}: {
                 type: GraphQLBoolean,
                 args: {
-                    {{ association.get_lhs_column() }}: {
+                    {{ arguments.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ association.get_rhs_column() }}: {
+                    {{ arguments.association_rhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
