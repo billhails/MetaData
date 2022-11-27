@@ -1,0 +1,141 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+require('dotenv').config();
+const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const app = express();
+app.use(express.json());
+
+const users = [];
+
+let refreshTokens = [];
+
+const posts = [
+    {
+        username: "bill",
+        title: "post 1"
+    },
+    {
+        username: "mary",
+        title: "post 2"
+    },
+];
+
+
+app.get('/posts', authenticateToken, (req, res) => {
+    res.json(posts.filter(post => post.username === req.user.name));
+});
+
+app.get('/users', (req, res) => {
+    res.json(users)
+});
+
+app.post('/users', async (req, res) => {
+    try {
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(req.body.password, salt)
+        const user = { name: req.body.name, password: hashedPassword };
+        users.push(user);
+        res.status(201).send();
+    } catch {
+        res.status(500).send();
+    }
+});
+
+async function authenticateUser(req, res) {
+    const user = users.find(user => user.name === req.body.name);
+
+    if (user == null) {
+        res.status(400).send('Cannot find user');
+        return false;
+    }
+
+    try {
+        if (!await bcrypt.compare(req.body.password, user.password)) {
+            res.status(401).send();
+            return false;
+        }
+    } catch {
+        res.status(500).send();
+        return false;
+    }
+
+    return true;
+}
+
+function authenticateToken(req, res, next) {
+    const header = req.headers['authorization'];
+    const token = header && header.split(' ')[1];
+    if (token == null) {
+        return res.sendStatus(401);
+    }
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, usr) => {
+        if (err) {
+            return res.sendStatus(403);
+        }
+        req.user = usr;
+        next();
+    });
+};
+
+app.post('/token', (req, res) => {
+    const refreshToken = req.body.token;
+    if (refreshToken == null) {
+        return res.sendStatus(401);
+    }
+    if (! refreshTokens.includes(refreshToken)) {
+        return res.sendStatus(403);
+    }
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+        if (err) {
+            return res.sendStatus(403);
+        }
+        const accessToken = generateAccessToken({ name: user.name })
+        res.json({ accessToken });
+    });
+});
+
+app.delete('/logout', (req, res) => {
+    refreshTokens = refreshTokens.filter(token => token !== req.body.token);
+    res.sendStatus(204);
+});
+
+app.post('/login', async (req, res) => {
+
+    if (! await authenticateUser(req, res)) {
+        return;
+    }
+
+    const userName = req.body.name;
+
+    const user = { name: userName };
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
+    refreshTokens.push(refreshToken);
+
+    res.json({ accessToken, refreshToken });
+
+});
+
+function generateAccessToken(user) {
+    return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '30s'});
+}
+
+app.listen(3000)
