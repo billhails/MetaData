@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!-- schema name is required -->
-<schema name="demo">
-    <entity name="users">
+<schema name="demo" auth="enabled" access-token-expiry="24h">
+    <entity name="users" auth-role="user">
         <!-- descriptions end up in the graphql docs -->
         <description>A user of the service.</description>
         <!-- fields are the components of entities -->
         <field name="display_name" type="small_string"/>
+        <field name="email" type="small_string" unique="y" auth-role="external-id"/>
+        <field name="password" type="small_string" auth-role="password"/>
     </entity>
 
     <entity name="posts">

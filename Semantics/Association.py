@@ -23,8 +23,10 @@ class Association(Semantics):
     lhs = None
     rhs = None
     schema = None
-    required_attributes = ['name', 'lhs', 'rhs']
     self_referential = None
+
+    def required_attributes(self):
+        return super().required_attributes() + ['lhs', 'rhs']
 
     def build(self, schema):
         self.schema = schema

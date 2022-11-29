@@ -46,6 +46,24 @@ class {{ model.name(entity) }} {
         }
 {% endfor %}
     }
+
+    toJSON() {
+        return {
+            id: this.id,
+{%- for field in entity.get_fields() %}
+{%-     if not field.is_auth_role('password') %}
+            {{ arguments.field_label(field) }}: this.{{ arguments.field_label(field) }},
+{%-     endif %}
+{%- endfor %}
+{%- for reference in entity.get_references() %}
+            {{ arguments.field_label(reference) }}: this.{{ arguments.field_label(reference) }},
+{%- endfor %}
+{%- for union in entity.get_unions() %}
+            {{ arguments.field_label(union) }}: this.{{ arguments.field_label(union) }},
+            {{ arguments.field_type(union) }}: this.{{ arguments.field_type(union) }},
+{%- endfor %}
+        };
+    }
 }
 
 module.exports = {{ model.name(entity) }};

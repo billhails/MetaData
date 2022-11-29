@@ -83,7 +83,8 @@ Lots, but specifically
   * Think about how to share templates across architectures (later)
 * sqlite-node-graphql Architecture Specific
   * tests (generated)
-  * auth
+  * auth (in progress)
+    * disallow references and unions from the auth-role=user entity
   * enumeration data type
   * more data types
   * deferred data retrieval - done (but dataloader is sub-optimal)

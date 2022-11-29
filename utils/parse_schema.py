@@ -46,8 +46,8 @@ def parse_schema(node):
 
 
 def get_semantics(schema):
-    my_tree = eT.parse(schema)
-    semantics = parse_schema(my_tree.getroot())
-    semantics.validate()
+    tree = eT.parse(schema)
+    semantics = parse_schema(tree.getroot())
     semantics.build()
+    semantics.validate()
     return semantics

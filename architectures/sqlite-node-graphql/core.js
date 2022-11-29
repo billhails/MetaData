@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 
+const validateTokenMiddleware = require('./Auth/application');
 const make_schema = require('./GraphQL/Schema');
 const Data = require('./Utils/data');
 const SimpleResolver = require('./Utils/SimpleResolver');
@@ -22,7 +24,7 @@ const app = express();
 const useDataLoader = true;
 
 (async () => {
-    app.use('/graphql', graphqlHTTP({
+    app.use('/graphql', validateTokenMiddleware, graphqlHTTP({
       schema: make_schema(useDataLoader ? new DataLoaderResolver(loader(await Data.build())) : new SimpleResolver(await Data.build())),
       graphiql: process.env.NODE_ENV === 'development',
     }));

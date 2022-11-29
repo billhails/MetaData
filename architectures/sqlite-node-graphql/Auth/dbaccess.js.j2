@@ -1,0 +1,61 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+ const logger = require('../Utils/logger');
+
+{% import 'macros/data.j2h' as data %}
+
+class AuthDatabaseAccess {
+    constructor(data) {
+        this.data = data;
+    }
+
+{% if schema.is_auth_enabled() %}
+{% set entity = schema.get_auth_user_entity() %}
+    async createUser(args) {
+        logger.debug('AuthDatabaseAccess.createUser', args);
+        return this.data.{{ data.create_entity(entity) }}(args);
+    }
+
+    async findUserByExternalId(id) {
+        logger.debug('AuthDatabaseAccess.findUserByExternalId', id);
+        return this.data.{{ data.get_entity_by_field(entity, entity.get_auth_id_field()) }}(id);
+    }
+
+    async findUserByInternalId(id) {
+        logger.debug('AuthDatabaseAccess.findUserByInternalId', id);
+        return this.data.{{ data.get_entity(entity) }}(id)
+    }
+
+    async refreshTokenExists(token) {
+        logger.debug('AuthDatabaseAccess.refreshTokenExists', token);
+        return this.data.checkRefreshTokenExists(token);
+    }
+
+    async saveRefreshToken(token) {
+        logger.debug('AuthDatabaseAccess.saveRefreshToken', token);
+        return this.data.saveRefreshToken(token);
+    }
+
+    async deleteRefreshToken(token) {
+        logger.debug('AuthDatabaseAccess.deleteRefreshToken', token);
+        return this.data.deleteRefreshToken(token);
+    }
+{% endif %}
+}
+
+module.exports = AuthDatabaseAccess;

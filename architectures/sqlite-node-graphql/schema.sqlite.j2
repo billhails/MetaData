@@ -35,10 +35,10 @@ PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS {{ database.name(entity) }};
 
 CREATE TABLE {{ database.name(entity) }} (
-    id {{ sqlite_type("guid", "id") }} PRIMARY KEY
+    id {{ sqlite_type("guid", "id") }} NOT NULL PRIMARY KEY
 {% for field in entity.get_fields() %}
 ,
-    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL
+    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL {% if field.is_unique() or field.is_auth_role('id') %}UNIQUE{% endif %}
 {% endfor %}
 {% for reference in entity.get_references() %}
 ,
@@ -57,6 +57,8 @@ CREATE TABLE {{ database.name(entity) }} (
 {% endfor %}
 
 {% for association in schema.get_associations() %}
+DROP TABLE IF EXISTS {{ database.name(association) }};
+
 CREATE TABLE {{ database.name(association) }} (
     {{ database.lhs(association) }} {{ sqlite_type("guid", database.lhs(association)) }} NOT NULL,
     {{ database.rhs(association) }} {{ sqlite_type("guid", database.rhs(association)) }} NOT NULL,
@@ -65,6 +67,16 @@ CREATE TABLE {{ database.name(association) }} (
     CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
 {% endfor %}
+
+{% if schema.is_auth_enabled() %}
+-- hidden table for refresh tokens
+
+DROP TABLE IF EXISTS refresh_tokens;
+
+CREATE TABLE refresh_tokens (
+    token TEXT NOT NULL PRIMARY KEY
+);
+{% endif %}
 
 
 PRAGMA foreign_keys = ON;

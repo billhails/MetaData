@@ -23,14 +23,18 @@ class Reference(Semantics):
     entity_to = None
     union = None
     type = "Reference"
-    required_attributes = ['name', 'references']
-    optional_attributes = ['inverse']
 
     def build(self, entity, union=None):
         self.entity_from = entity
         self.union = union
         self.entity_to = entity.get_schema().find_entity(self.attributes['references'])
         self.entity_to.accept_referrer(self)
+
+    def required_attributes(self):
+        return super().required_attributes() + ['references']
+
+    def optional_attributes(self):
+        return super().optional_attributes() + ['inverse']
 
     def get_referrer_name(self):
         if 'inverse' in self.attributes:

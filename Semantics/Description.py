@@ -20,12 +20,13 @@ from Semantics import Semantics
 
 class Description(Semantics):
     type = "Description"
-    required_attributes = []
 
     def __init__(self, text):
         super().__init__({})
         self.text = text
 
+    def required_attributes(self):
+        return []  # N.B no super() - override
 
     def __str__(self):
         return self.str(0)

@@ -17,8 +17,6 @@
 #
 class Semantics:
     type = "*undefined*"
-    required_attributes = ['name']
-    optional_attributes = []
     name = None
 
     def __init__(self, attributes):
@@ -29,20 +27,38 @@ class Semantics:
     def __str__(self):
         return self.str(0)
 
+    def required_attributes(self):
+        return ['name']
+
+    def optional_attributes(self):
+        return []
+
     def str(self, depth):
         return self.pad(depth) + self.type + " " + str(self.attributes)
 
     def validate(self):
-        for attribute in self.required_attributes:
+        for attribute in self.required_attributes():
             if attribute not in self.attributes:
                 raise SemanticException(
                     "required attribute {attribute} for {type} not found".format(attribute=attribute, type=self.type)
                 )
         for attribute in self.attributes:
-            if attribute not in self.required_attributes and attribute not in self.optional_attributes:
+            if attribute not in self.required_attributes() and attribute not in self.optional_attributes():
                 raise SemanticException(
                     "unrecognised attribute {attribute} for {type}".format(attribute=attribute, type=self.type)
                 )
+
+    def validate_attribute(self, attribute, values):
+        if attribute in self.attributes and not self.attributes[attribute] in values:
+            raise SemanticException(
+                "unrecognised value for {type} '{name}': {attr}='{val}', allowed values: {values}".format(
+                    val=self.attributes[attribute],
+                    type=self.type,
+                    name=self.name,
+                    attr=attribute,
+                    values=', '.join(values)
+                )
+            )
 
     def get_name(self):
         return self.attributes['name']
@@ -51,6 +67,15 @@ class Semantics:
     def pad(depth):
         return " " * depth * 4
 
+    def attribute_value(self, attribute, value):
+        return attribute in self.attributes and self.attributes[attribute] == value
+
+    def is_auth_role(self, role):
+        return self.attribute_value('auth-role', role)
+
+    def debug(self, message):
+        print(message)
+        return ''
 
 class SemanticException(Exception):
     pass

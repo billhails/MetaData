@@ -21,7 +21,6 @@ from Semantics import Semantics, SemanticException
 class Field(Semantics):
     entity = None
     type = "Field"
-    required_attributes = ['name', 'type']
     known_types = [
         "string",
         "guid",
@@ -31,6 +30,12 @@ class Field(Semantics):
     def build(self, entity):
         self.entity = entity
 
+    def required_attributes(self):
+        return super().required_attributes() + ['type']
+
+    def optional_attributes(self):
+        return super().optional_attributes() + ['unique', 'auth-role']
+
     def get_type(self):
         return self.attributes['type']
 
@@ -39,11 +44,9 @@ class Field(Semantics):
 
     def validate(self):
         super().validate()
-        if self.get_type() not in self.known_types:
-            raise SemanticException(
-                "unrecognised type {type} for field {entity}.{name}".format(
-                    type=self.get_type(),
-                    entity=self.get_entity().get_name(),
-                    name=self.get_name()
-                )
-            )
+        self.validate_attribute('type', self.known_types)
+        self.validate_attribute('unique', ['y', 'n'])
+        self.validate_attribute('auth-role', ['external-id', 'password'])
+
+    def is_unique(self):
+        return self.attribute_value('unique', 'y')

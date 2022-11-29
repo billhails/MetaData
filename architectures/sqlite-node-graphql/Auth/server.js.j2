@@ -1,0 +1,175 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const logger = require('../Utils/logger');
+
+{% import 'macros/schema.j2h' as arguments %}
+
+class AuthServer {
+{%- if schema.is_auth_enabled() %}
+{%-     set user_entity = schema.get_auth_user_entity() %}
+{%-     set password_label = arguments.field_label(user_entity.get_auth_password_field()) %}
+{%-     set id_label = arguments.field_label(user_entity.get_auth_id_field()) %}
+
+    constructor(db) {
+        this.db = db;
+    }
+
+    /**
+     * authenticateUserByExternalId
+     */
+    async authenticateUserByExternalId(req, res) {
+        logger.debug('authenticateUserByExternalId');
+        const id = req.body.{{ id_label }};
+
+        if (id == null) {
+            res.sendStatus(400);
+            return false;
+        }
+
+        logger.debug('authenticateUserByExternalId got id', {id});
+
+        const user = await this.db.findUserByExternalId(id);
+
+        if (user == null) {
+            res.sendStatus(400);
+            return false;
+        }
+
+        try {
+            if (!await bcrypt.compare(req.body.{{ password_label }}, user.{{ password_label }})) {
+                res.sendStatus(401);
+                return false;
+            }
+        } catch (error) {
+            logger.error(error);
+            res.sendStatus(500);
+            return false;
+        }
+
+        return user;
+    }
+
+    /**
+     * signUp
+     */
+    async signUp(req, res) {
+        try {
+            const salt = await bcrypt.genSalt();
+            const hashedPassword = await bcrypt.hash(req.body.{{ password_label }}, salt);
+            const user = {
+                {{ password_label }}: hashedPassword
+            };
+{%-     for field in user_entity.get_fields() %}
+{%-         set label = arguments.field_label(field) %}
+{%          if not field.is_auth_role('password') %}
+            if (req.body.{{ label }}) {
+                user['{{ label }}'] = req.body.{{ label }};
+            }
+{%-          endif %}
+{%-      endfor %}
+
+            const model = await this.db.createUser(user);
+            const tokens = await this.generateTokens({
+                id: model.{{ id_label }},
+                sub: model.id
+            });
+            logger.debug('tokens generated', tokens);
+            res.status(201).json(tokens);
+        } catch (error) {
+            logger.error('caught', error);
+            res.sendStatus(500);
+        }
+    }
+
+    /**
+     * refreshAccessToken
+     */
+    async refreshAccessToken (req, res) {
+        const refreshToken = req.body.refreshToken;
+        if (refreshToken == null) {
+            return res.sendStatus(401);
+        }
+        if (! await this.db.refreshTokenExists(refreshToken)) {
+            return res.sendStatus(403);
+        }
+        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+            if (err) {
+                return res.sendStatus(403);
+            }
+            const accessToken = this.generateAccessToken({ id: user.id, sub: user.sub, admin: false })
+            res.json({ accessToken });
+        });
+    }
+
+    /**
+     * deleteRefreshToken
+     */
+    async deleteRefreshToken(req, res) {
+        await this.db.deleteRefreshToken(req.body.refreshToken);
+        res.sendStatus(204);
+    }
+
+    /**
+     * login
+     */
+    async login(req, res) {
+        logger.debug('login');
+        const user = await this.authenticateUserByExternalId(req, res);
+        if (!user) {
+            res.sendStatus(401);
+            return;
+        }
+
+        const tokens = await this.generateTokens({ sub: user.id, id: user.{{ id_label }}, admin: false });
+        res.json(tokens);
+    }
+
+    /**
+     * generateTokens
+     */
+    async generateTokens(user) {
+        logger.debug('generateTokens', user);
+        const accessToken = this.generateAccessToken(user);
+        const refreshToken = this.generateRefreshToken(user);
+        await this.db.saveRefreshToken(refreshToken);
+        return { accessToken, refreshToken };
+    }
+
+    /**
+     * generateAccessToken
+     */
+    generateAccessToken(user) {
+        logger.debug('generateAccessToken', user);
+        return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '{{ schema.access_token_expiry() }}'});
+    }
+
+    /**
+     * generateRefreshToken
+     */
+    generateRefreshToken(user) {
+        logger.debug('generateRefreshToken', user);
+        return jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
+    }
+{%- endif %}
+}
+
+
+
+module.exports = AuthServer;

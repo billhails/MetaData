@@ -25,7 +25,6 @@ from Semantics.Union import Union
 
 class Entity(Container):
     type = "Entity"
-    required_attributes = ['name']
     allowed_components = ['Description', 'Field', 'Reference', 'Union']
 
     def __init__(self, attributes, components):
@@ -40,6 +39,9 @@ class Entity(Container):
         self.all_associations = {}
         self.referrers = {}
 
+    def optional_attributes(self):
+        return super().optional_attributes() + ['auth-role']
+
     def build(self, schema):
         self.schema = schema
         self.fields = {x.attributes['name']: x for x in self.components if isinstance(x, Field)}
@@ -52,6 +54,46 @@ class Entity(Container):
             self.references[reference].build(self)
         for union in self.unions:
             self.unions[union].build(self)
+
+    def validate(self):
+        super().validate()
+        self.validate_attribute('auth-role', ['user'])
+        if self.is_auth_role('user'):
+            got_id = False
+            got_password = False
+            for field in self.get_fields():
+                if field.is_auth_role('external-id'):
+                    if got_id:
+                        raise SemanticException("duplicate declarations of auth-role=id")
+                    got_id = True
+                if field.is_auth_role('password'):
+                    if got_password:
+                        raise SemanticException("duplicate declaration for auth-role=password")
+                    got_password = True
+            if not got_id:
+                raise SemanticException(
+                    "entity {name} declared as auth-role=user but contains no field with auth-role=id".format(
+                        name=self.name
+                    )
+                )
+            if not got_password:
+                raise SemanticException(
+                    "entity {name} declared as auth-role=user but contains no field with auth-role=password".format(
+                        name=self.name
+                    )
+                )
+
+    def get_auth_id_field(self):
+        for field in self.get_fields():
+            if field.is_auth_role('external-id'):
+                return field
+        return None
+
+    def get_auth_password_field(self):
+        for field in self.get_fields():
+            if field.is_auth_role('password'):
+                return field
+        return None
 
     def get_fields(self):
         return self.fields.values()

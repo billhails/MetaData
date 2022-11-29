@@ -20,7 +20,6 @@ from Semantics.Container import Container
 
 class Union(Container):
     type = "Union"
-    required_attributes = ['name']
     allowed_components = ['Reference']
 
     def build(self, entity):

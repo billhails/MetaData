@@ -59,6 +59,48 @@ class Data {
         });
     }
 
+{% if schema.is_auth_enabled() %}
+    /**
+     * check if refresh token exists
+     * @param {string} token
+     * @return {bool}
+     */
+    async checkRefreshTokenExists(token) {
+        const row = await this.get(`
+                SELECT count(*) AS c
+                  FROM refresh_tokens
+                 WHERE token = ?
+            `,
+            [token]
+        );
+        return parseInt(row.c) > 0;
+    }
+
+    /**
+     * save a refresh token
+     *
+     * @param {string} token
+     */
+    async saveRefreshToken(token) {
+        return this.run(
+            `INSERT OR IGNORE INTO refresh_tokens(token) VALUES (?)`,
+            [token]
+        );
+    }
+
+    /**
+     * delete a refresh token
+     *
+     * @param {string} token
+     */
+    async deleteRefreshToken(token) {
+        return this.run(
+            `DELETE FROM refresh_tokens WHERE token = ?`,
+            [token]
+        );
+    }
+
+{% endif %}
 
 {% for entity in schema.get_entities() %}
     /**
@@ -97,6 +139,27 @@ class Data {
         return this.get(`SELECT ${ this.{{ data.get_entity_fields(entity) }}() } FROM {{ database.name(entity) }} WHERE id = ?`, [id])
             .then(row => new Model.{{ model.name(entity) }}(row));
     }
+
+{%-     if entity.is_auth_role('user') -%}
+{%-         set field = entity.get_auth_id_field() %}
+
+    /**
+     * fetch auth entity {{ entity.get_name() }} by {{ database.name(field) }}
+     *
+     * @param {String} {{ arguments.field_label(field) }}
+     * @returns {Model.{{ model.name(entity) }}}
+     */
+    async {{ data.get_entity_by_field(entity, field) }}(id) {
+        logger.debug(`{{ data.get_entity_by_field(entity, field) }}(${util.inspect(id)})`);
+        return this.get(`
+                SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+                  FROM {{ database.name(entity) }}
+                 WHERE {{ database.name(field) }} = ?
+            `, [id])
+            .then(row => new Model.{{ model.name(entity) }}(row));
+    }
+
+{%-     endif %}
 
     /**
      * batch fetch entities for loader

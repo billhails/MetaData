@@ -76,9 +76,11 @@ const make_schema = (resolver) => {
           description: '{{ database.name(entity) }} id.',
         },
 {%     for field in entity.get_fields() %}
+{%         if not (schema.is_auth_enabled() and entity.is_auth_role('user') and field.is_auth_role('password')) %}
         {{ arguments.field_label(field) }}: {
           type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
         },
+{%         endif %}
 {%     endfor %}
 {%     for reference in entity.get_references() %}
         {{ arguments.field_label(reference) }}: {
@@ -140,38 +142,42 @@ const make_schema = (resolver) => {
             }
         })
     });
-{%     endfor %}
+{%-     endfor %}
 
+{%     if not (schema.is_auth_enabled() and entity.is_auth_role('user')) %}{# no add or delete on auth-controlled entities #}
     const {{ arguments.add_entity(entity) }} = new GraphQLInputObjectType({
         name: '{{ arguments.add_entity(entity) }}',
         description: 'input object to create a new {{ database.name(entity) | singular }}',
         fields: () => ({
-{%     for field in entity.get_fields() %}
+{%         for field in entity.get_fields() %}
             {{ arguments.field_label(field) }}: {
                 type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
             },
-{%     endfor %}
-{%     for reference in entity.get_references() %}
+{%         endfor %}
+{%         for reference in entity.get_references() %}
             {{ arguments.field_label(reference) }}: {
               type: new GraphQLNonNull(GraphQLID)
             },
-{%     endfor %}
+{%         endfor %}
 {%     for union in entity.get_unions() %}
             {{ arguments.field_label(union) }}: {
               type: new GraphQLNonNull({{ arguments.add_union(entity, union) }})
             },
-{%     endfor %}
+{%         endfor %}
         }),
     });
+{%-     endif %}
 
     const {{ arguments.update_entity(entity) }} = new GraphQLInputObjectType({
         name: '{{ arguments.update_entity(entity) }}',
         description: 'input object to update an existing {{ database.name(entity) | singular }}',
         fields: () => ({
 {%     for field in entity.get_fields() %}
+{%         if not (schema.is_auth_enabled() and entity.is_auth_role('user') and (field.is_auth_role('external-id') or field.is_auth_role('password'))) %}
             {{ arguments.field_label(field) }}: {
                 type: {{ arguments.graphql_type(field.get_type()) }}
             },
+{%         endif %}
 {%     endfor %}
 {%     for reference in entity.get_references() %}
             {{ arguments.field_label(reference) }}: {
@@ -224,6 +230,7 @@ const make_schema = (resolver) => {
         name: 'Mutation',
         fields: () => ({
 {% for entity in schema.get_entities() %}
+{%     if not (schema.is_auth_enabled() and entity.is_auth_role('user')) %}
             {{ arguments.add_entity_label(entity) }}: {
                 type: {{ arguments.entity_type(entity) }},
                 args: {
@@ -233,6 +240,7 @@ const make_schema = (resolver) => {
                 },
                 resolve: (_, {input}) => resolver.{{ resolve.create_entity(entity) }}(input),
             },
+{%     endif %}
             {{ arguments.update_entity_label(entity) }}: {
                 type: {{ arguments.entity_type(entity) }},
                 args: {
@@ -245,6 +253,7 @@ const make_schema = (resolver) => {
                 },
                 resolve: (_, {id, input}) => resolver.{{ resolve.update_entity(entity) }}(id, input),
             },
+{%     if not (schema.is_auth_enabled() and entity.is_auth_role('user')) %}
             {{ arguments.delete_entity_label(entity) }}: {
                 type: GraphQLBoolean,
                 args: {
@@ -254,6 +263,7 @@ const make_schema = (resolver) => {
                 },
                 resolve: (_, {id}) => resolver.{{ resolve.delete_entity(entity) }}(id)
             },
+{%     endif %}
 {% endfor %}
 
 {% for association in schema.get_associations() %}
