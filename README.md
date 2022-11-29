@@ -77,18 +77,21 @@ graph of semantic objects which have high-level methods like `schema.get_entitie
 ## TODO
 
 Lots, but specifically
-* General
+* general
   * business logic
   * local template overrides
-  * Think about how to share templates across architectures (later)
-* sqlite-node-graphql Architecture Specific
+  * think about how to share templates across architectures (later)
+  * think about using the null object pattern
+  * enumeration data type
+  * more data types (date, money etc.)
+* sqlite-node-graphql architecture Specific
   * tests (generated)
   * auth (in progress)
     * disallow references and unions from the auth-role=user entity
-  * enumeration data type
-  * more data types
+    * also see [Auth](auth.md) for specific scenarios
   * deferred data retrieval - done (but dataloader is sub-optimal)
     * separate dataloader per request - or cache management
   * pagination - basic pagination done
-  * mutation - done for add
+  * mutation - done
   * OpenTracing or OpenTelemetry metrics
+
