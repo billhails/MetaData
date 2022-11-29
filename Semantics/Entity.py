@@ -21,7 +21,7 @@ from Semantics.Description import Description
 from Semantics.Field import Field
 from Semantics.Reference import Reference
 from Semantics.Union import Union
-
+from Semantics.ID import ID
 
 class Entity(Container):
     type = "Entity"
@@ -95,6 +95,12 @@ class Entity(Container):
                 return field
         return None
 
+    def get_owner_field(self):
+        for reference in self.get_references():
+            if reference.is_auth_role('owner'):
+                return reference
+        return ID({"name": 'id'})
+
     def get_fields(self):
         return self.fields.values()
 
@@ -136,3 +142,6 @@ class Entity(Container):
                 )
             )
         self.referrers[name] = reference
+
+    def is_auth_enabled(self):
+        return self.get_schema().is_auth_enabled()

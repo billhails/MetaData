@@ -8,6 +8,7 @@ const Data = require('./Utils/data');
 const SimpleResolver = require('./Utils/SimpleResolver');
 const loader = require('./Utils/loader');
 const DataLoaderResolver = require('./Utils/DataLoaderResolver');
+const AuthFilter = require('./Utils/AuthFilter');
 const { parseArgs } = require('node:util');
 
 const cliOptions = {
@@ -24,8 +25,15 @@ const app = express();
 const useDataLoader = true;
 
 (async () => {
+    const data = await Data.build();
     app.use('/graphql', validateTokenMiddleware, graphqlHTTP({
-      schema: make_schema(useDataLoader ? new DataLoaderResolver(loader(await Data.build())) : new SimpleResolver(await Data.build())),
+      schema: make_schema(
+        new AuthFilter(
+          new DataLoaderResolver(
+            loader(data)
+          )
+        )
+      ),
       graphiql: process.env.NODE_ENV === 'development',
     }));
     app.listen(parseInt(values.port || '4000'));

@@ -6,7 +6,7 @@
         <description>A user of the service.</description>
         <!-- fields are the components of entities -->
         <field name="display_name" type="small_string"/>
-        <field name="email" type="small_string" unique="y" auth-role="external-id"/>
+        <field name="email" type="small_string" unique="y" auth-role="external-id" auth-redacted="y"/>
         <field name="password" type="small_string" auth-role="password"/>
     </entity>
 

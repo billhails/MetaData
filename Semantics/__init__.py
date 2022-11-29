@@ -70,8 +70,10 @@ class Semantics:
     def attribute_value(self, attribute, value):
         return attribute in self.attributes and self.attributes[attribute] == value
 
+    def is_auth_enabled(self):
+        raise NotImplementedError('child class should implement is_auth_enabled')
     def is_auth_role(self, role):
-        return self.attribute_value('auth-role', role)
+        return self.is_auth_enabled() and self.attribute_value('auth-role', role)
 
     def debug(self, message):
         print(message)

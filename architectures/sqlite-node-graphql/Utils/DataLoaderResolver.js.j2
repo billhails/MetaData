@@ -36,22 +36,22 @@ class DataLoaderResolver {
     }
 
 {% for entity in schema.get_entities() %}
-    async {{ resolve.entity(entity) }}(args) {
+    async {{ resolve.entity(entity) }}(source, args, req) {
         return this.loaders.{{ loader.entity(entity) }}.load(args.id);
     }
 
-    async {{ resolve.entities(entity) }}(args) {
+    async {{ resolve.entities(entity) }}(source, args, req) {
         return this.loaders.{{ loader.entities(entity) }}.load(args);
     }
 
 {%     for reference in entity.get_references() %}
-    async {{ resolve.reference_for_entity(entity, reference) }}(entity) {
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req) {
         return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})
     }
 {%     endfor %}
 
 {%     for union in entity.get_unions() %}
-    async {{ resolve.union_for_entity(entity, union) }}(entity) {
+    async {{ resolve.union_for_entity(entity, union) }}(entity, args, req) {
         switch (entity.{{ arguments.field_label(union) }}Type) {
 {%         for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
@@ -62,36 +62,36 @@ class DataLoaderResolver {
 {%     endfor %}
 
 {%     for referrer in entity.get_referrers() %}
-    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args) {
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
         return this.loaders.{{ loader.referrer(referrer) }}.load(entity.id, args)
     }
 {%     endfor %}
 
 {%     for association in entity.get_associations() %}
-    async {{ resolve.association_for_entity(entity, association) }}(entity, args) {
+    async {{ resolve.association_for_entity(entity, association) }}(entity, args, req) {
         const associations = await this.loaders.{{ loader.association_for_entity(entity, association) }}.load(entity.id, args);
         return associations.map(row => this.loaders.{{ loader.other_entity(entity, association) }}.load(row));
     }
 {%     endfor %}
-    async {{ resolve.create_entity(entity) }}(args) {
+    async {{ resolve.create_entity(entity) }}(_, args, req) {
         return this.loaders.data.{{ data.create_entity(entity) }}(args);
     }
 
-    async {{ resolve.update_entity(entity) }}(id, args) {
-        return this.loaders.data.{{ data.update_entity(entity) }}(id, args);
+    async {{ resolve.update_entity(entity) }}(_, { id, input }, req) {
+        return this.loaders.data.{{ data.update_entity(entity) }}(id, input);
     }
 
-    async {{ resolve.delete_entity(entity) }}(id) {
+    async {{ resolve.delete_entity(entity) }}(_, { id }, req) {
         return this.loaders.data.{{ data.delete_entity(entity) }}(id);
     }
 
 {% endfor %}
 {% for association in schema.get_associations() %}
-    async {{ resolve.create_association(association) }}(args) {
+    async {{ resolve.create_association(association) }}(_, args, req) {
         return this.loaders.data.{{ data.create_association(association) }}(args);
     }
 
-    async {{ resolve.delete_association(association) }}(args) {
+    async {{ resolve.delete_association(association) }}(_, args, req) {
         return this.loaders.data.{{ data.delete_association(association) }}(args);
     }
 {% endfor %}

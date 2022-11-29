@@ -1,0 +1,133 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+
+{% import 'macros/resolver.j2h' as resolve %}
+{% import 'macros/schema.j2h' as arguments %}
+
+const logger = require('./logger');
+const util = require('util');
+
+class AuthFilter {
+    constructor(resolver) {
+        this.resolver = resolver;
+    }
+
+    clearAll() {
+        this.resolver.clearAll();
+    }
+
+{%- for entity in schema.get_entities() %}
+
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_redacted() %}
+    {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
+        logger.debug('{{ resolve.redact_field_for_entity(entity, field) }} called', {model, user: req.user});
+        if (!req.user || req.user.sub != model.{{ arguments.field_label(entity.get_owner_field()) }}) {
+            model.{{ arguments.field_label(field) }} = "XXX";
+        }
+    }
+{%-         endif %}
+{%-     endfor %}
+
+    async {{ resolve.entity(entity) }}(source, args, req) {
+        return this.resolver.{{ resolve.entity(entity) }}(source, args, req).then(
+            model => {
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_redacted() %}
+                this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
+{%-         endif %}
+{%-     endfor %}
+                return model;
+            }
+        );
+    }
+
+    async {{ resolve.entities(entity) }}(source, args, req) {
+        return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(
+            models => models.map(model => {
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_redacted() %}
+                this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
+{%-         endif %}
+{%-     endfor %}
+                return model;
+            })
+        );
+    }
+
+{%-     for reference in entity.get_references() %}
+
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req) {
+        return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+{%-     for union in entity.get_unions() %}
+
+    async {{ resolve.union_for_entity(entity, union) }}(entity, args, req) {
+        return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+{%-     for referrer in entity.get_referrers() %}
+
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
+        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req)
+    }
+
+{%-     endfor %}
+
+{%-     for association in entity.get_associations() %}
+
+    async {{ resolve.association_for_entity(entity, association) }}(entity, args, req) {
+        return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+    async {{ resolve.create_entity(entity) }}(source, args, req) {
+        return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req);
+    }
+
+    async {{ resolve.update_entity(entity) }}(source, args, req) {
+        return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req);
+    }
+
+    async {{ resolve.delete_entity(entity) }}(source, args, req) {
+        return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req);
+    }
+
+{%- endfor %}
+
+{%- for association in schema.get_associations() %}
+
+    async {{ resolve.create_association(association) }}(source, args, req) {
+        return this.resolver.{{ resolve.create_association(association) }}(source, args, req);
+    }
+
+    async {{ resolve.delete_association(association) }}(source, args, req) {
+        return this.resolver.{{ resolve.delete_association(association) }}(source, args, req);
+    }
+
+{%- endfor %}
+}
+
+module.exports = AuthFilter;

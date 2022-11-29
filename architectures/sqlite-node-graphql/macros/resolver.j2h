@@ -27,3 +27,4 @@
 {% macro delete_entity(entity) %}resolveDelete{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
 {% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}
+{% macro redact_field_for_entity(entity, field) %}redact{{ field.get_name() | mixed_case }}For{{ entity.get_name() | mixed_case }}{% endmacro %}

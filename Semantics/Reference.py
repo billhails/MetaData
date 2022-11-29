@@ -34,7 +34,7 @@ class Reference(Semantics):
         return super().required_attributes() + ['references']
 
     def optional_attributes(self):
-        return super().optional_attributes() + ['inverse']
+        return super().optional_attributes() + ['inverse', 'auth-role']
 
     def get_referrer_name(self):
         if 'inverse' in self.attributes:
@@ -57,3 +57,13 @@ class Reference(Semantics):
         if self.is_union():
             return self.union.get_name()
         return self.get_name()
+
+    def get_schema(self):
+        return self.get_entity().get_schema()
+
+    def is_auth_enabled(self):
+        return self.get_schema().is_auth_enabled()
+
+    def validate(self):
+        super().validate()
+        self.validate_attribute('auth-role', ['owner'])

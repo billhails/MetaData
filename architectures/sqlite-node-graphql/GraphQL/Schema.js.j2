@@ -51,7 +51,6 @@ const make_schema = (resolver) => {
         }
     });
 
-
     const {{ arguments.union_type(entity, union) }} = new GraphQLUnionType({
       name: '{{ arguments.union_type(entity, union) }}',
       types: () => ([
@@ -85,13 +84,13 @@ const make_schema = (resolver) => {
 {%     for reference in entity.get_references() %}
         {{ arguments.field_label(reference) }}: {
           type: new GraphQLNonNull({{ arguments.entity_type(reference.get_referenced()) }}),
-          resolve: entity => resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity)
+          resolve: (source, args, req) => resolver.{{ resolve.reference_for_entity(entity, reference) }}(source, args, req)
         },
 {%     endfor %}
 {%     for union in entity.get_unions() %}
         {{ arguments.field_label(union) }}: {
           type: new GraphQLNonNull({{ arguments.union_type(entity, union) }}),
-          resolve: entity => resolver.{{ resolve.union_for_entity(entity, union) }}(entity)
+          resolve: (source, args, req) => resolver.{{ resolve.union_for_entity(entity, union) }}(source, args, req)
         },
 {%     endfor %}
 {%     for referrer in entity.get_referrers() %}
@@ -107,7 +106,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (entity, args) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args)
+          resolve: (source, args, req) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(source, args, req)
         },
 {%     endfor %}
 {%     for association in entity.get_associations() %}
@@ -123,7 +122,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (entity, args) => resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args)
+          resolve: (source, args, req) => resolver.{{ resolve.association_for_entity(entity, association) }}(source, args, req)
         },
 {%     endfor %}
       })
@@ -206,7 +205,7 @@ const make_schema = (resolver) => {
               type: new GraphQLNonNull(GraphQLID),
             }
           },
-          resolve: (_source, args) => resolver.{{ resolve.entity(entity) }}(args),
+          resolve: (source, args, req) => resolver.{{ resolve.entity(entity) }}(source, args, req),
         },
         {{ arguments.plural_entity_label(entity) }}: {
           type: new GraphQLList({{ arguments.entity_type(entity) }}),
@@ -220,7 +219,7 @@ const make_schema = (resolver) => {
               type: GraphQLInt,
             },
           },
-          resolve: (_source, args) => resolver.{{ resolve.entities(entity) }}(args),
+          resolve: (source, args, req) => resolver.{{ resolve.entities(entity) }}(source, args, req),
         },
 {% endfor %}
       })
@@ -238,7 +237,7 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull({{ arguments.add_entity(entity) }})
                     }
                 },
-                resolve: (_, {input}) => resolver.{{ resolve.create_entity(entity) }}(input),
+                resolve: (source, args, req) => resolver.{{ resolve.create_entity(entity) }}(source, args, req),
             },
 {%     endif %}
             {{ arguments.update_entity_label(entity) }}: {
@@ -251,7 +250,7 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull({{ arguments.update_entity(entity) }})
                     }
                 },
-                resolve: (_, {id, input}) => resolver.{{ resolve.update_entity(entity) }}(id, input),
+                resolve: (source, args, req) => resolver.{{ resolve.update_entity(entity) }}(source, args, req),
             },
 {%     if not (schema.is_auth_enabled() and entity.is_auth_role('user')) %}
             {{ arguments.delete_entity_label(entity) }}: {
@@ -261,7 +260,7 @@ const make_schema = (resolver) => {
                          type: new GraphQLNonNull(GraphQLID)
                     },
                 },
-                resolve: (_, {id}) => resolver.{{ resolve.delete_entity(entity) }}(id)
+                resolve: (source, args, req) => resolver.{{ resolve.delete_entity(entity) }}(source, args, req)
             },
 {%     endif %}
 {% endfor %}
@@ -277,7 +276,7 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
-                resolve: (_, args) => resolver.{{ resolve.create_association(association) }}(args)
+                resolve: (source, args, req) => resolver.{{ resolve.create_association(association) }}(source, args, req)
             },
             {{ arguments.delete_association_label(association) }}: {
                 type: GraphQLBoolean,
@@ -289,7 +288,7 @@ const make_schema = (resolver) => {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
-                resolve: (_, args) => resolver.{{ resolve.delete_association(association) }}(args)
+                resolve: (source, args, req) => resolver.{{ resolve.delete_association(association) }}(source, args, req)
             },
 {% endfor %}
         })
