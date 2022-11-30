@@ -1,0 +1,57 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+{%- if schema.is_auth_enabled() %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%-     set user_entity = schema.get_auth_user_entity() %}
+{%-     set password_field = user_entity.get_auth_password_field() %}
+{%-     set id_field = user_entity.get_auth_id_field() %}
+{%-     set password_label = arguments.field_label(password_field) %}
+{%-     set id_label = arguments.field_label(id_field) %}
+
+const { faker } = require('@faker-js/faker');
+
+{%- macro faker_type(field) %}faker.
+{%- if field.get_type() == 'email' %}internet.email
+{%- elif field.get_type() == 'password' %}internet.password
+{%- elif field.get_type() == 'name' %}internet.userName
+{%- else %}lorem.paragraph
+{%- endif %}
+{%- endmacro %}
+
+function randomUser() {
+    return {
+        {{ id_label }}: {{ faker_type(id_field) }}(),
+        {{ password_label }}: {{ faker_type(password_field) }}(),
+{%-     for field in schema.get_auth_user_entity().get_fields() if not (field.is_auth_role('external-id') or field.is_auth_role('password')) %}
+        {{ arguments.field_label(field) }}: {{ faker_type(field) }}(),
+{%-     endfor %}
+    };
+}
+
+module.exports = {
+    faker,
+    randomUser
+};
+
+{% else %}
+module.exports = {
+    faker,
+    randomUser
+};
+{% endif %}

@@ -84,6 +84,7 @@ Lots, but specifically
   * think about using the null object pattern
   * enumeration data type
   * more data types (date, money etc.)
+  * demonstrate the use of middleware to handle linkedin-style friend requests
 * sqlite-node-graphql architecture Specific
   * tests (generated)
   * auth (in progress)

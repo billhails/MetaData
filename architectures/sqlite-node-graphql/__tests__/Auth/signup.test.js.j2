@@ -1,0 +1,159 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+{%- if schema.is_auth_enabled() %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%-     set user_entity = schema.get_auth_user_entity() %}
+{%-     set password_field = user_entity.get_auth_password_field() %}
+{%-     set id_field = user_entity.get_auth_id_field() %}
+{%-     set password_label = arguments.field_label(password_field) %}
+{%-     set id_label = arguments.field_label(id_field) %}
+
+const { signup, login, refresh, logout } = require('../test-utils/auth');
+const { faker, randomUser } = require('../test-utils/fakery');
+const { getDb, refreshTokenExists } = require('../test-utils/db');
+
+describe('the auth server', () => {
+    describe('sign-up', () => {
+        it('generates access and refresh tokens', async () => {
+            expect.assertions(3);
+            const user = randomUser();
+            const response = await signup(user);
+            expect(response.status).toBe(201);
+            expect(response).toHaveProperty('data.accessToken');
+            expect(response).toHaveProperty('data.refreshToken');
+        });
+        it('returns 400 on missing {{ id_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            delete user.{{ id_label }};
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(400);
+            expect(signupResponse.data).toStrictEqual({error: "missing {{ id_label }}"});
+        });
+        it('returns 400 on missing {{ password_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            delete user.{{ password_label }};
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(400);
+            expect(signupResponse.data).toStrictEqual({error: "missing {{ password_label }}"});
+        });
+        it('signs in instead on duplicate {{ id_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            const secondSignUpResponse = await signup(user);
+            expect(secondSignUpResponse.status).toBe(200);
+        });
+    });
+    describe('login', () => {
+        it('generates new access and refresh tokens', async () => {
+            expect.assertions(6);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            const loginResponse = await login(user);
+            expect(loginResponse.status).toBe(200);
+            expect(loginResponse).toHaveProperty('data.accessToken');
+            expect(loginResponse).toHaveProperty('data.refreshToken');
+            expect(loginResponse.data.accessToken).not.toBe(signupResponse.data.accessToken);
+            expect(loginResponse.data.refreshToken).not.toBe(signupResponse.data.refreshToken);
+        });
+        it('returns 400 if the user does not exist', async () => {
+            expect.assertions(1);
+            const user = randomUser();
+            const loginResponse = await login(user);
+            expect(loginResponse.status).toBe(400);
+        });
+        it('returns 400 on missing {{ id_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            delete user.{{ id_label }};
+            const loginResponse = await login(user);
+            expect(loginResponse.status).toBe(400);
+        });
+        it('returns 400 on missing {{ password_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            delete user.{{ password_label }};
+            const loginResponse = await login(user);
+            expect(loginResponse.status).toBe(400);
+        });
+        it('returns 401 on incorrect {{ password_label }}', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            user.{{ password_label }} = faker.internet.password();
+            const loginResponse = await login(user);
+            expect(loginResponse.status).toBe(401);
+        });
+    });
+    describe('refresh', () => {
+        it('generates a new access token', async () => {
+            expect.assertions(4);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            const refreshResponse = await refresh(signupResponse.data.refreshToken);
+            expect(refreshResponse.status).toBe(200);
+            expect(refreshResponse).toHaveProperty('data.accessToken');
+            expect(refreshResponse.data.accessToken).not.toBe(signupResponse.data.accessToken);
+        });
+        it('returns 400 on missing refreshToken', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            const refreshResponse = await refresh(null);
+            expect(refreshResponse.status).toBe(400);
+        });
+        it('returns 403 on invalid refreshToken', async () => {
+            expect.assertions(2);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            const refreshResponse = await refresh(signupResponse.data.refreshToken.concat('a'));
+            expect(refreshResponse.status).toBe(403);
+        });
+    });
+    describe('logout', () => {
+        it('deletes refresh tokens', async () => {
+            expect.assertions(4);
+            const user = randomUser();
+            const signupResponse = await signup(user);
+            expect(signupResponse.status).toBe(201);
+            expect(await refreshTokenExists(signupResponse.data.refreshToken)).toBe(true);
+            const logoutResponse = await logout(signupResponse.data.refreshToken);
+            expect(logoutResponse.status).toBe(204);
+            expect(await refreshTokenExists(signupResponse.data.refreshToken)).toBe(false);
+        });
+    });
+});
+{% else %}
+// schema.auth-enabled is false
+test("stub" => {
+    expect(1).toBe(1);
+});
+{%- endif %}

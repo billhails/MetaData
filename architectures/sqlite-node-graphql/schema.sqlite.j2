@@ -17,46 +17,51 @@
  #}
 -- {{ warning }}
 
-{% macro sqlite_type(type, name) -%}
-{% if type == "string" -%}TEXT
-{%- elif type == "small_string" -%}TEXT
-{%- elif type == "guid" -%}TEXT CHECK(LENGTH({{ name }} == 36))
-{%- else -%}???
-{% endif %}
-{%- endmacro -%}
+{%- macro sqlite_type(type, name) %}
+{%- if type == "string" %}TEXT
+{%- elif type == "small_string" %}TEXT
+{%- elif type == "email" %}TEXT
+{%- elif type == "name" %}TEXT
+%- elif type == "password" %}TEXT
+{%- elif type == "guid" %}TEXT CHECK(LENGTH({{ name }} == 36))
+{%- else %}???
+{%- endif %}
+{%- endmacro %}
 
-{% import 'macros/database.j2h' as database %}
+{%- import 'macros/database.j2h' as database %}
 
 .open {{ schema.get_name() }}.db
 
 PRAGMA foreign_keys = OFF;
 
-{% for entity in schema.get_entities() %}
+{%- for entity in schema.get_entities() %}
+
 DROP TABLE IF EXISTS {{ database.name(entity) }};
 
 CREATE TABLE {{ database.name(entity) }} (
     id {{ sqlite_type("guid", "id") }} NOT NULL PRIMARY KEY
-{% for field in entity.get_fields() %}
+{%-     for field in entity.get_fields() -%}
 ,
-    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL {% if field.is_unique() or field.is_auth_role('id') %}UNIQUE{% endif %}
-{% endfor %}
-{% for reference in entity.get_references() %}
+    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL{% if field.is_unique() or field.is_auth_role('id') %} UNIQUE{% endif %}
+{%-     endfor %}
+{%-     for reference in entity.get_references() -%}
 ,
     {{ database.name(reference) }} {{ sqlite_type("guid", database.name(reference)) }} NOT NULL
-{% endfor %}
-{% for union in entity.get_unions() %}
+{%-     endfor %}
+{%-     for union in entity.get_unions() -%}
 ,
     {{ database.type_name(union) }} TEXT CHECK({{ database.type_name(union) }} IN ({%- for ref in union.get_references() %}{% if not loop.first %}, {% endif %}'{{ database.name(ref) }}'{% endfor -%})) NOT NULL,
     {{ database.name(union) }} {{ sqlite_type("guid", database.name(union)) }} NOT NULL
-{% endfor %}
-{% for reference in entity.get_references() %}
+{%-     endfor %}
+{%-     for reference in entity.get_references() -%}
 ,
     FOREIGN KEY ({{ database.name(reference) }}) REFERENCES {{ database.name(reference.get_referenced()) }}(id) ON DELETE CASCADE
-{% endfor %}
+{%-     endfor %}
 );
-{% endfor %}
+{%- endfor %}
 
-{% for association in schema.get_associations() %}
+{%- for association in schema.get_associations() %}
+
 DROP TABLE IF EXISTS {{ database.name(association) }};
 
 CREATE TABLE {{ database.name(association) }} (
@@ -66,17 +71,20 @@ CREATE TABLE {{ database.name(association) }} (
     FOREIGN KEY ({{ database.rhs(association) }}) REFERENCES {{ database.name(association.get_rhs()) }}(id) ON DELETE CASCADE,
     CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
-{% endfor %}
+{%- endfor %}
 
-{% if schema.is_auth_enabled() %}
+{%- if schema.is_auth_enabled() %}
+
 -- hidden table for refresh tokens
 
 DROP TABLE IF EXISTS refresh_tokens;
 
 CREATE TABLE refresh_tokens (
-    token TEXT NOT NULL PRIMARY KEY
+    token TEXT NOT NULL PRIMARY KEY,
+    {{ database.name(schema.get_auth_user_entity().get_auth_id_field()) }} TEXT NOT NULL
 );
-{% endif %}
+
+{%- endif %}
 
 
 PRAGMA foreign_keys = ON;

@@ -5,9 +5,9 @@
         <!-- descriptions end up in the graphql docs -->
         <description>A user of the service.</description>
         <!-- fields are the components of entities -->
-        <field name="display_name" type="small_string"/>
-        <field name="email" type="small_string" unique="y" auth-role="external-id" auth-redacted="y"/>
-        <field name="password" type="small_string" auth-role="password"/>
+        <field name="display_name" type="name"/>
+        <field name="email" type="email" unique="y" auth-role="external-id" auth-redacted="y"/>
+        <field name="password" type="password" auth-role="password"/>
     </entity>
 
     <entity name="posts">

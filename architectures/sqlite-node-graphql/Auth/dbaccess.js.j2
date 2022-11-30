@@ -27,34 +27,35 @@ class AuthDatabaseAccess {
 {% if schema.is_auth_enabled() %}
 {% set entity = schema.get_auth_user_entity() %}
     async createUser(args) {
-        logger.debug('AuthDatabaseAccess.createUser', args);
+        logger.debug('AuthDatabaseAccess.createUser', {args});
         return this.data.{{ data.create_entity(entity) }}(args);
     }
 
     async findUserByExternalId(id) {
-        logger.debug('AuthDatabaseAccess.findUserByExternalId', id);
+        logger.debug('AuthDatabaseAccess.findUserByExternalId', {id});
         return this.data.{{ data.get_entity_by_field(entity, entity.get_auth_id_field()) }}(id);
     }
 
     async findUserByInternalId(id) {
-        logger.debug('AuthDatabaseAccess.findUserByInternalId', id);
+        logger.debug('AuthDatabaseAccess.findUserByInternalId', {id});
         return this.data.{{ data.get_entity(entity) }}(id)
     }
 
     async refreshTokenExists(token) {
-        logger.debug('AuthDatabaseAccess.refreshTokenExists', token);
+        logger.debug('AuthDatabaseAccess.refreshTokenExists', {token});
         return this.data.checkRefreshTokenExists(token);
     }
 
-    async saveRefreshToken(token) {
-        logger.debug('AuthDatabaseAccess.saveRefreshToken', token);
-        return this.data.saveRefreshToken(token);
+    async saveRefreshToken(token, id) {
+        logger.debug('AuthDatabaseAccess.saveRefreshToken', {token, id});
+        return this.data.saveRefreshToken(token, id);
     }
 
     async deleteRefreshToken(token) {
-        logger.debug('AuthDatabaseAccess.deleteRefreshToken', token);
+        logger.debug('AuthDatabaseAccess.deleteRefreshToken', {token});
         return this.data.deleteRefreshToken(token);
     }
+
 {% endif %}
 }
 

@@ -20,11 +20,6 @@ from Semantics import Semantics
 class Field(Semantics):
     entity = None
     type = "Field"
-    known_types = [
-        "string",
-        "guid",
-        "small_string"
-    ]
 
     def build(self, entity):
         self.entity = entity
@@ -43,7 +38,7 @@ class Field(Semantics):
 
     def validate(self):
         super().validate()
-        self.validate_attribute('type', self.known_types)
+        self.validate_attribute('type', ["string", "guid", "small_string", "name", "email", "password"])
         self.validate_attribute('unique', ['y', 'n'])
         self.validate_attribute('auth-role', ['external-id', 'password'])
         self.validate_attribute('auth-redacted', ['y', 'n'])

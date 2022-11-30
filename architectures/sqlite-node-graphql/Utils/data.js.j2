@@ -81,10 +81,10 @@ class Data {
      *
      * @param {string} token
      */
-    async saveRefreshToken(token) {
+    async saveRefreshToken(token, id) {
         return this.run(
-            `INSERT OR IGNORE INTO refresh_tokens(token) VALUES (?)`,
-            [token]
+            `INSERT OR IGNORE INTO refresh_tokens(token, {{ database.name(schema.get_auth_user_entity().get_auth_id_field()) }}) VALUES (?, ?)`,
+            [token, id]
         );
     }
 
@@ -137,7 +137,7 @@ class Data {
     async {{ data.get_entity(entity) }}(id) {
         logger.debug(`{{ data.get_entity(entity) }}(${util.inspect(id)})`);
         return this.get(`SELECT ${ this.{{ data.get_entity_fields(entity) }}() } FROM {{ database.name(entity) }} WHERE id = ?`, [id])
-            .then(row => new Model.{{ model.name(entity) }}(row));
+            .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
 {%-     if entity.is_auth_role('user') -%}
@@ -156,7 +156,7 @@ class Data {
                   FROM {{ database.name(entity) }}
                  WHERE {{ database.name(field) }} = ?
             `, [id])
-            .then(row => new Model.{{ model.name(entity) }}(row));
+            .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
 {%-     endif %}

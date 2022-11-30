@@ -1,0 +1,101 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+{%- if schema.is_auth_enabled() %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%-     set user_entity = schema.get_auth_user_entity() %}
+{%-     set password_field = user_entity.get_auth_password_field() %}
+{%-     set id_field = user_entity.get_auth_id_field() %}
+{%-     set password_label = arguments.field_label(password_field) %}
+{%-     set id_label = arguments.field_label(id_field) %}
+
+const { signup } = require('../test-utils/auth');
+const { faker, randomUser } = require('../test-utils/fakery');
+const { GraphQLClient, gql } = require('graphql-request');
+const jwt = require('jsonwebtoken');
+
+function getClient(token) {
+    const endpoint = 'http://localhost:4000/graphql';
+    return new GraphQLClient(
+        endpoint,
+        token ? {
+            headers: {
+                authorization: `Bearer ${token}`
+            }
+        } : {}
+    );
+}
+
+function userQuery(id) {
+    return gql`
+        {
+            user(id: "${id}") {
+                id,
+                displayName
+                email
+            }
+        }`;
+}
+
+function deconstruct(response) {
+    const accessToken = response.data.accessToken;
+    const tokenContent = jwt.decode(accessToken);
+    const id = tokenContent.sub;
+    return { id, accessToken };
+}
+
+describe("email", () => {
+    it("is visible to the logged-in user", async () => {
+        expect.assertions(1);
+        const user = randomUser();
+        const response = await signup(user);
+        const { accessToken, id } = deconstruct(response);
+        const graphQLClient = getClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        expect(data.user.email).toBe(user.email);
+    });
+    it ("is not visible to other users", async () => {
+        expect.assertions(1);
+        const user1 = randomUser();
+        const response1 = await signup(user1);
+        const { id } = deconstruct(response1)
+        const user2 = randomUser();
+        const response2 = await signup(user2);
+        const { accessToken } = deconstruct(response2)
+        const graphQLClient = getClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        expect(data.user.email).toBe("XXX");
+    });
+    it ("is not visible to logged-out users", async () => {
+        expect.assertions(1);
+        const user = randomUser();
+        const response = await signup(user);
+        const { id } = deconstruct(response)
+        const graphQLClient = getClient();
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        expect(data.user.email).toBe("XXX");
+    });
+})
+
+{% else %}
+// schema.auth-enabled is false, stub test generated
+test("stub", () => { expect(1).toBe(1); });
+{% endif %}

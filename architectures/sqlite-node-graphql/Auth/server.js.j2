@@ -38,7 +38,7 @@ class AuthServer {
         logger.debug('authenticateUserByExternalId');
         const id = req.body.{{ id_label }};
 
-        if (id == null) {
+        if (!id) {
             res.sendStatus(400);
             return false;
         }
@@ -52,8 +52,15 @@ class AuthServer {
             return false;
         }
 
+        const password = req.body.{{ password_label }};
+
+        if(!password) {
+            res.sendStatus(400);
+            return false;
+        }
+
         try {
-            if (!await bcrypt.compare(req.body.{{ password_label }}, user.{{ password_label }})) {
+            if (!await bcrypt.compare(password, user.{{ password_label }})) {
                 res.sendStatus(401);
                 return false;
             }
@@ -72,13 +79,34 @@ class AuthServer {
     async signUp(req, res) {
         try {
             const salt = await bcrypt.genSalt();
-            const hashedPassword = await bcrypt.hash(req.body.{{ password_label }}, salt);
+            const password = req.body.{{ password_label }};
+
+            if (!password) {
+                res.status(400).json({error: 'missing {{ password_label }}'});
+                return;
+            }
+
+            const externalId = req.body.{{ id_label }};
+
+            if (!externalId) {
+                res.status(400).json({error: 'missing {{ id_label }}'});
+                return;
+            }
+
+            const existingUser = await this.db.findUserByExternalId(externalId);
+
+            if (existingUser) {
+                logger.debug('found existing user during signUp', { existingUser });
+                return this.login(req, res);
+            }
+
+            const hashedPassword = await bcrypt.hash(password, salt);
             const user = {
                 {{ password_label }}: hashedPassword
             };
-{%-     for field in user_entity.get_fields() %}
-{%-         set label = arguments.field_label(field) %}
-{%          if not field.is_auth_role('password') %}
+{%-      for field in user_entity.get_fields() %}
+{%-          set label = arguments.field_label(field) %}
+{%-          if not field.is_auth_role('password') %}
             if (req.body.{{ label }}) {
                 user['{{ label }}'] = req.body.{{ label }};
             }
@@ -103,8 +131,8 @@ class AuthServer {
      */
     async refreshAccessToken (req, res) {
         const refreshToken = req.body.refreshToken;
-        if (refreshToken == null) {
-            return res.sendStatus(401);
+        if (!refreshToken) {
+            return res.sendStatus(400);
         }
         if (! await this.db.refreshTokenExists(refreshToken)) {
             return res.sendStatus(403);
@@ -132,8 +160,8 @@ class AuthServer {
     async login(req, res) {
         logger.debug('login');
         const user = await this.authenticateUserByExternalId(req, res);
+
         if (!user) {
-            res.sendStatus(401);
             return;
         }
 
@@ -148,7 +176,7 @@ class AuthServer {
         logger.debug('generateTokens', user);
         const accessToken = this.generateAccessToken(user);
         const refreshToken = this.generateRefreshToken(user);
-        await this.db.saveRefreshToken(refreshToken);
+        await this.db.saveRefreshToken(refreshToken, user.id);
         return { accessToken, refreshToken };
     }
 
