@@ -43,15 +43,6 @@ npm run init-db # first time - creates the empty database
 npm run dev     # run the application on http://localhost:4000/graphql
 ```
 
-If you want to import some test data, there's a file [demo/data.sql](demo/data.sql) that can
-be fed to `sqlite` by running:
-
-```commandline
-sqlite3 demo.db < ../data.sql
-```
-
-from the `demo/out` directory.
-
 ## Structure of the Builder Application
 
 ### Architectures
@@ -88,8 +79,7 @@ Lots, but specifically
 * sqlite-node-graphql architecture Specific
   * tests (generated)
   * auth (in progress)
-    * disallow references and unions from the auth-role=user entity
-    * also see [Auth](auth.md) for specific scenarios
+    * see [Auth](auth.md) for specific scenarios
   * deferred data retrieval - done (but dataloader is sub-optimal)
     * separate dataloader per request - or cache management
   * pagination - basic pagination done

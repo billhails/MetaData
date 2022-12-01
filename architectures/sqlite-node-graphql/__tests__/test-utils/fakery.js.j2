@@ -17,7 +17,7 @@
  #}
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%-     import 'macros/schema.j2h' as arguments %}
 {%-     set user_entity = schema.get_auth_user_entity() %}
 {%-     set password_field = user_entity.get_auth_password_field() %}
 {%-     set id_field = user_entity.get_auth_id_field() %}
@@ -35,11 +35,24 @@ const { faker } = require('@faker-js/faker');
 {%- endmacro %}
 
 function randomUser() {
+{%- if id_field.get_type() == 'email' and user_entity.get_field_with_type('name') %}
+    const firstName = faker.name.firstName();
+    const lastName = faker.name.lastName();
+{%-     set name_field_generator %}faker.internet.userName(firstName, lastName){% endset %}
+{%-     set id_generator %}faker.internet.email(firstName, lastName){% endset %}
+{%- else %}
+{%-     set id_generator %}{{ faker_type(id_field) }}(){% endset %}
+{%-     set name_field_generator %}faker.internet.useName(){% endset %}
+{%- endif %}
     return {
-        {{ id_label }}: {{ faker_type(id_field) }}(),
+        {{ id_label }}: {{ id_generator }},
         {{ password_label }}: {{ faker_type(password_field) }}(),
 {%-     for field in schema.get_auth_user_entity().get_fields() if not (field.is_auth_role('external-id') or field.is_auth_role('password')) %}
+{%-         if field.get_type() == 'name' %}
+        {{ arguments.field_label(field) }}: {{ name_field_generator }}
+{%-         else %}
         {{ arguments.field_label(field) }}: {{ faker_type(field) }}(),
+{%-         endif %}
 {%-     endfor %}
     };
 }

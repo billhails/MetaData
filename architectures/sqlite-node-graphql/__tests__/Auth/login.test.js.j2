@@ -19,6 +19,7 @@
 {%- if schema.is_auth_enabled() %}
 {%- import 'macros/schema.j2h' as arguments %}
 {%-     set user_entity = schema.get_auth_user_entity() %}
+{%-     set user_label = arguments.singular_entity_label(user_entity) %}
 {%-     set password_field = user_entity.get_auth_password_field() %}
 {%-     set id_field = user_entity.get_auth_id_field() %}
 {%-     set password_label = arguments.field_label(password_field) %}
@@ -29,10 +30,11 @@ const { faker, randomUser } = require('../test-utils/fakery');
 const { GraphQLClient, gql } = require('graphql-request');
 const jwt = require('jsonwebtoken');
 
+{% if id_field.is_redacted() %}
+
 function getClient(token) {
-    const endpoint = 'http://localhost:4000/graphql';
     return new GraphQLClient(
-        endpoint,
+        'http://localhost:4000/graphql',
         token ? {
             headers: {
                 authorization: `Bearer ${token}`
@@ -44,10 +46,8 @@ function getClient(token) {
 function userQuery(id) {
     return gql`
         {
-            user(id: "${id}") {
-                id,
-                displayName
-                email
+            {{ user_label }}(id: "${id}") {
+                {{ id_label }}
             }
         }`;
 }
@@ -59,7 +59,7 @@ function deconstruct(response) {
     return { id, accessToken };
 }
 
-describe("email", () => {
+describe("{{ id_label }}", () => {
     it("is visible to the logged-in user", async () => {
         expect.assertions(1);
         const user = randomUser();
@@ -68,7 +68,7 @@ describe("email", () => {
         const graphQLClient = getClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.user.email).toBe(user.email);
+        expect(data.user.{{ id_label }}).toBe(user.{{ id_label }});
     });
     it ("is not visible to other users", async () => {
         expect.assertions(1);
@@ -81,7 +81,7 @@ describe("email", () => {
         const graphQLClient = getClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.user.email).toBe("XXX");
+        expect(data.user.{{ id_label }}).toBe("XXX");
     });
     it ("is not visible to logged-out users", async () => {
         expect.assertions(1);
@@ -91,11 +91,15 @@ describe("email", () => {
         const graphQLClient = getClient();
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.user.email).toBe("XXX");
+        expect(data.user.{{ id_label }}).toBe("XXX");
     });
 })
+{% else %}
+// id field is not redacted, stub test
+test("stub", () => expect(1).toBe(1));
+{% endif %}
 
 {% else %}
-// schema.auth-enabled is false, stub test generated
+// schema.auth-enabled is false, stub test
 test("stub", () => { expect(1).toBe(1); });
 {% endif %}

@@ -82,6 +82,8 @@ class Entity(Container):
                         name=self.name
                     )
                 )
+            if self.has_references() or self.has_unions():
+                raise SemanticException('an entity with auth-role="user" cannot contain references to other entities')
 
     def get_auth_id_field(self):
         for field in self.get_fields():
@@ -101,14 +103,26 @@ class Entity(Container):
                 return reference
         return ID({"name": 'id'})
 
+    def get_field_with_type(self, field_type):
+        for field in self.get_fields():
+            if field.get_type() == field_type:
+                return field
+        return None
+
     def get_fields(self):
         return self.fields.values()
 
     def get_references(self):
         return self.references.values()
 
+    def has_references(self):
+        return len(self.get_references()) > 0
+
     def get_unions(self):
         return self.unions.values()
+
+    def has_unions(self):
+        return len(self.get_unions()) > 0
 
     def get_referrers(self):
         return self.referrers.values()
