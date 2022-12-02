@@ -68,7 +68,11 @@ class AuthFilter {
 {%-     endfor %}
                 return model;
             })
-        );
+        )
+{%-       if entity.is_auth_visibility("hidden") -%}
+            .then(models => models.filter(model => req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}))
+{%-      endif -%}
+        ;
     }
 
 {%-     for reference in entity.get_references() %}
@@ -91,6 +95,10 @@ class AuthFilter {
 
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
         return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req)
+{%-        if referrer.get_entity().is_auth_visibility("hidden") -%}
+            .then(models => models.filter(model => req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }}))
+{%-        endif -%}
+            ;
     }
 
 {%-     endfor %}

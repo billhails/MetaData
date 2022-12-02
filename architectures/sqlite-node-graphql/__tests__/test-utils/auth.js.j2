@@ -22,6 +22,7 @@
 const axios = require('axios');
 const authPort = 3000;
 const authRoot = `http://localhost:${authPort}`;
+const jwt = require('jsonwebtoken');
 
 async function post(url, body) {
     return axios.post(`${authRoot}/${url}`, body, { validateStatus: () => true });
@@ -43,11 +44,20 @@ async function logout(refreshToken) {
     return post('logout', { refreshToken });
 }
 
+function deconstruct(response) {
+    const accessToken = response.data.accessToken;
+    const tokenContent = jwt.decode(accessToken);
+    const id = tokenContent.sub;
+    const refreshToken = response.data.refreshToken;
+    return { id, accessToken, refreshToken };
+}
+
 module.exports = {
     signup,
     login,
     refresh,
-    logout
+    logout,
+    deconstruct
 };
 
 {% else %}

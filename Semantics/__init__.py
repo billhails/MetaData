@@ -98,6 +98,9 @@ class Semantics:
     def is_auth_role(self, role):
         return self.is_auth_enabled() and self.attribute_value('auth-role', role)
 
+    def is_auth_visibility(self, visibility):
+        return self.is_auth_enabled() and self.attribute_value('auth-visibility', visibility)
+
     def has_attribute_not(self, attribute, value):
         return self.has_attribute(attribute) and not self.attribute_value(attribute, value)
     def debug(self, message):

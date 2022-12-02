@@ -45,9 +45,6 @@ class Field(Semantics):
     def is_unique(self):
         return self.attribute_value('unique', 'y')
 
-    def is_auth_visibility(self, visibility):
-        return self.is_auth_enabled() and self.attribute_value('auth-visibility', visibility)
-
     def is_auth(self):
         return self.has_attribute_not('auth-role', 'none') or self.has_attribute_not('auth-visibility', 'visible')
 

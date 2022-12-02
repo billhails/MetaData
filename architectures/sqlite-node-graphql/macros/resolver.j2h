@@ -18,7 +18,7 @@
 {# defines method names declared in the resolver and called from the schema #}
 {% macro reference_for_entity(entity, reference) %}resolve{{ reference.get_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro union_for_entity(entity, union) %}resolve{{ union.get_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
-{% macro referrer_for_entity(entity, referrer) %}resolve_{{ referrer.get_referrer_name() }}_for_{{ entity.get_name() | singular }}{% endmacro %}
+{% macro referrer_for_entity(entity, referrer) %}resolve{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro association_for_entity(entity, association) %}resolve{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}Association{% endmacro %}
 {% macro entity(entity) %}resolve{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro entities(entity) %}resolve{{ entity.get_name() | mixed_case }}{% endmacro %}

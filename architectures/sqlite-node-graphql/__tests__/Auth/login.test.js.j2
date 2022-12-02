@@ -27,21 +27,11 @@
 
 const { signup } = require('../test-utils/auth');
 const { faker, randomUser } = require('../test-utils/fakery');
-const { GraphQLClient, gql } = require('graphql-request');
+const { gql } = require('graphql-request');
+const { getGraphQLClient } = require('../test-utils/graphql');
 const jwt = require('jsonwebtoken');
 
 {% if id_field.is_auth_visibility('redacted') %}
-
-function getClient(token) {
-    return new GraphQLClient(
-        'http://localhost:4000/graphql',
-        token ? {
-            headers: {
-                authorization: `Bearer ${token}`
-            }
-        } : {}
-    );
-}
 
 function userQuery(id) {
     return gql`
@@ -65,7 +55,7 @@ describe("{{ id_label }}", () => {
         const user = randomUser();
         const response = await signup(user);
         const { accessToken, id } = deconstruct(response);
-        const graphQLClient = getClient(accessToken);
+        const graphQLClient = getGraphQLClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
         expect(data.user.{{ id_label }}).toBe(user.{{ id_label }});
@@ -78,7 +68,7 @@ describe("{{ id_label }}", () => {
         const user2 = randomUser();
         const response2 = await signup(user2);
         const { accessToken } = deconstruct(response2)
-        const graphQLClient = getClient(accessToken);
+        const graphQLClient = getGraphQLClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
         expect(data.user.{{ id_label }}).toBe("XXX");
@@ -88,7 +78,7 @@ describe("{{ id_label }}", () => {
         const user = randomUser();
         const response = await signup(user);
         const { id } = deconstruct(response)
-        const graphQLClient = getClient();
+        const graphQLClient = getGraphQLClient();
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
         expect(data.user.{{ id_label }}).toBe("XXX");

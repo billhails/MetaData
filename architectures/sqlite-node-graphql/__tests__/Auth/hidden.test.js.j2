@@ -1,0 +1,95 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+// {{ warning }}
+{%- import 'macros/schema.j2h' as arguments %}
+
+const { signup, deconstruct } = require('../test-utils/auth');
+const { faker, randomUser } = require('../test-utils/fakery');
+const { getGraphQLClient } = require('../test-utils/graphql')
+const { GraphQLClient, gql } = require('graphql-request');
+const jwt = require('jsonwebtoken');
+
+{% if schema.is_auth_enabled %}
+{%-     set owner_entity = schema.get_auth_owner_entity() %}
+{%-     set owner_label = arguments.singular_entity_label(owner_entity) %}
+
+{%-     set id_field = owner_entity.get_auth_id_field() %}
+{%-     set id_label = arguments.field_label(id_field) %}
+
+{%-     set token_entity = schema.get_auth_token_entity() %}
+{%-     set token_entity_label = arguments.field_label(token_entity) %}
+
+{%-     set owner_token_name = arguments.referrer_label(token_entity.get_auth_owner_reference()) %}
+{%-     set token_field_label = arguments.field_label(token_entity.get_auth_token_field()) %}
+function userQuery(id) {
+    return gql`
+        {
+            {{ owner_label }}(id: "${id}") {
+                {{ owner_token_name }} {
+                    {{ token_field_label }}
+                }
+            }
+        }`;
+}
+
+describe("{{ token_entity_label }}", () => {
+    it("is correctly configured", () => {
+{%-      if token_entity.is_auth_visibility('hidden') %}
+        expect(1).toBe(1);
+{%-      else %}
+        fail("{{ token_entity_label }} does not have auth-visibility=hidden");
+{%-      endif %}
+    });
+    it("is visible to its owner", async () => {
+        expect.assertions(1);
+        const user = randomUser();
+        const response = await signup(user);
+        const { accessToken, refreshToken, id } = deconstruct(response);
+        const graphQLClient = getGraphQLClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        expect(data.{{ owner_label }}?.{{ owner_token_name }}?.[0]?.{{ token_field_label }}).toBe(refreshToken);
+    });
+    it("is invisible to a logged out user", async () => {
+        expect.assertions(1);
+        const user = randomUser();
+        const response = await signup(user);
+        const { id } = deconstruct(response);
+        const graphQLClient = getGraphQLClient();
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        expect(data.{{ owner_label }}?.{{ owner_token_name }}).toStrictEqual([]);
+    });
+    it("is invisible to a different user", async () => {
+        expect.assertions(1);
+        const user1 = randomUser();
+        const response1 = await signup(user1);
+        const { id: id1 } = deconstruct(response1);
+        const user2 = randomUser();
+        const response2 = await signup(user2);
+        const { accessToken } = deconstruct(response2);
+        const graphQLClient = getGraphQLClient(accessToken);
+        const query = userQuery(id1);
+        const data = await graphQLClient.request(query);
+        expect(data.{{ owner_label }}?.{{ owner_token_name }}).toStrictEqual([]);
+    });
+
+});
+{%- else %}
+test("stub", () => expect(1).toBe(1));
+{% endif %}
