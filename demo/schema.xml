@@ -1,26 +1,27 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!-- schema name is required -->
 <schema name="demo" auth="enabled" access-token-expiry="24h">
-    <entity name="users" auth-role="user">
+
+    <entity name="users" auth-role="owner" auth-access="owner" auth-visibility="visible">
         <!-- descriptions end up in the graphql docs -->
         <description>A user of the service.</description>
         <!-- fields are the components of entities -->
         <field name="display_name" type="name"/>
-        <field name="email" type="email" unique="y" auth-role="external-id" auth-redacted="y"/>
-        <field name="password" type="password" auth-role="password"/>
+        <field name="email" type="email" unique="y" auth-role="external-id" auth-visibility="redacted"/>
+        <field name="password" type="password" auth-role="password" auth-visibility="hidden"/>
     </entity>
 
-    <entity name="posts">
+    <entity name="posts" auth-access="owner" auth-visibility="visible">
         <description>A post by a user.</description>
         <field name="body" type="string"/>
         <!-- a reference is a foreign key, essentially -->
-        <reference name="owner" references="users"/>
+        <reference name="owner" references="users" auth-role="owner"/>
     </entity>
 
-    <entity name="comments">
+    <entity name="comments" auth-access="owner" auth-visibility="visible">
         <description>A comment on a user, post or other comment.</description>
         <field name="body" type="string"/>
-        <reference name="owner" references="users"/>
+        <reference name="owner" references="users" auth-role="owner"/>
         <!-- unions are discriminated foregn keys, this "about" union can refer to a user, post or comment -->
         <union name="about">
             <reference name="user" references="users" inverse="comments_about_me"/>
@@ -29,13 +30,20 @@
         </union>
     </entity>
 
-    <entity name="categories">
+    <entity name="categories" auth-access="admin" auth-visibility="visible">
         <description>Categories of Posts</description>
         <field name="label" type="string"/>
     </entity>
 
     <!-- associations are many-to-many relationships -->
-    <association name="friends" lhs="users" rhs="users"/>
+    <association name="friends" lhs="users" rhs="users" auth-access="owner" auth-path="lhs,rhs"/>
 
-    <association name="posts_categories" lhs="posts" rhs="categories"/>
+    <association name="posts_categories" lhs="posts" rhs="categories" auth-access="owner" auth-visibility="visible" auth-path="lhs.owner"/>
+
+    <entity name="refresh_tokens" auth-role="token" auth-access="owner" auth-visibility="hidden">
+        <description>Refresh tokens for auth.</description>
+        <field name="token" type="token" auth-role="token"/>
+        <reference name="owner" auth-role="owner" references="users"/>
+    </entity>
+
 </schema>

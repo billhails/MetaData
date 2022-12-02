@@ -66,9 +66,8 @@ class TemplateProcessor:
         print(template, '->', target)
         j2_template = self.environment.get_template(template)
         result = j2_template.render(data)
-        fh = open(target, "w")
-        fh.write(result)
-        fh.close()
+        with open(target, "w") as fh:
+            fh.write(result)
 
     def process_templates(self):
         for directory, _, files in os.walk(self.input_root):

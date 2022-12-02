@@ -18,9 +18,9 @@
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
 {%- import 'macros/schema.j2h' as arguments %}
-{%-     set user_entity = schema.get_auth_user_entity() %}
-{%-     set password_field = user_entity.get_auth_password_field() %}
-{%-     set id_field = user_entity.get_auth_id_field() %}
+{%-     set owner_entity = schema.get_auth_owner_entity() %}
+{%-     set password_field = owner_entity.get_auth_password_field() %}
+{%-     set id_field = owner_entity.get_auth_id_field() %}
 {%-     set password_label = arguments.field_label(password_field) %}
 {%-     set id_label = arguments.field_label(id_field) %}
 

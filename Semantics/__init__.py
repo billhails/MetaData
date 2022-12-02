@@ -28,7 +28,13 @@ class Semantics:
         return self.str(0)
 
     def required_attributes(self):
-        return ['name']
+        return [{'name': 'name'}]
+
+    def required_attribute_names(self):
+        return [attribute['name'] for attribute in self.required_attributes()]
+
+    def optional_attribute_names(self):
+        return [attribute['name'] for attribute in self.optional_attributes()]
 
     def optional_attributes(self):
         return []
@@ -37,28 +43,41 @@ class Semantics:
         return self.pad(depth) + self.type + " " + str(self.attributes)
 
     def validate(self):
-        for attribute in self.required_attributes():
-            if attribute not in self.attributes:
+        for required_attribute in self.required_attributes():
+            if required_attribute['name'] not in self.attributes:
                 raise SemanticException(
-                    "required attribute {attribute} for {type} not found".format(attribute=attribute, type=self.type)
+                    "required attribute {attribute} for {type} not found".format(
+                        attribute=required_attribute['name'],
+                        type=self.type
+                    )
                 )
-        for attribute in self.attributes:
-            if attribute not in self.required_attributes() and attribute not in self.optional_attributes():
+            if 'values' in required_attribute:
+                if self.attributes[required_attribute['name']] not in required_attribute['values']:
+                    raise SemanticException(
+                        "unrecognised value {value} for attribute {attribute}, allowed values: {values}".format(
+                            value=self.attributes[required_attribute['name']],
+                            attribute=required_attribute['name'],
+                            values=required_attribute['values']
+                        )
+                    )
+        for attribute_name in self.attributes:
+            if attribute_name not in self.required_attribute_names() and attribute_name not in self.optional_attribute_names():
                 raise SemanticException(
-                    "unrecognised attribute {attribute} for {type}".format(attribute=attribute, type=self.type)
+                    "unrecognised attribute {attribute} for {type}".format(attribute=attribute_name, type=self.type)
                 )
-
-    def validate_attribute(self, attribute, values):
-        if attribute in self.attributes and not self.attributes[attribute] in values:
-            raise SemanticException(
-                "unrecognised value for {type} '{name}': {attr}='{val}', allowed values: {values}".format(
-                    val=self.attributes[attribute],
-                    type=self.type,
-                    name=self.name,
-                    attr=attribute,
-                    values=', '.join(values)
-                )
-            )
+        for optional_attribute in self.optional_attributes():
+            if optional_attribute['name'] in self.attributes:
+                if 'values' in optional_attribute:
+                    if self.attributes[optional_attribute['name']] not in optional_attribute['values']:
+                        raise SemanticException(
+                            "unrecognised value {value} for attribute {attribute}, allowed values: {values}".format(
+                                value=self.attributes[optional_attribute['name']],
+                                attribute=optional_attribute['name'],
+                                values=optional_attribute['values']
+                            )
+                        )
+            elif 'default' in optional_attribute:
+                self.attributes[optional_attribute['name']] = optional_attribute['default']
 
     def get_name(self):
         return self.attributes['name']

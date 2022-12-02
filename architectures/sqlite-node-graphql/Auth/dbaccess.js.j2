@@ -25,7 +25,7 @@ class AuthDatabaseAccess {
     }
 
 {% if schema.is_auth_enabled() %}
-{% set entity = schema.get_auth_user_entity() %}
+{% set entity = schema.get_auth_owner_entity() %}
     async createUser(args) {
         logger.debug('AuthDatabaseAccess.createUser', {args});
         return this.data.{{ data.create_entity(entity) }}(args);

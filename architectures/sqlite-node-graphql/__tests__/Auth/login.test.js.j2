@@ -18,10 +18,10 @@
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
 {%- import 'macros/schema.j2h' as arguments %}
-{%-     set user_entity = schema.get_auth_user_entity() %}
-{%-     set user_label = arguments.singular_entity_label(user_entity) %}
-{%-     set password_field = user_entity.get_auth_password_field() %}
-{%-     set id_field = user_entity.get_auth_id_field() %}
+{%-     set owner_entity = schema.get_auth_owner_entity() %}
+{%-     set owner_label = arguments.singular_entity_label(owner_entity) %}
+{%-     set password_field = owner_entity.get_auth_password_field() %}
+{%-     set id_field = owner_entity.get_auth_id_field() %}
 {%-     set password_label = arguments.field_label(password_field) %}
 {%-     set id_label = arguments.field_label(id_field) %}
 
@@ -30,7 +30,7 @@ const { faker, randomUser } = require('../test-utils/fakery');
 const { GraphQLClient, gql } = require('graphql-request');
 const jwt = require('jsonwebtoken');
 
-{% if id_field.is_redacted() %}
+{% if id_field.is_auth_visibility('redacted') %}
 
 function getClient(token) {
     return new GraphQLClient(
@@ -46,7 +46,7 @@ function getClient(token) {
 function userQuery(id) {
     return gql`
         {
-            {{ user_label }}(id: "${id}") {
+            {{ owner_label }}(id: "${id}") {
                 {{ id_label }}
             }
         }`;

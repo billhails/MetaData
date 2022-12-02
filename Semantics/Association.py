@@ -26,7 +26,17 @@ class Association(Semantics):
     self_referential = None
 
     def required_attributes(self):
-        return super().required_attributes() + ['lhs', 'rhs']
+        return super().required_attributes() + [
+            {'name': 'lhs'},
+            {'name': 'rhs'}
+        ]
+
+    def optional_attributes(self):
+        return super().optional_attributes() + [
+            {'name': 'auth-access', 'values': ['any', 'owner', 'admin'], 'default': 'any'},
+            {'name': 'auth-path'},
+            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'}
+        ]
 
     def build(self, schema):
         self.schema = schema

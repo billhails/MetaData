@@ -42,7 +42,7 @@ CREATE TABLE {{ database.name(entity) }} (
     id {{ sqlite_type("guid", "id") }} NOT NULL PRIMARY KEY
 {%-     for field in entity.get_fields() -%}
 ,
-    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL{% if field.is_unique() or field.is_auth_role('id') %} UNIQUE{% endif %}
+    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL{% if field.is_unique() or field.is_auth_role('external-id') %} UNIQUE{% endif %}
 {%-     endfor %}
 {%-     for reference in entity.get_references() -%}
 ,
@@ -72,19 +72,6 @@ CREATE TABLE {{ database.name(association) }} (
     CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
 {%- endfor %}
-
-{%- if schema.is_auth_enabled() %}
-
--- hidden table for refresh tokens
-
-DROP TABLE IF EXISTS refresh_tokens;
-
-CREATE TABLE refresh_tokens (
-    token TEXT NOT NULL PRIMARY KEY,
-    {{ database.name(schema.get_auth_user_entity().get_auth_id_field()) }} TEXT NOT NULL
-);
-
-{%- endif %}
 
 
 PRAGMA foreign_keys = ON;

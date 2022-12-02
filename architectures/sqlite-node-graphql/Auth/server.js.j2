@@ -23,9 +23,9 @@ const logger = require('../Utils/logger');
 
 class AuthServer {
 {%- if schema.is_auth_enabled() %}
-{%-     set user_entity = schema.get_auth_user_entity() %}
-{%-     set password_label = arguments.field_label(user_entity.get_auth_password_field()) %}
-{%-     set id_label = arguments.field_label(user_entity.get_auth_id_field()) %}
+{%-     set owner_entity = schema.get_auth_owner_entity() %}
+{%-     set password_label = arguments.field_label(owner_entity.get_auth_password_field()) %}
+{%-     set id_label = arguments.field_label(owner_entity.get_auth_id_field()) %}
 
     constructor(db) {
         this.db = db;
@@ -104,7 +104,7 @@ class AuthServer {
             const user = {
                 {{ password_label }}: hashedPassword
             };
-{%-      for field in user_entity.get_fields() %}
+{%-      for field in owner_entity.get_fields() %}
 {%-          set label = arguments.field_label(field) %}
 {%-          if not field.is_auth_role('password') %}
             if (req.body.{{ label }}) {
@@ -176,7 +176,7 @@ class AuthServer {
         logger.debug('generateTokens', user);
         const accessToken = this.generateAccessToken(user);
         const refreshToken = this.generateRefreshToken(user);
-        await this.db.saveRefreshToken(refreshToken, user.id);
+        await this.db.saveRefreshToken(refreshToken, user.sub);
         return { accessToken, refreshToken };
     }
 

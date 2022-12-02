@@ -31,10 +31,13 @@ class Reference(Semantics):
         self.entity_to.accept_referrer(self)
 
     def required_attributes(self):
-        return super().required_attributes() + ['references']
+        return super().required_attributes() + [{'name': 'references'}]
 
     def optional_attributes(self):
-        return super().optional_attributes() + ['inverse', 'auth-role']
+        return super().optional_attributes() + [
+            {'name': 'inverse'},
+            {'name': 'auth-role', 'values': ['owner', 'none'], 'default': 'none'}
+        ]
 
     def get_referrer_name(self):
         if 'inverse' in self.attributes:
@@ -63,7 +66,3 @@ class Reference(Semantics):
 
     def is_auth_enabled(self):
         return self.get_schema().is_auth_enabled()
-
-    def validate(self):
-        super().validate()
-        self.validate_attribute('auth-role', ['owner'])

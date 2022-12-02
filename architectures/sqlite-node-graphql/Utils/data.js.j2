@@ -59,7 +59,15 @@ class Data {
         });
     }
 
-{% if schema.is_auth_enabled() %}
+{%- if schema.is_auth_enabled() %}
+{%-     set auth_token_entity = schema.get_auth_token_entity() %}
+{%-     set auth_token_field = auth_token_entity.get_auth_token_field() %}
+{%-     set auth_owner_reference = auth_token_entity.get_auth_owner_reference() %}
+
+{%-     set auth_token_entity_label = database.name(auth_token_entity) %}
+{%-     set auth_token_field_label = database.name(auth_token_field) %}
+{%-     set auth_owner_reference_label = database.name(auth_owner_reference) %}
+
     /**
      * check if refresh token exists
      * @param {string} token
@@ -68,8 +76,8 @@ class Data {
     async checkRefreshTokenExists(token) {
         const row = await this.get(`
                 SELECT count(*) AS c
-                  FROM refresh_tokens
-                 WHERE token = ?
+                  FROM {{ auth_token_entity_label }}
+                 WHERE {{ auth_token_field_label }} = ?
             `,
             [token]
         );
@@ -83,7 +91,7 @@ class Data {
      */
     async saveRefreshToken(token, id) {
         return this.run(
-            `INSERT OR IGNORE INTO refresh_tokens(token, {{ database.name(schema.get_auth_user_entity().get_auth_id_field()) }}) VALUES (?, ?)`,
+            `INSERT OR IGNORE INTO {{ auth_token_entity_label }}({{ auth_token_field_label }}, {{ auth_owner_reference_label }}) VALUES (?, ?)`,
             [token, id]
         );
     }
@@ -140,7 +148,7 @@ class Data {
             .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
-{%-     if entity.is_auth_role('user') -%}
+{%-     if entity.is_auth_role('owner') -%}
 {%-         set field = entity.get_auth_id_field() %}
 
     /**

@@ -31,7 +31,10 @@ class Schema(Container):
         super().__init__(attributes, components)
 
     def optional_attributes(self):
-        return super().optional_attributes() + ['auth', 'access-token-expiry']
+        return super().optional_attributes() + [
+            {'name': 'auth', 'values': ['enabled', 'disabled'], 'default': 'disabled'},
+            {'name': 'access-token-expiry'}
+        ]
 
     def build(self):
         self.entities = {x.attributes['name']: x for x in self.components if isinstance(x, Entity)}
@@ -43,16 +46,22 @@ class Schema(Container):
 
     def validate(self):
         super().validate()
-        self.validate_attribute('auth', ['enabled', 'disabled'])
         if self.is_auth_enabled():
             found_user_auth = False
+            found_token_auth = False
             for entity in self.entities:
-                if self.entities[entity].is_auth_role('user'):
+                if self.entities[entity].is_auth_role('owner'):
                     if found_user_auth:
-                        raise SemanticException("duplicate entities with auth-role=user")
+                        raise SemanticException("duplicate entities with auth-role=owner")
                     found_user_auth = True
+                if self.entities[entity].is_auth_role('token'):
+                    if found_token_auth:
+                        raise SemanticException('duplicate entities with auth-role=token')
+                    found_token_auth = True
             if not found_user_auth:
-                raise SemanticException("schema has auth enabled but no entity with auth-role=user defined")
+                raise SemanticException("schema has auth enabled but no entity with auth-role=owner was defined")
+            if not found_token_auth:
+                raise SemanticException('schema has auth enabled but no entity with auth-role=token was defined')
 
     def find_entity(self, name):
         if name in self.entities:
@@ -68,15 +77,21 @@ class Schema(Container):
         return self.associations
 
     def is_auth_enabled(self):
-        return 'auth' in self.attributes and self.attributes['auth'] == 'enabled'
+        return self.attribute_value('auth', 'enabled')
 
-    def get_auth_user_entity(self):
+    def get_auth_owner_entity(self):
         for entity in self.get_entities():
-            if entity.is_auth_role('user'):
+            if entity.is_auth_role('owner'):
+                return entity
+        return None
+
+    def get_auth_token_entity(self):
+        for entity in self.get_entities():
+            if entity.is_auth_role('token'):
                 return entity
         return None
 
     def access_token_expiry(self):
         if 'access-token-expiry' in self.attributes:
             return self.attributes['access-token-expiry']
-        return '1h'  # FIXME this is jwt-specific
+        return '1h'  # FIXME is this jwt-specific?

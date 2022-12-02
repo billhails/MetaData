@@ -40,7 +40,11 @@ class Entity(Container):
         self.referrers = {}
 
     def optional_attributes(self):
-        return super().optional_attributes() + ['auth-role']
+        return super().optional_attributes() + [
+            {'name': 'auth-role', 'values': ['owner', 'token', 'none'], 'default': 'none'},
+            {'name': 'auth-access', 'values': ['any', 'owner', 'admin'], 'default': 'any'},
+            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'}
+        ]
 
     def build(self, schema):
         self.schema = schema
@@ -57,51 +61,63 @@ class Entity(Container):
 
     def validate(self):
         super().validate()
-        self.validate_attribute('auth-role', ['user'])
-        if self.is_auth_role('user'):
-            got_id = False
-            got_password = False
-            for field in self.get_fields():
-                if field.is_auth_role('external-id'):
-                    if got_id:
-                        raise SemanticException("duplicate declarations of auth-role=id")
-                    got_id = True
-                if field.is_auth_role('password'):
-                    if got_password:
-                        raise SemanticException("duplicate declaration for auth-role=password")
-                    got_password = True
-            if not got_id:
-                raise SemanticException(
-                    "entity {name} declared as auth-role=user but contains no field with auth-role=id".format(
-                        name=self.name
+        self.validate_auth_fields('owner', ['external-id', 'password'])
+        self.validate_auth_fields('token', ['token'])
+        self.validate_auth_references('token', ['owner'])
+
+
+    def validate_auth_fields(self, entity_role, field_roles):
+        self.validate_auth_components(entity_role, field_roles, self.get_fields())
+
+    def validate_auth_references(self, entity_role, reference_roles):
+        self.validate_auth_components(entity_role, reference_roles, self.get_references())
+
+    def validate_auth_components(self, entity_role, component_roles, components):
+        if self.is_auth_role(entity_role):
+            for component_role in component_roles:
+                found = False
+                for component in components:
+                    if component.is_auth_role(component_role):
+                        if found:
+                            raise SemanticException(
+                                "duplicate declarations of auth-role={role} for entity {name}".format(
+                                    role=component_role,
+                                    name=self.get_name()
+                                )
+                            )
+                        found = True
+                if not found:
+                    raise SemanticException(
+                        f'entity {self.get_name()} declared as auth-role={entity_role} but contains no component with '
+                        f'auth-role={component_role}'
                     )
-                )
-            if not got_password:
-                raise SemanticException(
-                    "entity {name} declared as auth-role=user but contains no field with auth-role=password".format(
-                        name=self.name
-                    )
-                )
-            if self.has_references() or self.has_unions():
-                raise SemanticException('an entity with auth-role="user" cannot contain references to other entities')
 
     def get_auth_id_field(self):
+        return self.get_auth_field('external-id');
+
+    def get_auth_field(self, role):
         for field in self.get_fields():
-            if field.is_auth_role('external-id'):
+            if field.is_auth_role(role):
                 return field
-        return None
+        raise SemanticException(f'entity {self.get_name()} has no field with auth-role={role}')
 
     def get_auth_password_field(self):
-        for field in self.get_fields():
-            if field.is_auth_role('password'):
-                return field
-        return None
+        return self.get_auth_field('password')
 
-    def get_owner_field(self):
+    def get_auth_owner_reference(self):
         for reference in self.get_references():
             if reference.is_auth_role('owner'):
                 return reference
         return ID({"name": 'id'})
+
+    def get_auth_token_field(self):
+        return self.get_auth_field('token')
+
+    def get_auth_reference(self, role):
+        for reference in self.get_references():
+            if reference.is_auth_role(role):
+                return reference
+        raise SemanticException(f'entity {self.get_name()} has no reference with auth-role={role}')
 
     def get_field_with_type(self, field_type):
         for field in self.get_fields():

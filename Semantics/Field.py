@@ -25,10 +25,16 @@ class Field(Semantics):
         self.entity = entity
 
     def required_attributes(self):
-        return super().required_attributes() + ['type']
+        return super().required_attributes() + [
+            {'name': 'type', 'values': ["string", "guid", "small_string", "name", "email", "password", "token"]}
+        ]
 
     def optional_attributes(self):
-        return super().optional_attributes() + ['unique', 'auth-role', 'auth-redacted']
+        return super().optional_attributes() + [
+            {'name': 'unique', 'values': ['n', 'y'], 'default': 'n'},
+            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token'], 'default': 'none'},
+            {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'}
+        ]
 
     def get_type(self):
         return self.attributes['type']
@@ -36,18 +42,11 @@ class Field(Semantics):
     def get_entity(self):
         return self.entity
 
-    def validate(self):
-        super().validate()
-        self.validate_attribute('type', ["string", "guid", "small_string", "name", "email", "password"])
-        self.validate_attribute('unique', ['y', 'n'])
-        self.validate_attribute('auth-role', ['external-id', 'password'])
-        self.validate_attribute('auth-redacted', ['y', 'n'])
-
     def is_unique(self):
         return self.attribute_value('unique', 'y')
 
-    def is_redacted(self):
-        return self.is_auth_enabled() and self.attribute_value('auth-redacted', 'y')
+    def is_auth_visibility(self, visibility):
+        return self.is_auth_enabled() and self.attribute_value('auth-visibility', visibility)
 
     def get_schema(self):
         return self.get_entity().get_schema()

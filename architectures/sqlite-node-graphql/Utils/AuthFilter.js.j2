@@ -35,10 +35,10 @@ class AuthFilter {
 {%- for entity in schema.get_entities() %}
 
 {%-     for field in entity.get_fields() %}
-{%-         if field.is_redacted() %}
+{%-         if field.is_auth_visibility('redacted') %}
     {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
         logger.debug('{{ resolve.redact_field_for_entity(entity, field) }} called', {model, user: req.user});
-        if (!req.user || req.user.sub != model.{{ arguments.field_label(entity.get_owner_field()) }}) {
+        if (!req.user || req.user.sub != model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}) {
             model.{{ arguments.field_label(field) }} = "XXX";
         }
     }
@@ -49,7 +49,7 @@ class AuthFilter {
         return this.resolver.{{ resolve.entity(entity) }}(source, args, req).then(
             model => {
 {%-     for field in entity.get_fields() %}
-{%-         if field.is_redacted() %}
+{%-         if field.is_auth_visibility('redacted') %}
                 this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
 {%-         endif %}
 {%-     endfor %}
@@ -62,7 +62,7 @@ class AuthFilter {
         return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(
             models => models.map(model => {
 {%-     for field in entity.get_fields() %}
-{%-         if field.is_redacted() %}
+{%-         if field.is_auth_visibility('redacted') %}
                 this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
 {%-         endif %}
 {%-     endfor %}
