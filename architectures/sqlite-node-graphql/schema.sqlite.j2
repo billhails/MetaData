@@ -22,7 +22,8 @@
 {%- elif type == "small_string" %}TEXT
 {%- elif type == "email" %}TEXT
 {%- elif type == "name" %}TEXT
-%- elif type == "password" %}TEXT
+{%- elif type == "password" %}TEXT
+{%- elif type == "token" %}TEXT
 {%- elif type == "guid" %}TEXT CHECK(LENGTH({{ name }} == 36))
 {%- else %}???
 {%- endif %}

@@ -87,13 +87,19 @@ class Semantics:
         return " " * depth * 4
 
     def attribute_value(self, attribute, value):
-        return attribute in self.attributes and self.attributes[attribute] == value
+        return self.has_attribute(attribute) and self.attributes[attribute] == value
+
+    def has_attribute(self, attribute):
+        return attribute in self.attributes
 
     def is_auth_enabled(self):
         raise NotImplementedError('child class should implement is_auth_enabled')
+
     def is_auth_role(self, role):
         return self.is_auth_enabled() and self.attribute_value('auth-role', role)
 
+    def has_attribute_not(self, attribute, value):
+        return self.has_attribute(attribute) and not self.attribute_value(attribute, value)
     def debug(self, message):
         print(message)
         return ''

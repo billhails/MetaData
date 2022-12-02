@@ -92,6 +92,12 @@ class Entity(Container):
                         f'auth-role={component_role}'
                     )
 
+    def has_only_auth_components(self):
+        for field in self.get_fields():
+            if not field.is_auth():
+                return False
+        return True
+
     def get_auth_id_field(self):
         return self.get_auth_field('external-id');
 

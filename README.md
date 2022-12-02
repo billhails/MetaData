@@ -34,14 +34,43 @@ This will create the directory `demo/out` if it doesn't exist and populate it wi
 Note that the argument to `--architecture` is just the name of a directory under `./architectures`
 containing appropriate templates. The intention is to support more architectures in the future.
 
-To run the generated application:
+If you're intending to use authentication, as the demo does, you will also need to generate a `.env` file
+inside the architecture source, containing access and refresh token secrets. This file is ignored by git
+and since it is generated once in the source, the secrets won't change and invalidate all your access and
+refresh tokens every time you run the build. You can conveniently generate this file with:
+
+```commandline
+python3 main.py --architecture sqlite-node-graphql --generate-dotenv
+```
+
+## Run the Generated Application
+
+To actually run the generated application:
 
 ```commandline
 cd demo/out
 npm install     # first time - install node js dependencies
-npm run init-db # first time - creates the empty database
+npm run init-db # first time - creates the empty database, subsequently will empty the database (your choice)
 npm run dev     # run the application on http://localhost:4000/graphql
 ```
+
+If you have authentication turned on (the demo does,) after starting the above, in a separate terminal you must also run:
+
+```commandline
+cd demo/out
+npm run dev-auth
+```
+
+### Tests
+
+tests are generated for the demo application, to run them:
+
+```commandline
+cd demo/out
+npm run test
+```
+
+This is also useful because it will populate the database.
 
 ## Structure of the Builder Application
 

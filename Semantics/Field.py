@@ -48,6 +48,9 @@ class Field(Semantics):
     def is_auth_visibility(self, visibility):
         return self.is_auth_enabled() and self.attribute_value('auth-visibility', visibility)
 
+    def is_auth(self):
+        return self.has_attribute_not('auth-role', 'none') or self.has_attribute_not('auth-visibility', 'visible')
+
     def get_schema(self):
         return self.get_entity().get_schema()
 

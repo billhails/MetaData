@@ -89,10 +89,21 @@ class Data {
      *
      * @param {string} token
      */
-    async saveRefreshToken(token, id) {
-        return this.run(
-            `INSERT OR IGNORE INTO {{ auth_token_entity_label }}({{ auth_token_field_label }}, {{ auth_owner_reference_label }}) VALUES (?, ?)`,
-            [token, id]
+    async saveRefreshToken(token, owner) {
+        const model = new Model.{{ model.name(auth_token_entity) }}(
+            {
+                {{ auth_token_field_label }}: token,
+                {{ auth_owner_reference_label }}: owner
+            }
+        );
+        return this.run(`
+            INSERT OR IGNORE INTO {{ auth_token_entity_label }}(
+                                      id,
+                                      {{ auth_token_field_label }},
+                                      {{ auth_owner_reference_label }}
+                                  )
+                           VALUES (?, ?, ?)
+            `, [model.id, model.{{ auth_token_field_label }}, model.{{ auth_owner_reference_label }}]
         );
     }
 

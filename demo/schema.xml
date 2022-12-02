@@ -42,7 +42,7 @@
 
     <entity name="refresh_tokens" auth-role="token" auth-access="owner" auth-visibility="hidden">
         <description>Refresh tokens for auth.</description>
-        <field name="token" type="token" auth-role="token"/>
+        <field name="token" type="token" auth-role="token" unique="y"/>
         <reference name="owner" auth-role="owner" references="users"/>
     </entity>
 
