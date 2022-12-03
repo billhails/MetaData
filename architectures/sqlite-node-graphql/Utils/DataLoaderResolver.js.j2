@@ -73,8 +73,8 @@ class DataLoaderResolver {
         return associations.map(row => this.loaders.{{ loader.other_entity(entity, association) }}.load(row));
     }
 {%     endfor %}
-    async {{ resolve.create_entity(entity) }}(_, args, req) {
-        return this.loaders.data.{{ data.create_entity(entity) }}(args);
+    async {{ resolve.create_entity(entity) }}(_, { input }, req) {
+        return this.loaders.data.{{ data.create_entity(entity) }}(input);
     }
 
     async {{ resolve.update_entity(entity) }}(_, { id, input }, req) {
@@ -82,7 +82,7 @@ class DataLoaderResolver {
     }
 
     async {{ resolve.delete_entity(entity) }}(_, { id }, req) {
-        return this.loaders.data.{{ data.delete_entity(entity) }}(id);
+        return this.loaders.data.{{ data.delete_entity(entity) }}(id, req.user.sub);
     }
 
 {% endfor %}

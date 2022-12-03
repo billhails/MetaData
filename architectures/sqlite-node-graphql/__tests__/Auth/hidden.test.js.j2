@@ -33,6 +33,7 @@ const jwt = require('jsonwebtoken');
 
 {%-     set token_entity = schema.get_auth_token_entity() %}
 {%-     set token_entity_label = arguments.field_label(token_entity) %}
+{%-     set token_entity_name = arguments.singular_entity_label(token_entity) %}
 
 {%-     set owner_token_name = arguments.referrer_label(token_entity.get_auth_owner_reference()) %}
 {%-     set token_field_label = arguments.field_label(token_entity.get_auth_token_field()) %}
@@ -41,10 +42,26 @@ function userQuery(id) {
         {
             {{ owner_label }}(id: "${id}") {
                 {{ owner_token_name }} {
+                    id
                     {{ token_field_label }}
                 }
             }
         }`;
+}
+
+function tokenQuery(id) {
+    return gql`
+        {
+            {{ token_entity_name }}(id: "${id}") {
+                {{ token_field_label }}
+            }
+        }`;
+}
+
+async function createUser() {
+    const user = randomUser();
+    const response = await signup(user);
+    return deconstruct(response);
 }
 
 describe("{{ token_entity_label }}", () => {
@@ -57,19 +74,51 @@ describe("{{ token_entity_label }}", () => {
     });
     it("is visible to its owner", async () => {
         expect.assertions(1);
-        const user = randomUser();
-        const response = await signup(user);
-        const { accessToken, refreshToken, id } = deconstruct(response);
+        const { accessToken, refreshToken, id } = await createUser();
         const graphQLClient = getGraphQLClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
         expect(data.{{ owner_label }}?.{{ owner_token_name }}?.[0]?.{{ token_field_label }}).toBe(refreshToken);
     });
+    it("is fetchable directly by its owner", async () => {
+        expect.assertions(1);
+        const { accessToken, refreshToken, id } = await createUser();
+        const graphQLClient = getGraphQLClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        const tokenId = data.{{ owner_label }}?.{{ owner_token_name }}?.[0]?.id;
+        const query2 = tokenQuery(tokenId);
+        const data2 = await graphQLClient.request(query2);
+        expect(data2.{{ token_entity_name }}?.{{ token_field_label }}).toBe(refreshToken);
+    });
+    it("is not fetchable directly by a logged-out user", async () => {
+        expect.assertions(1);
+        const { accessToken, refreshToken, id } = await createUser();
+        const graphQLClient = getGraphQLClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        const tokenId = data.{{ owner_label }}?.{{ owner_token_name }}?.[0]?.id;
+        const query2 = tokenQuery(tokenId);
+        const loggedOutGraphQLClient = getGraphQLClient();
+        const data2 = await loggedOutGraphQLClient.request(query2);
+        expect(data2.{{ token_entity_name }}).toBe(null);
+    });
+    it("is not fetchable directly by another user", async () => {
+        expect.assertions(1);
+        const { accessToken, refreshToken, id } = await createUser();
+        const graphQLClient = getGraphQLClient(accessToken);
+        const query = userQuery(id);
+        const data = await graphQLClient.request(query);
+        const tokenId = data.{{ owner_label }}?.{{ owner_token_name }}?.[0]?.id;
+        const { accessToken: accessToken2 } = await createUser();
+        const query2 = tokenQuery(tokenId);
+        const graphQLClient2 = getGraphQLClient(accessToken2);
+        const data2 = await graphQLClient2.request(query2);
+        expect(data2.{{ token_entity_name }}).toBe(null);
+    });
     it("is invisible to a logged out user", async () => {
         expect.assertions(1);
-        const user = randomUser();
-        const response = await signup(user);
-        const { id } = deconstruct(response);
+        const { id } = await createUser();
         const graphQLClient = getGraphQLClient();
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
@@ -77,18 +126,13 @@ describe("{{ token_entity_label }}", () => {
     });
     it("is invisible to a different user", async () => {
         expect.assertions(1);
-        const user1 = randomUser();
-        const response1 = await signup(user1);
-        const { id: id1 } = deconstruct(response1);
-        const user2 = randomUser();
-        const response2 = await signup(user2);
-        const { accessToken } = deconstruct(response2);
+        const { id } = await createUser();
+        const { accessToken } = await createUser();
         const graphQLClient = getGraphQLClient(accessToken);
-        const query = userQuery(id1);
+        const query = userQuery(id);
         const data = await graphQLClient.request(query);
         expect(data.{{ owner_label }}?.{{ owner_token_name }}).toStrictEqual([]);
     });
-
 });
 {%- else %}
 test("stub", () => expect(1).toBe(1));

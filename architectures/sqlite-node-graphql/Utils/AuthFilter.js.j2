@@ -55,7 +55,11 @@ class AuthFilter {
 {%-     endfor %}
                 return model;
             }
-        );
+        )
+{%-       if entity.is_auth_role("token") -%}
+            .then(model => req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }} ? model : null)
+{%-      endif -%}
+        ;
     }
 
     async {{ resolve.entities(entity) }}(source, args, req) {
@@ -112,14 +116,33 @@ class AuthFilter {
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(source, args, req) {
+        if (!req.user) {
+            return null;
+        }
+{%-     if entity.get_auth_owner_reference() %}
+        args.input.{{ arguments.field_label(entity.get_auth_owner_reference()) }} = req.user.sub;
+{%-     endif %}
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req);
     }
 
     async {{ resolve.update_entity(entity) }}(source, args, req) {
+        if (!req.user) {
+            return null;
+        }
+{%-     if entity.get_auth_owner_reference() %}
+        const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req);
+        if (model.{{ arguments.field_label(entity.get_auth_owner_reference()) }} != req.user.sub) {
+            return null;
+        }
+{%-     endif %}
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req);
     }
 
     async {{ resolve.delete_entity(entity) }}(source, args, req) {
+        if (!req.user) {
+            return { status: false };
+        }
+
         return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req);
     }
 

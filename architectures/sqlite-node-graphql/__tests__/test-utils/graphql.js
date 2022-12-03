@@ -1,4 +1,4 @@
-const { GraphQLClient } = require('graphql-request');
+const { GraphQLClient, gql } = require('graphql-request');
 
 function getGraphQLClient(token) {
     return new GraphQLClient(
@@ -12,5 +12,7 @@ function getGraphQLClient(token) {
 }
 
 module.exports = {
-    getGraphQLClient
+    getGraphQLClient,
+    GraphQLClient,
+    gql
 };

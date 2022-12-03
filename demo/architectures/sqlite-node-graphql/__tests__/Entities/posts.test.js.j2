@@ -1,0 +1,170 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ #}
+{# example test included by using the --extra override #}
+
+const { randomUser, faker } = require('../test-utils/fakery');
+const { signup, deconstruct } = require('../test-utils/auth');
+const { getGraphQLClient, gql } = require('../test-utils/graphql');
+
+async function createUser() {
+    const user = randomUser();
+    const response = await signup(user);
+    return deconstruct(response);
+}
+
+function randomPost() {
+    return {
+        body: faker.lorem.paragraph()
+    }
+}
+
+function createPostMutation() {
+    const post = randomPost()
+    return {
+        mutation: gql`mutation AddPost($body: String!) {
+            addPost(input: {body: $body}) {
+                id,
+                body,
+                owner {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            body: post.body
+        }
+    }
+}
+
+function updatePostMutation(id) {
+    const post = randomPost()
+    return {
+        mutation: gql`mutation UpdatePost($id: ID!, $body: String!) {
+            updatePost(id: $id, input: {body: $body}) {
+                id
+                body
+                owner {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            body: post.body,
+            id
+        }
+    }
+}
+
+function deletePostMutation(id) {
+    return {
+        mutation: gql`mutation DeletePost($id: ID!) {
+            deletePost(id: $id) {
+                status
+            }
+        }`,
+        variables: {
+            id
+        }
+    }
+}
+
+describe("posts", () => {
+    it("cannot be created by a logged-out user", async () => {
+        expect.assertions(1);
+        const loggedOut = getGraphQLClient();
+        const post = createPostMutation();
+        const data = await loggedOut.request(post.mutation, post.variables);
+        expect(data).toStrictEqual({addPost: null});
+    });
+    it("can be created by a logged-in user", async () => {
+        expect.assertions(2);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        expect(data.addPost).not.toBeNull();
+        expect(data.addPost?.owner?.id).toBe(id);
+    });
+    it("can be modified by the owner", async () => {
+        expect.assertions(2);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const updatePost = updatePostMutation(data.addPost.id);
+        const updatedData = await loggedIn.request(updatePost.mutation, updatePost.variables);
+        expect(updatedData.updatePost.body).toBe(updatePost.variables.body);
+        expect(updatedData.updatePost.owner.id).toBe(id);
+    });
+    it("can not be modified by a logged-out user", async () => {
+        expect.assertions(1);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const updatePost = updatePostMutation(data.addPost.id);
+        const loggedOut = getGraphQLClient();
+        const updatedData = await loggedOut.request(updatePost.mutation, updatePost.variables);
+        expect(updatedData.updatePost).toBeNull();
+    });
+    it("can not be modified by a different user", async () => {
+        expect.assertions(1);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const updatePost = updatePostMutation(data.addPost.id);
+        const { accessToken: otherAccessToken } = await createUser();
+        const otherUser = getGraphQLClient(otherAccessToken);
+        const updatedData = await otherUser.request(updatePost.mutation, updatePost.variables);
+        expect(updatedData.updatePost).toBeNull();
+    });
+    it("can be deleted by the owner", async () => {
+        expect.assertions(1);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const deletePost = deletePostMutation(data.addPost.id);
+        const deletedData = await loggedIn.request(deletePost.mutation, deletePost.variables);
+        expect(deletedData).toStrictEqual({deletePost: { status: true }})
+    });
+    it("can not be deleted by a logged-out user", async () => {
+        expect.assertions(1);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const deletePost = deletePostMutation(data.addPost.id);
+        const loggedOut = getGraphQLClient();
+        const deletedData = await loggedOut.request(deletePost.mutation, deletePost.variables);
+        expect(deletedData).toStrictEqual({deletePost: { status: false }})
+    });
+    it("can not be deleted by a different user", async () => {
+        expect.assertions(1);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const deletePost = deletePostMutation(data.addPost.id);
+        const { accessToken: otherAccessToken } = await createUser();
+        const otherUser = getGraphQLClient(otherAccessToken);
+        const deletedData = await otherUser.request(deletePost.mutation, deletePost.variables);
+        expect(deletedData).toStrictEqual({deletePost: { status: false }});
+    });
+});

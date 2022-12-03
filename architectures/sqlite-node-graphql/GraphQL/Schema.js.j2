@@ -14,22 +14,22 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+ -#}
 // {{ warning }}
 
-{% import 'macros/resolver.j2h' as resolve %}
-{% import 'macros/schema.j2h' as arguments %}
-{% import 'macros/model.j2h' as model %}
-{% import 'macros/database.j2h' as database %}
+{%- import 'macros/resolver.j2h' as resolve %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/model.j2h' as model %}
+{%- import 'macros/database.j2h' as database %}
 
 const {
-  GraphQLEnumType,
-  GraphQLInterfaceType,
-  GraphQLList,
-  GraphQLNonNull,
-  GraphQLObjectType,
-  GraphQLUnionType,
-  GraphQLInputObjectType,
+    GraphQLEnumType,
+    GraphQLInterfaceType,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLObjectType,
+    GraphQLUnionType,
+    GraphQLInputObjectType,
 } = require('graphql/type/definition');
 const { GraphQLInt, GraphQLBoolean } = require('graphql/type');
 const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
@@ -39,96 +39,107 @@ const logger = require('../Utils/logger');
 const Model = require('../Model');
 
 const make_schema = (resolver) => {
-{% for entity in schema.get_entities() %}
+    const statusType = new GraphQLObjectType ({
+        name: 'status',
+        fields: {
+            status: {
+                type: new GraphQLNonNull(GraphQLBoolean)
+            }
+        },
+    });
 
-{%     for union in entity.get_unions() %}
+{%- for entity in schema.get_entities() %}
+
+{%-     for union in entity.get_unions() %}
+
     const {{ arguments.union_enum_type(entity, union) }} = new GraphQLEnumType({
         name: '{{ arguments.union_enum_type(entity, union) }}',
         values: {
-{%         for reference in union.get_references() %}
+{%-         for reference in union.get_references() %}
             {{ arguments.field_label(reference) }}: { value: '{{ database.name(reference) }}' },
-{%         endfor %}
+{%-         endfor %}
         }
     });
 
     const {{ arguments.union_type(entity, union) }} = new GraphQLUnionType({
-      name: '{{ arguments.union_type(entity, union) }}',
-      types: () => ([
-{%         for reference in union.get_references() %}{{ arguments.entity_type(reference.get_referenced()) }}, {% endfor %}
-      ]),
-      resolveType(value) {
-{%             for reference in union.get_references() %}
-        if (value instanceof Model.{{ model.name(reference.get_referenced()) }}) {
-          return {{ arguments.entity_type(reference.get_referenced()) }};
+        name: '{{ arguments.union_type(entity, union) }}',
+        types: () => ([
+{%-         for reference in union.get_references() %}{{ arguments.entity_type(reference.get_referenced()) }}, {% endfor -%}
+        ]),
+        resolveType(value) {
+{%-         for reference in union.get_references() %}
+            if (value instanceof Model.{{ model.name(reference.get_referenced()) }}) {
+                return {{ arguments.entity_type(reference.get_referenced()) }};
+            }
+{%-         endfor %}
         }
-{%         endfor %}
-      }
     });
-{%     endfor %}
+{%-     endfor %}
 
     const {{ arguments.entity_type(entity) }} = new GraphQLObjectType ({
-      name: '{{ arguments.entity_type(entity) }}',
-      description: '{{ entity.get_description() }}',
-      fields: () => ({
-        id: {
-          type: new GraphQLNonNull(GraphQLID),
-          description: '{{ database.name(entity) }} id.',
-        },
-{%     for field in entity.get_fields() %}
-{%         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
-        {{ arguments.field_label(field) }}: {
-          type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
-        },
-{%         endif %}
-{%     endfor %}
-{%     for reference in entity.get_references() %}
-        {{ arguments.field_label(reference) }}: {
-          type: new GraphQLNonNull({{ arguments.entity_type(reference.get_referenced()) }}),
-          resolve: (source, args, req) => resolver.{{ resolve.reference_for_entity(entity, reference) }}(source, args, req)
-        },
-{%     endfor %}
-{%     for union in entity.get_unions() %}
-        {{ arguments.field_label(union) }}: {
-          type: new GraphQLNonNull({{ arguments.union_type(entity, union) }}),
-          resolve: (source, args, req) => resolver.{{ resolve.union_for_entity(entity, union) }}(source, args, req)
-        },
-{%     endfor %}
-{%     for referrer in entity.get_referrers() %}
-        {{ arguments.referrer_label(referrer) }}: {
-          type: new GraphQLList({{ arguments.entity_type(referrer.get_entity()) }}),
-          args: {
-            take: {
-              description: 'limit',
-              type: GraphQLInt,
+        name: '{{ arguments.entity_type(entity) }}',
+        description: '{{ entity.get_description() }}',
+        fields: () => ({
+            id: {
+                type: new GraphQLNonNull(GraphQLID),
+                description: '{{ database.name(entity) }} id.',
             },
-            skip: {
-              description: 'offset',
-              type: GraphQLInt,
+{%-     for field in entity.get_fields() %}
+{%-         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
+            {{ arguments.field_label(field) }}: {
+                type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
             },
-          },
-          resolve: (source, args, req) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(source, args, req)
-        },
-{%     endfor %}
-{%     for association in entity.get_associations() %}
-        {{ arguments.association_other_label(entity, association) }}: {
-          type: new GraphQLList({{ arguments.entity_type(association.get_other(entity)) }}),
-          args: {
-            take: {
-              description: 'limit',
-              type: GraphQLInt,
+{%-         endif %}
+{%-     endfor %}
+{%-     for reference in entity.get_references() %}
+            {{ arguments.field_label(reference) }}: {
+                type: new GraphQLNonNull({{ arguments.entity_type(reference.get_referenced()) }}),
+                resolve: (source, args, req) => resolver.{{ resolve.reference_for_entity(entity, reference) }}(source, args, req)
             },
-            skip: {
-              description: 'offset',
-              type: GraphQLInt,
+{%-     endfor %}
+{%-     for union in entity.get_unions() %}
+            {{ arguments.field_label(union) }}: {
+                type: new GraphQLNonNull({{ arguments.union_type(entity, union) }}),
+                resolve: (source, args, req) => resolver.{{ resolve.union_for_entity(entity, union) }}(source, args, req)
             },
-          },
-          resolve: (source, args, req) => resolver.{{ resolve.association_for_entity(entity, association) }}(source, args, req)
-        },
-{%     endfor %}
-      })
+{%-     endfor %}
+{%-     for referrer in entity.get_referrers() %}
+            {{ arguments.referrer_label(referrer) }}: {
+                type: new GraphQLList({{ arguments.entity_type(referrer.get_entity()) }}),
+                args: {
+                    take: {
+                        description: 'limit',
+                        type: GraphQLInt,
+                    },
+                    skip: {
+                        description: 'offset',
+                        type: GraphQLInt,
+                    },
+                },
+                resolve: (source, args, req) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(source, args, req)
+            },
+{%-     endfor %}
+{%-     for association in entity.get_associations() %}
+            {{ arguments.association_other_label(entity, association) }}: {
+                type: new GraphQLList({{ arguments.entity_type(association.get_other(entity)) }}),
+                args: {
+                    take: {
+                        description: 'limit',
+                        type: GraphQLInt,
+                    },
+                    skip: {
+                        description: 'offset',
+                        type: GraphQLInt,
+                    },
+                },
+                resolve: (source, args, req) => resolver.{{ resolve.association_for_entity(entity, association) }}(source, args, req)
+            },
+{%-     endfor %}
+        })
     });
 
-{%     for union in entity.get_unions() %}
+{%-     for union in entity.get_unions() %}
+
     const {{ arguments.add_union(entity, union) }} = new GraphQLInputObjectType({
         name: '{{ arguments.add_union(entity, union) }}',
         description: 'input object to create {{ database.name(entity) | singular }} {{ database.name(union) | singular }} unions.',
@@ -143,26 +154,29 @@ const make_schema = (resolver) => {
     });
 {%-     endfor %}
 
-{%     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}{# no add or delete on auth-controlled entities #}
+{%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}{# no add or delete on auth-controlled entities #}
+
     const {{ arguments.add_entity(entity) }} = new GraphQLInputObjectType({
         name: '{{ arguments.add_entity(entity) }}',
         description: 'input object to create a new {{ database.name(entity) | singular }}',
         fields: () => ({
-{%         for field in entity.get_fields() %}
+{%-         for field in entity.get_fields() %}
             {{ arguments.field_label(field) }}: {
                 type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
             },
-{%         endfor %}
-{%         for reference in entity.get_references() %}
+{%-         endfor %}
+{%-         for reference in entity.get_references() %}
+{%-             if not reference.is_auth_role('owner') %}
             {{ arguments.field_label(reference) }}: {
               type: new GraphQLNonNull(GraphQLID)
             },
-{%         endfor %}
-{%     for union in entity.get_unions() %}
+{%-             endif %}
+{%-         endfor %}
+{%-     for union in entity.get_unions() %}
             {{ arguments.field_label(union) }}: {
               type: new GraphQLNonNull({{ arguments.add_union(entity, union) }})
             },
-{%         endfor %}
+{%-         endfor %}
         }),
     });
 {%-     endif %}
@@ -173,65 +187,67 @@ const make_schema = (resolver) => {
         name: '{{ arguments.update_entity(entity) }}',
         description: 'input object to update an existing {{ database.name(entity) | singular }}',
         fields: () => ({
-{%         for field in entity.get_fields() %}
-{%             if not (entity.is_auth_role('owner') and (field.is_auth_role('external-id') or field.is_auth_role('password'))) %}
+{%-         for field in entity.get_fields() %}
+{%-             if not (entity.is_auth_role('owner') and (field.is_auth_role('external-id') or field.is_auth_role('password'))) %}
             {{ arguments.field_label(field) }}: {
                 type: {{ arguments.graphql_type(field.get_type()) }}
             },
-{%             endif %}
-{%         endfor %}
-{%         for reference in entity.get_references() %}
+{%-             endif %}
+{%-         endfor %}
+{%-         for reference in entity.get_references() %}
+{%-             if not reference.is_auth_role('owner') %}
             {{ arguments.field_label(reference) }}: {
               type: GraphQLID
             },
-{%         endfor %}
-{%         for union in entity.get_unions() %}
+{%-             endif %}
+{%-         endfor %}
+{%-         for union in entity.get_unions() %}
             {{ arguments.field_label(union) }}: {
               type: {{ arguments.add_union(entity, union) }}
             },
-{%         endfor %}
+{%-         endfor %}
         }),
     });
 {%-     endif %}
 
-{% endfor %}
+{%- endfor %}
 
     const queryType = new GraphQLObjectType({
-      name: 'Query',
-      fields: () => ({
-{% for entity in schema.get_entities() %}
-        {{ arguments.singular_entity_label(entity) }}: {
-          type: {{ arguments.entity_type(entity) }},
-          args: {
-            id: {
-              description: '{{ database.name(entity) | singular }} id',
-              type: new GraphQLNonNull(GraphQLID),
-            }
-          },
-          resolve: (source, args, req) => resolver.{{ resolve.entity(entity) }}(source, args, req),
-        },
-        {{ arguments.plural_entity_label(entity) }}: {
-          type: new GraphQLList({{ arguments.entity_type(entity) }}),
-          args: {
-            take: {
-              description: 'limit',
-              type: GraphQLInt,
+        name: 'Query',
+        fields: () => ({
+{%- for entity in schema.get_entities() %}
+            {{ arguments.singular_entity_label(entity) }}: {
+                type: {{ arguments.entity_type(entity) }},
+                args: {
+                    id: {
+                        description: '{{ database.name(entity) | singular }} id',
+                        type: new GraphQLNonNull(GraphQLID),
+                    }
+                },
+                resolve: (source, args, req) => resolver.{{ resolve.entity(entity) }}(source, args, req),
             },
-            skip: {
-              description: 'offset',
-              type: GraphQLInt,
+            {{ arguments.plural_entity_label(entity) }}: {
+                type: new GraphQLList({{ arguments.entity_type(entity) }}),
+                args: {
+                    take: {
+                        description: 'limit',
+                        type: GraphQLInt,
+                    },
+                    skip: {
+                        description: 'offset',
+                        type: GraphQLInt,
+                    },
+                },
+                resolve: (source, args, req) => resolver.{{ resolve.entities(entity) }}(source, args, req),
             },
-          },
-          resolve: (source, args, req) => resolver.{{ resolve.entities(entity) }}(source, args, req),
-        },
-{% endfor %}
-      })
+{%- endfor %}
+        })
     });
 
     const mutationType = new GraphQLObjectType({
         name: 'Mutation',
         fields: () => ({
-{% for entity in schema.get_entities() %}
+{%- for entity in schema.get_entities() %}
 {%-   if not (entity.is_auth_role('token') or entity.is_auth_role('owner')) %}
             {{ arguments.add_entity_label(entity) }}: {
                 type: {{ arguments.entity_type(entity) }},
@@ -242,7 +258,8 @@ const make_schema = (resolver) => {
                 },
                 resolve: (source, args, req) => resolver.{{ resolve.create_entity(entity) }}(source, args, req),
             },
-{%     endif %}
+{%-     endif %}
+
 {%-     if not ((entity.is_auth_role('token') or entity.is_auth_role('owner')) and entity.has_only_auth_components()) %}
             {{ arguments.update_entity_label(entity) }}: {
                 type: {{ arguments.entity_type(entity) }},
@@ -256,10 +273,11 @@ const make_schema = (resolver) => {
                 },
                 resolve: (source, args, req) => resolver.{{ resolve.update_entity(entity) }}(source, args, req),
             },
-{%     endif %}
-{%     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}
+{%-     endif %}
+
+{%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}
             {{ arguments.delete_entity_label(entity) }}: {
-                type: GraphQLBoolean,
+                type: statusType,
                 args: {
                     id: {
                          type: new GraphQLNonNull(GraphQLID)
@@ -267,12 +285,12 @@ const make_schema = (resolver) => {
                 },
                 resolve: (source, args, req) => resolver.{{ resolve.delete_entity(entity) }}(source, args, req)
             },
-{%     endif %}
-{% endfor %}
+{%-     endif %}
+{%- endfor %}
 
-{% for association in schema.get_associations() %}
+{%- for association in schema.get_associations() %}
             {{ arguments.add_association_label(association) }}: {
-                type: GraphQLBoolean,
+                type: statusType,
                 args: {
                     {{ arguments.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
@@ -284,7 +302,7 @@ const make_schema = (resolver) => {
                 resolve: (source, args, req) => resolver.{{ resolve.create_association(association) }}(source, args, req)
             },
             {{ arguments.delete_association_label(association) }}: {
-                type: GraphQLBoolean,
+                type: statusType,
                 args: {
                     {{ arguments.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
@@ -295,18 +313,15 @@ const make_schema = (resolver) => {
                 },
                 resolve: (source, args, req) => resolver.{{ resolve.delete_association(association) }}(source, args, req)
             },
-{% endfor %}
+{%- endfor %}
         })
     });
 
-
     const schema = new GraphQLSchema({
-      query: queryType,
-      mutation: mutationType
+        query: queryType,
+        mutation: mutationType
     });
-
     // logger.debug(printSchema(schema));
-
     return schema;
 
 };

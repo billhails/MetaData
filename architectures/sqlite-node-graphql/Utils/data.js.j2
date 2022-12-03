@@ -297,10 +297,12 @@ class Data {
         }
 {%     endfor %}
 {%     for reference in entity.get_references() %}
+{%-        if not reference.is_auth_role('owner') %}{# can not change owner #}
         if ('{{ arguments.field_label(reference) }}' in args) {
             fields.push("{{ database.name(reference) }} = ?");
             params.push(model.{{ arguments.field_label(reference) }});
         }
+{%         endif %}
 {%     endfor %}
 {%     for union in entity.get_unions() %}
         if ('{{ arguments.field_label(union) }}' in args) {
@@ -331,11 +333,17 @@ class Data {
      *
      * @param {String} id
      */
-    async {{ data.delete_entity(entity) }}(id) {
-        return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ?', [id]).then(stats => stats.changes > 0);
+    async {{ data.delete_entity(entity) }}(id, user) {
+{%-     if entity.get_auth_owner_reference() %}
+        return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ? and {{ database.name(entity.get_auth_owner_reference()) }} = ?', [id, user])
+{%- else %}
+        return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ?', [id])
+{%- endif -%}
+        .then(stats => { return { status: stats.changes > 0}; });
     }
 
-{%     for reference in entity.get_references() %}
+{%-     for reference in entity.get_references() %}
+
     /**
      * fetch reference
      *
@@ -349,9 +357,10 @@ class Data {
             `, [model.{{ arguments.field_label(reference) }}])
         .then(row => new Model.{{ database.name(reference.get_referenced()) }}(row));
     }
-{%     endfor %}
+{%-     endfor %}
 
-{%     for union in entity.get_unions() %}
+{%-     for union in entity.get_unions() %}
+
     /**
      * fetch union
      *
@@ -548,7 +557,7 @@ class Data {
             [args.{{ arguments.association_rhs_label(association) }}, args.{{ arguments.association_lhs_label(association) }}]
         );
         if (parseInt(row.c) > 0) {
-            return true;
+            return { status: true };
         }
 {%     endif %}
         return this.run(`
@@ -556,7 +565,7 @@ class Data {
                  VALUES (?, ?)
             `,
             [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
-        ).then(() => true);
+        ).then(stats => { return { status: stats.changes > 0}; });
     }
 
     async {{ data.delete_association(association) }}(args) {
@@ -572,14 +581,14 @@ class Data {
                 args.{{ arguments.association_lhs_label(association) }},
                 args.{{ arguments.association_rhs_label(association) }}
             ]
-        ).then(() => true);
+        ).then(stats => { return { status: stats.changes > 0}; });
 {%     else %}
         return this.run(`
             DELETE FROM {{ database.name(association) }}
                   WHERE {{ database.lhs(association) }} = ? AND {{ database.rhs(association) }} = ?
             `,
             [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
-        ).then(() => true);
+        ).then(stats => { return { status: stats.changes > 0}; });
 {%     endif %}
     }
 {% endfor %}

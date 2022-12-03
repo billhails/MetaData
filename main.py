@@ -30,6 +30,7 @@ arg_parser.add_argument(
     dest='dotenv',
     action='store_true'
 )
+arg_parser.add_argument("-e", "--extra", help="extra root directory to search for templates")
 
 args = arg_parser.parse_args()
 
@@ -51,4 +52,4 @@ else:
 
     semantics = get_semantics(args.schema)
 
-    TemplateProcessor(args.architecture, semantics, args.output).process_templates()
+    TemplateProcessor(args.architecture, semantics, args.output, args.extra).process_templates()
