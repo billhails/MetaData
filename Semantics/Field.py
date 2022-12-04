@@ -26,7 +26,7 @@ class Field(Semantics):
 
     def required_attributes(self):
         return super().required_attributes() + [
-            {'name': 'type', 'values': ["string", "guid", "small_string", "name", "email", "password", "token"]}
+            {'name': 'type', 'values': ["text", "title", "guid", "small_string", "name", "email", "password", "token"]}
         ]
 
     def optional_attributes(self):

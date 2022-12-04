@@ -1,4 +1,4 @@
-{#
+{#-
  #  MetaData - API Generator.
  #  Copyright (C) 2022  Bill Hails
  #
@@ -14,25 +14,39 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+ -#}
+// {{ warning }}
 const sqlite3 = require('sqlite3').verbose();
 const { open: openSqlite } = require('sqlite');
 const util = require('util');
 const Model = require('../Model');
 const logger = require('./logger');
 
-// {{ warning }}
-
-{% import 'macros/data.j2h' as data %}
-{% import 'macros/schema.j2h' as arguments %}
-{% import 'macros/database.j2h' as database %}
-{% import 'macros/model.j2h' as model %}
+{%- import 'macros/data.j2h' as data %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/database.j2h' as database %}
+{%- import 'macros/model.j2h' as model %}
 
 class Data {
     constructor(db) {
         this.db = db;
         this.db.run('PRAGMA foreign_keys = ON');
         this.select_fields = {};
+    }
+
+    idToCursor(id) {
+        return Buffer.from(id.replaceAll('-', ''), 'hex').toString('base64');
+    }
+
+    cursorToId(cursor) {
+        hex = Buffer.from(cursor, 'base64').toString('hex');
+        return [
+            hex.substring(0, 7),
+            hex.substring(8, 11),
+            hex.substring(12, 15),
+            hex.substring(16, 19),
+            hex.substring(20, 31)
+        ].join('-');
     }
 
     async get(query, params) {
@@ -119,9 +133,10 @@ class Data {
         );
     }
 
-{% endif %}
+{%- endif %}
 
-{% for entity in schema.get_entities() %}
+{%- for entity in schema.get_entities() %}
+
     /**
      * build a list of all fields for an entity for a select statement instead of SELECT *
      * because we need to rename them
@@ -132,16 +147,16 @@ class Data {
         if (! ('{{ database.name(entity) }}' in this.select_fields)) {
             this.select_fields['{{ database.name(entity) }}'] = [
             "{{database.name(entity) }}.id AS id",
-{%     for field in entity.get_fields() %}
+{%-     for field in entity.get_fields() %}
                 "{{database.name(entity) }}.{{ database.name(field) }} AS {{ arguments.field_label(field) }}",
-{%     endfor %}
-{%     for reference in entity.get_references() %}
+{%-     endfor %}
+{%-     for reference in entity.get_references() %}
                 "{{database.name(entity) }}.{{ database.name(reference) }} AS {{ arguments.field_label(reference) }}",
-{%     endfor %}
-{%     for union in entity.get_unions() %}
+{%-     endfor %}
+{%-     for union in entity.get_unions() %}
                 "{{ database.name(entity) }}.{{ database.name(union) }} AS {{ arguments.field_label(union) }}",
                 "{{ database.name(entity) }}.{{ database.type_name(union) }} AS {{ arguments.field_type(union) }}",
-{%     endfor %}
+{%-     endfor %}
             ].join(', ');
         }
         return this.select_fields['{{ database.name(entity) }}'];
@@ -205,7 +220,9 @@ class Data {
         const take = args.take || 20;
         const skip = args.skip || 0;
         return this.all(
-            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() } from {{ database.name(entity) }}
+            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+               FROM {{ database.name(entity) }}
+           ORDER BY id
               LIMIT ?
              OFFSET ?
             `,
@@ -213,7 +230,8 @@ class Data {
         ).then(rows => rows.map(row => new Model.{{ model.name(entity) }}(row)));
     }
 
-{%     for union in entity.get_unions() %}
+{%-     for union in entity.get_unions() %}
+
     /**
      * validate that an entry in the appropriate table exists
      *
@@ -224,11 +242,11 @@ class Data {
     async {{ data.validate_union(entity, union) }}(id, type) {
         let table;
         switch (type) {
-{%        for reference in union.get_references() %}
+{%-        for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
                 table = "{{ database.name(reference.get_referenced()) }}";
                 break;
-{%        endfor %}
+{%-        endfor %}
         }
         const row = await this.get(`
                 SELECT count(*) AS c
@@ -242,7 +260,7 @@ class Data {
             throw new Error(`union {{ database.name(entity) }}.{{ database.name(union) }} reference failed, no ${type} with id ${id}`);
         }
     }
-{%     endfor %}{# unions #}
+{%-     endfor %}{# unions #}
 
     /**
      * insert entity
@@ -252,9 +270,9 @@ class Data {
      */
     async {{ data.create_entity(entity) }}(args) {
         const model = new Model.{{ model.name(entity) }}(args);
-{%     for union in entity.get_unions() %}
+{%-     for union in entity.get_unions() %}
         await this.{{ data.validate_union(entity, union) }}(model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }});
-{%     endfor %}
+{%-     endfor %}
         const sql = `
         INSERT INTO {{ database.name(entity) }}(
           id{% for field in entity.get_fields() %}, {{ database.name(field) }}{% endfor %}
@@ -281,37 +299,39 @@ class Data {
      */
     async {{ data.update_entity(entity) }}(id, args) {
         const model = new Model.{{ model.name(entity) }}({id, ...args});
-{%     for union in entity.get_unions() %}
+{%-     for union in entity.get_unions() %}
         if ("{{ arguments.field_label(union) }}" in model) {
             await this.{{ data.validate_union(entity, union) }}(model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }});
         }
-{%     endfor %}
+{%-     endfor %}
 
         const fields = [];
         const params = [];
 
-{%     for field in entity.get_fields() %}
+{%-     for field in entity.get_fields() %}
+
         if ('{{ arguments.field_label(field) }}' in args) {
             fields.push("{{ database.name(field) }} = ?");
             params.push(model.{{ arguments.field_label(field) }});
         }
-{%     endfor %}
-{%     for reference in entity.get_references() %}
+{%-     endfor %}
+{%-     for reference in entity.get_references() %}
 {%-        if not reference.is_auth_role('owner') %}{# can not change owner #}
         if ('{{ arguments.field_label(reference) }}' in args) {
             fields.push("{{ database.name(reference) }} = ?");
             params.push(model.{{ arguments.field_label(reference) }});
         }
-{%         endif %}
-{%     endfor %}
-{%     for union in entity.get_unions() %}
+{%-         endif %}
+{%-     endfor %}
+{%-     for union in entity.get_unions() %}
+
         if ('{{ arguments.field_label(union) }}' in args) {
             fields.push("{{ database.name(union) }} = ?");
             params.push(model.{{ arguments.field_label(union) }});
             fields.push("{{ database.type_name(union) }} = ?");
             params.push(model.{{ arguments.field_type(union) }});
         }
-{%     endfor %}
+{%-     endfor %}
 
         params.push(model.id);
 
@@ -368,7 +388,7 @@ class Data {
      */
     async {{ data.get_union_for_entity(entity, union) }}(model) {
         switch (model.{{ arguments.field_type(union) }}) {
-{%         for reference in union.get_references() %}
+{%-         for reference in union.get_references() %}
             case '{{ database.name(reference) }}':
                 return this.get(`
                     SELECT  ${ this.{{ data.get_entity_fields(reference.get_referenced()) }}() }
@@ -377,12 +397,13 @@ class Data {
                     `,
                     [model.{{ arguments.field_label(union) }}]
                 ).then(row => new Model.{{ model.name(reference.get_referenced()) }}(row));
-{%         endfor %}
+{%-         endfor %}
         }
     }
-{%     endfor %}
+{%-     endfor %}
 
-{%     for referrer in entity.get_referrers() %}
+{%-     for referrer in entity.get_referrers() %}
+
     /**
      * fetch referrer
      *
@@ -390,17 +411,17 @@ class Data {
      */
     async {{ data.get_referrer_for_entity(entity, referrer) }}(model) {
         return this.all(
-{%         if referrer.is_union() %}
+{%-         if referrer.is_union() %}
             `SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
               FROM {{ database.name(referrer.get_entity()) }}
              WHERE {{ database.name(referrer.get_union()) }} = ?
              AND {{ database.type_name(referrer.get_union()) }} = "{{ database.name(referrer) }}"
              `,
-{%         else %}
+{%-         else %}
             `SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
                FROM {{ database.name(referrer.get_entity()) }}
               WHERE {{ database.name(referrer) }} = ?`,
-{%         endif %}
+{%-         endif %}
             [model.id]
         ).then(rows => rows.map(row => new Model.{{ model.name(referrer.get_entity()) }}(row)));
     }
@@ -420,16 +441,17 @@ class Data {
             const id = id_and_arg.id;
             const subQuery = `
                 SELECT * FROM (
-{%         if referrer.is_union() %}
+{%-         if referrer.is_union() %}
                 SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
                   FROM {{ database.name(referrer.get_entity()) }}
                  WHERE {{ arguments.field_label(referrer.get_union()) }} = ?
                    AND {{ arguments.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
-{%         else %}
+{%-         else %}
                 SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
                   FROM {{ database.name(referrer.get_entity()) }}
                  WHERE {{ database.name(referrer) }} = ?
-{%         endif %}
+{%-         endif %}
+              ORDER BY {{database.name(referrer.get_entity()) }}.id
                  LIMIT ?
                 OFFSET ?
                 )
@@ -440,9 +462,10 @@ class Data {
 
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.name(referrer.get_entity()) }}(row)));
     }
-{%     endfor %}
+{%-     endfor %}
 
-{%     for association in entity.get_associations() %}
+{%-     for association in entity.get_associations() %}
+
     /**
      * fetch association
      *
@@ -451,7 +474,7 @@ class Data {
      */
     async {{ data.get_association_for_entity(entity, association) }}(model) {
         return this.all(
-{%         if association.is_self_referential() %}
+{%-         if association.is_self_referential() %}
             `
     SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
       FROM {{ database.name(association) }}
@@ -466,7 +489,7 @@ class Data {
      WHERE {{ database.name(association) }}.{{ database.rhs(association) }} = ?
             `,
             [model.id, model.id]
-{%         else %}
+{%-         else %}
             `
     SELECT ${ this.{{ data.get_entity_fields(association.get_other(entity)) }}() }
       FROM {{ database.name(association) }}
@@ -475,7 +498,7 @@ class Data {
      WHERE {{ database.name(association) }}.{{ database.this_column(entity, association) }} = ?
             `,
             [model.id]
-{%         endif %}
+{%-         endif %}
         ).then(rows => rows.map(row => new Model.{{ model.name(association.get_other(entity)) }}(row)));
     }
 
@@ -486,7 +509,7 @@ class Data {
      */
     async {{ data.batch_get_association(entity, association) }}(ids_and_args) {
         logger.debug(`{{ data.batch_get_association(entity, association) }}(${util.inspect(ids_and_args)})`);
-{%         if association.is_self_referential() %}
+{%-         if association.is_self_referential() %}
         const subQueries = [];
         const args = [];
         ids_and_args.forEach(id_and_arg => {
@@ -499,6 +522,7 @@ class Data {
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.lhs(association) }} = ?
+              ORDER BY {{ arguments.rhs(association) }}
                  LIMIT ?
                 OFFSET ?
             )
@@ -508,6 +532,7 @@ class Data {
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.rhs(association) }} = ?
+              ORDER BY {{ arguments.lhs(association) }}
                  LIMIT ?
                 OFFSET ?
             )
@@ -516,8 +541,7 @@ class Data {
             args.push(id, limit, offset, id, limit, offset);
         });
 
-{%         else %}
-
+{%-         else %}
         const subQueries = [];
         const args = [];
         ids_and_args.forEach(id_and_arg => {
@@ -530,6 +554,7 @@ class Data {
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.this_column(entity, association) }} = ?
+              ORDER BY {{ arguments.other_column(entity, association) }}
                  LIMIT ?
                 OFFSET ?
             )
@@ -537,16 +562,17 @@ class Data {
             subQueries.push(subQuery);
             args.push(id, limit, offset);
         });
-{%         endif %}
+{%-         endif %}
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.association(association) }}(row)));
     }
-{%     endfor %}
+{%-     endfor %}
 
-{% endfor %}
+{%- endfor %}
 
-{% for association in schema.get_associations() %}
+{%- for association in schema.get_associations() %}
+
     async {{ data.create_association(association) }}(args) {
-{%     if association.is_self_referential() %}
+{%-     if association.is_self_referential() %}
         // check the inverse association doesn't already exist
         const row = await this.get(`
                 SELECT count(*) AS c
@@ -559,7 +585,7 @@ class Data {
         if (parseInt(row.c) > 0) {
             return { status: true };
         }
-{%     endif %}
+{%-     endif %}
         return this.run(`
             INSERT INTO {{ database.name(association) }}({{ database.lhs(association) }}, {{ database.rhs(association) }})
                  VALUES (?, ?)
@@ -569,7 +595,7 @@ class Data {
     }
 
     async {{ data.delete_association(association) }}(args) {
-{%     if association.is_self_referential() %}
+{%-     if association.is_self_referential() %}
         return this.run(`
             DELETE FROM {{ database.name(association) }}
                   WHERE ({{ database.lhs(association) }} = ? AND {{ database.rhs(association) }} = ?)
@@ -582,17 +608,16 @@ class Data {
                 args.{{ arguments.association_rhs_label(association) }}
             ]
         ).then(stats => { return { status: stats.changes > 0}; });
-{%     else %}
+{%-     else %}
         return this.run(`
             DELETE FROM {{ database.name(association) }}
                   WHERE {{ database.lhs(association) }} = ? AND {{ database.rhs(association) }} = ?
             `,
             [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
         ).then(stats => { return { status: stats.changes > 0}; });
-{%     endif %}
+{%-     endif %}
     }
-{% endfor %}
-
+{%- endfor %}
 
     static async build() {
         return openSqlite({

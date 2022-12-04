@@ -19,6 +19,8 @@
 
 {%- macro sqlite_type(type, name) %}
 {%- if type == "string" %}TEXT
+{%- elif type == "title" %}TEXT
+{%- elif type == "text" %}TEXT
 {%- elif type == "small_string" %}TEXT
 {%- elif type == "email" %}TEXT
 {%- elif type == "name" %}TEXT
@@ -58,7 +60,7 @@ CREATE TABLE {{ database.name(entity) }} (
 ,
     FOREIGN KEY ({{ database.name(reference) }}) REFERENCES {{ database.name(reference.get_referenced()) }}(id) ON DELETE CASCADE
 {%-     endfor %}
-);
+) WITHOUT ROWID;
 {%- endfor %}
 
 {%- for association in schema.get_associations() %}

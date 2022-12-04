@@ -30,14 +30,15 @@
 
     <entity name="posts" auth-access="owner" auth-visibility="visible">
         <description>A post by a user.</description>
-        <field name="body" type="string"/>
+        <field name="title" type="title"/>
+        <field name="body" type="text"/>
         <!-- a reference is a foreign key, essentially -->
         <reference name="owner" references="users" auth-role="owner"/>
     </entity>
 
     <entity name="comments" auth-access="owner" auth-visibility="visible">
         <description>A comment on a user, post or other comment.</description>
-        <field name="body" type="string"/>
+        <field name="body" type="text"/>
         <reference name="owner" references="users" auth-role="owner"/>
         <!-- unions are discriminated foregn keys, this "about" union can refer to a user, post or comment -->
         <union name="about">
@@ -49,7 +50,7 @@
 
     <entity name="categories" auth-access="admin" auth-visibility="visible">
         <description>Categories of Posts</description>
-        <field name="label" type="string"/>
+        <field name="label" type="title"/>
     </entity>
 
     <!-- associations are many-to-many relationships -->
