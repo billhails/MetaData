@@ -1,0 +1,163 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -#}
+// {{ warning }}
+
+{% import 'macros/resolver.j2h' as resolve %}
+{% import 'macros/schema.j2h' as arguments %}
+
+const logger = require('./logger');
+const util = require('util');
+const {
+	parseResolveInfo
+} = require('graphql-parse-resolve-info');
+
+/**
+ * convert graphql requests to dataloader requests and translate the raw data responses to GraphQL structures
+ */
+class GraphQLFilter {
+    constructor(resolver) {
+        this.resolver = resolver;
+    }
+
+    clearAll() {
+        this.resolver.clearAll();
+    }
+
+    idToCursor(id) {
+        return Buffer.from(id.replaceAll('-', ''), 'hex').toString('base64');
+    }
+
+    cursorToId(cursor) {
+        const hex = Buffer.from(cursor, 'base64').toString('hex');
+        return [
+            hex.substring(0, 8),
+            hex.substring(8, 12),
+            hex.substring(12, 16),
+            hex.substring(16, 20),
+            hex.substring(20, 32)
+        ].join('-');
+    }
+
+    makeConnection(rows, count) {
+        logger.debug('makeConnection got rows', {rows});
+        const startCursor = rows.length ? this.idToCursor(rows[0].id) : null;
+        const endCursor = rows.length ? this.idToCursor(rows[rows.length - 1].id) : null;
+        const hasPreviousPage = false;
+        const hasNextPage = false;
+        return {
+            totalCount: count,
+            edges: rows.map(row => ({ cursor: this.idToCursor(row.id), node: row })),
+            pageInfo: {
+                startCursor,
+                endCursor,
+                hasPreviousPage,
+                hasNextPage
+            }
+        };
+    }
+
+{%- for entity in schema.get_entities() %}
+
+    async {{ resolve.entity(entity) }}(source, args, req, info) {
+        return this.resolver.{{ resolve.entity(entity) }}(source, args, req);
+        ;
+    }
+
+    async {{ resolve.entities(entity) }}(source, args, req, info) {
+        const parsedInfo = parseResolveInfo(info);
+        let totalCount = 0;
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(entity) }}?.totalCount) {
+            const countResult = await this.resolver.{{ resolve.count_entities(entity) }}(source, args, info);
+            totalCount = countResult.count || 0;
+        }
+        if (args.after) {
+            const cursor = args.after;
+            const id = this.cursorToId(args.after);
+            args.after = id;
+            logger.debug('cursorToId', {cursor, id})
+        }
+        return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(page => this.makeConnection(page, totalCount));
+    }
+
+{%-     for reference in entity.get_references() %}
+
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info) {
+        logger.debug(`{{ resolve.reference_for_entity(entity, reference) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+{%-     for union in entity.get_unions() %}
+
+    async {{ resolve.union_for_entity(entity, union) }}(entity, args, req, info) {
+        logger.debug(`{{ resolve.union_for_entity(entity, union) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+{%-     for referrer in entity.get_referrers() %}
+
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
+        logger.debug(`{{ resolve.referrer_for_entity(entity, referrer) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+{%-     for association in entity.get_associations() %}
+
+    async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
+        logger.debug(`{{ resolve.association_for_entity(entity, association) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req);
+    }
+
+{%-     endfor %}
+
+    async {{ resolve.create_entity(entity) }}(source, args, req, info) {
+        logger.debug(`{{ resolve.create_entity(entity) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req);
+    }
+
+    async {{ resolve.update_entity(entity) }}(source, args, req, info) {
+        logger.debug(`{{ resolve.update_entity(entity) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req);
+    }
+
+    async {{ resolve.delete_entity(entity) }}(source, args, req, info) {
+        logger.debug(`{{ resolve.delete_entity(entity) }} got info`, {info: parseResolveInfo(info)});
+        return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req).then(status => ({status}));
+    }
+
+{%- endfor %}
+
+{%- for association in schema.get_associations() %}
+
+    async {{ resolve.create_association(association) }}(source, args, req, info) {
+        return this.resolver.{{ resolve.create_association(association) }}(source, args, req).then(status => ({status}));
+    }
+
+    async {{ resolve.delete_association(association) }}(source, args, req, info) {
+        return this.resolver.{{ resolve.delete_association(association) }}(source, args, req).then(status => ({status}));
+    }
+
+{%- endfor %}
+}
+
+module.exports = GraphQLFilter;

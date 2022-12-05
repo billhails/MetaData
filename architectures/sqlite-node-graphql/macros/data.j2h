@@ -18,6 +18,7 @@
 {# defines method names declared in the data layer and called from the resolver and the loader #}
 {% macro page_get_entity(entity) %}pageGet{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro batch_get_entity(entity) %}batchGet{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro count_entities(entity) %}count{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro batch_get_referrer(referrer) %}batchGet{{ referrer.get_entity().get_name() | mixed_case }}By{{ referrer.get_name() | mixed_case }}{% endmacro %}
 {% macro batch_get_association(entity, association) %}batchGet{{ association.get_name() | mixed_case }}{% if association.is_self_referential() %}Associations{% else %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}{% endmacro %}
 {% macro get_entity(entity) %}get{{ entity.get_name() | singular | mixed_case }}ById{% endmacro %}

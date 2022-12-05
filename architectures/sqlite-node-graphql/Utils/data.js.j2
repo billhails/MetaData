@@ -34,23 +34,8 @@ class Data {
         this.select_fields = {};
     }
 
-    idToCursor(id) {
-        return Buffer.from(id.replaceAll('-', ''), 'hex').toString('base64');
-    }
-
-    cursorToId(cursor) {
-        hex = Buffer.from(cursor, 'base64').toString('hex');
-        return [
-            hex.substring(0, 7),
-            hex.substring(8, 11),
-            hex.substring(12, 15),
-            hex.substring(16, 19),
-            hex.substring(20, 31)
-        ].join('-');
-    }
-
     async get(query, params) {
-        logger.debug(`get: ${query} ${params}`);
+        // logger.debug(`get: ${query} ${params}`);
         return this.db.get(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
@@ -58,7 +43,7 @@ class Data {
     }
 
     async run(query, params) {
-        logger.debug(`run: ${query} ${params}`);
+        // logger.debug(`run: ${query} ${params}`);
         return this.db.run(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
@@ -66,7 +51,7 @@ class Data {
     }
 
     async all(query, params) {
-        logger.debug(`all: ${query} ${params}`);
+        // logger.debug(`all: ${query} ${params}`);
         return this.db.all(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
@@ -146,7 +131,7 @@ class Data {
     {{ data.get_entity_fields(entity) }}() {
         if (! ('{{ database.name(entity) }}' in this.select_fields)) {
             this.select_fields['{{ database.name(entity) }}'] = [
-            "{{database.name(entity) }}.id AS id",
+                "{{database.name(entity) }}.id AS id",
 {%-     for field in entity.get_fields() %}
                 "{{database.name(entity) }}.{{ database.name(field) }} AS {{ arguments.field_label(field) }}",
 {%-     endfor %}
@@ -169,7 +154,6 @@ class Data {
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.get_entity(entity) }}(id) {
-        logger.debug(`{{ data.get_entity(entity) }}(${util.inspect(id)})`);
         return this.get(`SELECT ${ this.{{ data.get_entity_fields(entity) }}() } FROM {{ database.name(entity) }} WHERE id = ?`, [id])
             .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
@@ -184,7 +168,6 @@ class Data {
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.get_entity_by_field(entity, field) }}(id) {
-        logger.debug(`{{ data.get_entity_by_field(entity, field) }}(${util.inspect(id)})`);
         return this.get(`
                 SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
                   FROM {{ database.name(entity) }}
@@ -202,9 +185,10 @@ class Data {
      * @returns {[Model.{{ model.name(entity) }}]}
      */
     async {{ data.batch_get_entity(entity) }}(ids) {
-        logger.debug(`{{ data.batch_get_entity(entity) }}(${util.inspect(ids)})`);
         const rows = await this.all(
-            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() } from {{ database.name(entity) }} WHERE id IN (${ Array(ids.length).fill('?').join(', ') })`,
+            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+               FROM {{ database.name(entity) }}
+              WHERE id IN (${ Array(ids.length).fill('?').join(', ') })`,
             ids
         ).then(rows => rows.reduce((acc, row) => ({ ...acc, [row.id]: row }), {}));
         return ids.map(id => rows[id] ? new Model.{{ model.name(entity) }}(rows[id]) : null);
@@ -217,17 +201,27 @@ class Data {
      * @returns {[Model.{{ model.name(entity) }}]}
      */
     async {{ data.page_get_entity(entity) }}(args) {
-        const take = args.take || 20;
-        const skip = args.skip || 0;
+        const first = args.first || 20;
+        const after = args.after || '';
         return this.all(
             `SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
                FROM {{ database.name(entity) }}
+              WHERE id > ?
            ORDER BY id
               LIMIT ?
-             OFFSET ?
             `,
-            [take, skip]
+            [after, first]
         ).then(rows => rows.map(row => new Model.{{ model.name(entity) }}(row)));
+    }
+
+    /**
+     * count all entities
+     */
+    async {{ data.count_entities(entity) }}(args) {
+        return this.get(`
+            SELECT count(*) AS count
+              FROM {{ database.name(entity) }}
+        `);
     }
 
 {%-     for union in entity.get_unions() %}
@@ -359,7 +353,7 @@ class Data {
 {%- else %}
         return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ?', [id])
 {%- endif -%}
-        .then(stats => { return { status: stats.changes > 0}; });
+        .then(stats => stats.changes > 0);
     }
 
 {%-     for reference in entity.get_references() %}
@@ -432,12 +426,11 @@ class Data {
      * @param {[string]} ids
      */
     async {{ data.batch_get_referrer(referrer) }}(ids_and_args) {
-        logger.debug(`{{ data.batch_get_referrer(referrer) }}(${util.inspect(ids_and_args)}`);
         const subQueries = [];
         const args = [];
         ids_and_args.forEach(id_and_arg => {
-            const limit = id_and_arg.args.take || 5;
-            const offset = id_and_arg.args.skip || 0;
+            const limit = id_and_arg.args.first || 5;
+            const after = id_and_arg.args.after || '';
             const id = id_and_arg.id;
             const subQuery = `
                 SELECT * FROM (
@@ -451,13 +444,13 @@ class Data {
                   FROM {{ database.name(referrer.get_entity()) }}
                  WHERE {{ database.name(referrer) }} = ?
 {%-         endif %}
+                   AND {{database.name(referrer.get_entity()) }}.id > ?
               ORDER BY {{database.name(referrer.get_entity()) }}.id
                  LIMIT ?
-                OFFSET ?
                 )
             `;
             subQueries.push(subQuery);
-            args.push(id, limit, offset);
+            args.push(id, after, limit);
         });
 
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.name(referrer.get_entity()) }}(row)));
@@ -508,23 +501,22 @@ class Data {
      * @param {[string]} ids
      */
     async {{ data.batch_get_association(entity, association) }}(ids_and_args) {
-        logger.debug(`{{ data.batch_get_association(entity, association) }}(${util.inspect(ids_and_args)})`);
 {%-         if association.is_self_referential() %}
         const subQueries = [];
         const args = [];
         ids_and_args.forEach(id_and_arg => {
             const id = id_and_arg.id;
-            const limit = id_and_arg.args.take || 5;
-            const offset = id_and_arg.args.skip || 0;
+            const limit = id_and_arg.args.first || 5;
+            const after = id_and_arg.args.after || '';
             const subQuery = `
             SELECT * FROM (
                 SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.lhs(association) }} = ?
+                   AND {{ arguments.rhs(association) }} > ?
               ORDER BY {{ arguments.rhs(association) }}
                  LIMIT ?
-                OFFSET ?
             )
             UNION ALL
             SELECT * FROM (
@@ -532,13 +524,13 @@ class Data {
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.rhs(association) }} = ?
+                   AND {{ arguments.lhs(association) }} > ?
               ORDER BY {{ arguments.lhs(association) }}
                  LIMIT ?
-                OFFSET ?
             )
             `;
             subQueries.push(subQuery);
-            args.push(id, limit, offset, id, limit, offset);
+            args.push(id, after, limit, id, after, limit);
         });
 
 {%-         else %}
@@ -546,21 +538,21 @@ class Data {
         const args = [];
         ids_and_args.forEach(id_and_arg => {
             const id = id_and_arg.id;
-            const limit = id_and_arg.args.take || 5;
-            const offset = id_and_arg.args.skip || 0;
+            const limit = id_and_arg.args.first || 5;
+            const offset = id_and_arg.args.after || '';
             const subQuery = `
             SELECT * FROM (
                 SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
                        {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
                   FROM {{ database.name(association) }}
                  WHERE {{ arguments.this_column(entity, association) }} = ?
+                   AND {{ arguments.other_column(entity, association) }} > ?
               ORDER BY {{ arguments.other_column(entity, association) }}
                  LIMIT ?
-                OFFSET ?
             )
             `;
             subQueries.push(subQuery);
-            args.push(id, limit, offset);
+            args.push(id, after, limit);
         });
 {%-         endif %}
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.association(association) }}(row)));
@@ -583,7 +575,7 @@ class Data {
             [args.{{ arguments.association_rhs_label(association) }}, args.{{ arguments.association_lhs_label(association) }}]
         );
         if (parseInt(row.c) > 0) {
-            return { status: true };
+            return true;
         }
 {%-     endif %}
         return this.run(`
@@ -591,7 +583,7 @@ class Data {
                  VALUES (?, ?)
             `,
             [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
-        ).then(stats => { return { status: stats.changes > 0}; });
+        ).then(stats => stats.changes > 0);
     }
 
     async {{ data.delete_association(association) }}(args) {
@@ -607,14 +599,14 @@ class Data {
                 args.{{ arguments.association_lhs_label(association) }},
                 args.{{ arguments.association_rhs_label(association) }}
             ]
-        ).then(stats => { return { status: stats.changes > 0}; });
+        ).then(stats => stats.changes > 0);
 {%-     else %}
         return this.run(`
             DELETE FROM {{ database.name(association) }}
                   WHERE {{ database.lhs(association) }} = ? AND {{ database.rhs(association) }} = ?
             `,
             [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
-        ).then(stats => { return { status: stats.changes > 0}; });
+        ).then(stats => stats.changes > 0);
 {%-     endif %}
     }
 {%- endfor %}

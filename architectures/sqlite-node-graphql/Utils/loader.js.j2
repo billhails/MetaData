@@ -40,6 +40,16 @@ class EntityLoader {
     }
 }
 
+class EntityCountLoader {
+    constructor({page_get}) {
+        this.page_get = page_get;
+    }
+
+    async load (args) {
+        return this.page_get(args);
+    }
+}
+
 class AbstractLoader {
     constructor(batch_get, name) {
         this.lookup = {};
@@ -157,6 +167,10 @@ module.exports = (data) => {
         page_get: async args => data.{{ data.page_get_entity(entity) }}(args)
     });
 
+    const {{ loader.count_entities(entity) }} = new EntityCountLoader({
+        page_get: async args => data.{{ data.count_entities(entity) }}(args)
+    });
+
 {%     for referrer in entity.get_referrers() %}
     const {{ loader.referrer(referrer) }} = new ReferrerLoader({
         batch_get: async (ids_and_args) => data.{{ data.batch_get_referrer(referrer) }}(ids_and_args),
@@ -203,6 +217,7 @@ module.exports = (data) => {
 {% for entity in schema.get_entities() %}
         {{ loader.entity(entity) }},
         {{ loader.entities(entity) }},
+        {{ loader.count_entities(entity) }},
 {%     for referrer in entity.get_referrers() %}
         {{ loader.referrer(referrer) }},
 {%     endfor %}

@@ -51,3 +51,5 @@
 {% macro delete_entity_label(entity) %}delete{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro delete_association(association) %}Delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro delete_association_label(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
+{% macro entity_connection(entity) %}{{ entity.get_name() | camel_case }}Connection{% endmacro %}
+{% macro entity_edge(entity) %}{{ entity.get_name() | camel_case }}Edge{% endmacro %}

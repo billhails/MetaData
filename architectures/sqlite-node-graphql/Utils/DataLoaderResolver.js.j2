@@ -44,6 +44,10 @@ class DataLoaderResolver {
         return this.loaders.{{ loader.entities(entity) }}.load(args);
     }
 
+    async {{ resolve.count_entities(entity) }}(source, args, req) {
+        return this.loaders.{{ loader.count_entities(entity) }}.load(args);
+    }
+
 {%     for reference in entity.get_references() %}
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req) {
         return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})

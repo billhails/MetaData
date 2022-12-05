@@ -9,6 +9,7 @@ const SimpleResolver = require('./Utils/SimpleResolver');
 const loader = require('./Utils/loader');
 const DataLoaderResolver = require('./Utils/DataLoaderResolver');
 const AuthFilter = require('./Utils/AuthFilter');
+const GraphQLFilter = require('./Utils/GraphQLFilter');
 const { parseArgs } = require('node:util');
 
 const cliOptions = {
@@ -29,8 +30,10 @@ const useDataLoader = true;
     app.use('/graphql', validateTokenMiddleware, graphqlHTTP({
       schema: make_schema(
         new AuthFilter(
-          new DataLoaderResolver(
-            loader(data)
+          new GraphQLFilter(
+            new DataLoaderResolver(
+              loader(data)
+            )
           )
         )
       ),
