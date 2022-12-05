@@ -102,7 +102,7 @@ class AuthFilter {
 
 {%-     for referrer in entity.get_referrers() %}
 
-    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
         return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info)
 {%-        if referrer.get_entity().is_auth_visibility("hidden") -%}
             .then(models => models.filter(model => req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }}))

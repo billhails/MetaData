@@ -69,6 +69,10 @@ class DataLoaderResolver {
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
         return this.loaders.{{ loader.referrer(referrer) }}.load(entity.id, args)
     }
+
+    async {{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, req) {
+        return this.loaders.{{ loader.count_referrer(referrer) }}.load(entity.id, args);
+    }
 {%     endfor %}
 
 {%     for association in entity.get_associations() %}

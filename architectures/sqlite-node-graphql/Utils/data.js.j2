@@ -455,6 +455,33 @@ class Data {
 
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.name(referrer.get_entity()) }}(row)));
     }
+
+
+    /**
+     * count referrers for loader
+     *
+     * @param {[string]} ids
+     */
+    async {{ data.batch_count_referrer(referrer) }}(ids_and_args) {
+
+        const ids = ids_and_args.map(({id}) => id);
+        const query = `
+{%-         if referrer.is_union() %}
+            SELECT count(*) AS count, {{ arguments.field_label(referrer.get_union()) }}
+              FROM {{ database.name(referrer.get_entity()) }}
+             WHERE {{ arguments.field_label(referrer.get_union()) }} = IN (${ Array(ids.length).fill('?').join(', ') })
+               AND {{ arguments.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
+          GROUP BY {{ arguments.field_label(referrer.get_union()) }}
+{%-         else %}
+            SELECT count(*) as count, {{ database.name(referrer) }}
+              FROM {{ database.name(referrer.get_entity()) }}
+             WHERE {{ database.name(referrer) }} IN (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY {{ database.name(referrer) }}
+{%-         endif %}
+        `;
+
+        return this.all(query, ids);
+    }
 {%-     endfor %}
 
 {%-     for association in entity.get_associations() %}

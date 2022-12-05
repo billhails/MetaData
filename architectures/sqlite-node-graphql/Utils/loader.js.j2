@@ -104,6 +104,26 @@ class ReferrerLoader extends AbstractLoader {
     }
 }
 
+class ReferrerCountLoader extends AbstractLoader {
+    constructor({name, batch_get, referrer_column}) {
+        super(batch_get, name);
+        this.referrer_column = referrer_column;
+        const that = this;
+        this.loader = new DataLoader(
+            async keys => {
+                that.debug('started', {keys});
+                const ids_and_args = keys.map(key => that.lookup[key]);
+                that.debug('got ids_and_args', ids_and_args);
+                const referrerCounts = await that.batch_get(ids_and_args);
+                that.debug('got raw referrer counts', referrerCounts);
+                const processedCounts = referrerCounts.reduce((acc, count) => ({...acc, [count[that.referrer_column]]: count.count}), {});
+                that.debug(`got referrer counts (${that.referrer_column})`, processedCounts);
+                return ids_and_args.map(({id}) => ({ count: processedCounts[id] || 0}));
+            }
+        );
+    }
+}
+
 class SelfReferentialAssociationLoader extends AbstractLoader {
     constructor({name, batch_get, lhs_column, rhs_column}) {
         super(batch_get, name);
@@ -178,6 +198,12 @@ module.exports = (data) => {
         referrer_column: '{{ referrer.get_column_name() }}',
         name: '{{ loader.referrer(referrer) }}'
     });
+
+    const {{ loader.count_referrer(referrer) }} = new ReferrerCountLoader({
+        name: '{{ loader.count_referrer(referrer) }}',
+        batch_get: async (ids_and_args) => data.{{ data.batch_count_referrer(referrer) }}(ids_and_args),
+        referrer_column: '{{ referrer.get_column_name() }}'
+    });
 {%     endfor %}
 
 {%     for association in entity.get_associations() %}
@@ -206,6 +232,7 @@ module.exports = (data) => {
         {{ loader.entities(entity) }}.clearAll();
 {%     for referrer in entity.get_referrers() %}
         {{ loader.referrer(referrer) }}.clearAll();
+        {{ loader.count_referrer(referrer) }}.clearAll();
 {%     endfor %}
 {%     for association in entity.get_associations() %}
         {{ loader.association_for_entity(entity, association) }}.clearAll();
@@ -220,6 +247,7 @@ module.exports = (data) => {
         {{ loader.count_entities(entity) }},
 {%     for referrer in entity.get_referrers() %}
         {{ loader.referrer(referrer) }},
+        {{ loader.count_referrer(referrer) }},
 {%     endfor %}
 {%     for association in entity.get_associations() %}
         {{ loader.association_for_entity(entity, association) }},

@@ -17,8 +17,8 @@
  -#}
 // {{ warning }}
 
-{% import 'macros/resolver.j2h' as resolve %}
-{% import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/resolver.j2h' as resolve %}
+{%- import 'macros/schema.j2h' as arguments %}
 
 const logger = require('./logger');
 const util = require('util');
@@ -54,7 +54,7 @@ class GraphQLFilter {
     }
 
     makeConnection(rows, count) {
-        logger.debug('makeConnection got rows', {rows});
+        logger.debug('GraphQLFilter.makeConnection got rows', {rows});
         const startCursor = rows.length ? this.idToCursor(rows[0].id) : null;
         const endCursor = rows.length ? this.idToCursor(rows[rows.length - 1].id) : null;
         const hasPreviousPage = false;
@@ -84,12 +84,14 @@ class GraphQLFilter {
         if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(entity) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_entities(entity) }}(source, args, info);
             totalCount = countResult.count || 0;
+            if (totalCount == 0) {
+                return this.makeConnection([], 0);
+            }
         }
         if (args.after) {
             const cursor = args.after;
             const id = this.cursorToId(args.after);
             args.after = id;
-            logger.debug('cursorToId', {cursor, id})
         }
         return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(page => this.makeConnection(page, totalCount));
     }
@@ -97,7 +99,6 @@ class GraphQLFilter {
 {%-     for reference in entity.get_references() %}
 
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info) {
-        logger.debug(`{{ resolve.reference_for_entity(entity, reference) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req);
     }
 
@@ -106,7 +107,6 @@ class GraphQLFilter {
 {%-     for union in entity.get_unions() %}
 
     async {{ resolve.union_for_entity(entity, union) }}(entity, args, req, info) {
-        logger.debug(`{{ resolve.union_for_entity(entity, union) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req);
     }
 
@@ -115,8 +115,22 @@ class GraphQLFilter {
 {%-     for referrer in entity.get_referrers() %}
 
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
-        logger.debug(`{{ resolve.referrer_for_entity(entity, referrer) }} got info`, {info: parseResolveInfo(info)});
-        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req);
+        const parsedInfo = parseResolveInfo(info);
+        logger.debug(`GraphQLFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got info`, {parsedInfo});
+        let totalCount = 0;
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(referrer.get_entity()) }}?.totalCount) {
+            const countResult = await this.resolver.{{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, info);
+            totalCount = countResult.count || 0;
+            if (totalCount == 0) {
+                return this.makeConnection([], 0);
+            }
+        }
+        if (args.after) {
+            const cursor = args.after;
+            const id = this.cursorToId(args.after);
+            args.after = id;
+        }
+        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req).then(page => this.makeConnection(page, totalCount));
     }
 
 {%-     endfor %}
@@ -124,24 +138,20 @@ class GraphQLFilter {
 {%-     for association in entity.get_associations() %}
 
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
-        logger.debug(`{{ resolve.association_for_entity(entity, association) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req);
     }
 
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
-        logger.debug(`{{ resolve.create_entity(entity) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req);
     }
 
     async {{ resolve.update_entity(entity) }}(source, args, req, info) {
-        logger.debug(`{{ resolve.update_entity(entity) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req);
     }
 
     async {{ resolve.delete_entity(entity) }}(source, args, req, info) {
-        logger.debug(`{{ resolve.delete_entity(entity) }} got info`, {info: parseResolveInfo(info)});
         return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req).then(status => ({status}));
     }
 
