@@ -27,6 +27,7 @@ const util = require('util');
 
 class {{ model.name(entity) }} {
     constructor(args) {
+        logger.debug('new Model.{{ model.name(entity) }}', {args});
         this.id = args.id || uuidv4();
 {% for field in entity.get_fields() %}
         this.{{ arguments.field_label(field) }} = args.{{ arguments.field_label(field) }};

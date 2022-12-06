@@ -1,4 +1,4 @@
-{#
+{#-
  #  MetaData - API Generator.
  #  Copyright (C) 2022  Bill Hails
  #
@@ -14,14 +14,14 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+ -#}
 // {{ warning }}
 
-{% import 'macros/resolver.j2h' as resolve %}
-{% import 'macros/loader.j2h' as loader %}
-{% import 'macros/data.j2h' as data %}
-{% import 'macros/schema.j2h' as arguments %}
-{% import 'macros/database.j2h' as database %}
+{%- import 'macros/resolver.j2h' as resolve %}
+{%- import 'macros/loader.j2h' as loader %}
+{%- import 'macros/data.j2h' as data %}
+{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/database.j2h' as database %}
 
 const logger = require('./logger');
 const util = require('util');
@@ -35,7 +35,8 @@ class DataLoaderResolver {
         this.loaders.clearAll();
     }
 
-{% for entity in schema.get_entities() %}
+{%- for entity in schema.get_entities() %}
+
     async {{ resolve.entity(entity) }}(source, args, req) {
         return this.loaders.{{ loader.entity(entity) }}.load(args.id);
     }
@@ -48,24 +49,28 @@ class DataLoaderResolver {
         return this.loaders.{{ loader.count_entities(entity) }}.load(args);
     }
 
-{%     for reference in entity.get_references() %}
+{%-     for reference in entity.get_references() %}
+
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req) {
         return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})
     }
-{%     endfor %}
 
-{%     for union in entity.get_unions() %}
+{%-     endfor %}
+
+{%-     for union in entity.get_unions() %}
+
     async {{ resolve.union_for_entity(entity, union) }}(entity, args, req) {
         switch (entity.{{ arguments.field_label(union) }}Type) {
-{%         for reference in union.get_references() %}
+{%-         for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
                 return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(union) }});
-{%         endfor %}
+{%-         endfor %}
         }
     }
-{%     endfor %}
+{%-     endfor %}
 
-{%     for referrer in entity.get_referrers() %}
+{%-     for referrer in entity.get_referrers() %}
+
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
         return this.loaders.{{ loader.referrer(referrer) }}.load(entity.id, args)
     }
@@ -73,15 +78,23 @@ class DataLoaderResolver {
     async {{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, req) {
         return this.loaders.{{ loader.count_referrer(referrer) }}.load(entity.id, args);
     }
-{%     endfor %}
+{%-     endfor %}
 
-{%     for association in entity.get_associations() %}
+{%-     for association in entity.get_associations() %}
+
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req) {
         const associations = await this.loaders.{{ loader.association_for_entity(entity, association) }}.load(entity.id, args);
-        return associations.map(row => this.loaders.{{ loader.other_entity(entity, association) }}.load(row));
+        logger.debug(`DataLoaderResolver.{{ resolve.association_for_entity(entity, association) }} got associations from {{ loader.association_for_entity(entity, association) }} ${util.inspect(associations)}`);
+        return Promise.all(associations.map(id => this.loaders.{{ loader.other_entity(entity, association) }}.load(id)));
     }
-{%     endfor %}
+
+    async {{ resolve.count_association_for_entity(entity, association) }}(entity, args, req) {
+        return this.loaders.{{ loader.count_association_for_entity(entity, association) }}.load(entity.id, args);
+    }
+{%-     endfor %}
+
     async {{ resolve.create_entity(entity) }}(_, { input }, req) {
+        logger.debug('DataLoaderResolver.{{ resolve.create_entity(entity) }}', {input});
         return this.loaders.data.{{ data.create_entity(entity) }}(input);
     }
 
@@ -93,8 +106,10 @@ class DataLoaderResolver {
         return this.loaders.data.{{ data.delete_entity(entity) }}(id, req.user.sub);
     }
 
-{% endfor %}
-{% for association in schema.get_associations() %}
+{%- endfor %}
+
+{%- for association in schema.get_associations() %}
+
     async {{ resolve.create_association(association) }}(_, args, req) {
         return this.loaders.data.{{ data.create_association(association) }}(args);
     }
@@ -102,7 +117,7 @@ class DataLoaderResolver {
     async {{ resolve.delete_association(association) }}(_, args, req) {
         return this.loaders.data.{{ data.delete_association(association) }}(args);
     }
-{% endfor %}
+{%- endfor %}
 }
 
 module.exports = DataLoaderResolver;

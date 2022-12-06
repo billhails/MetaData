@@ -88,12 +88,15 @@ class GraphQLFilter {
                 return this.makeConnection([], 0);
             }
         }
-        if (args.after) {
-            const cursor = args.after;
-            const id = this.cursorToId(args.after);
-            args.after = id;
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(entity) }}?.edges) {
+            if (args.after) {
+                const cursor = args.after;
+                const id = this.cursorToId(args.after);
+                args.after = id;
+            }
+            return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(page => this.makeConnection(page, totalCount));
         }
-        return this.resolver.{{ resolve.entities(entity) }}(source, args, req).then(page => this.makeConnection(page, totalCount));
+        return this.makeConnection([], totalCount);
     }
 
 {%-     for reference in entity.get_references() %}
@@ -125,12 +128,15 @@ class GraphQLFilter {
                 return this.makeConnection([], 0);
             }
         }
-        if (args.after) {
-            const cursor = args.after;
-            const id = this.cursorToId(args.after);
-            args.after = id;
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(referrer.get_entity()) }}?.edges) {
+            if (args.after) {
+                const cursor = args.after;
+                const id = this.cursorToId(args.after);
+                args.after = id;
+            }
+            return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req).then(page => this.makeConnection(page, totalCount));
         }
-        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req).then(page => this.makeConnection(page, totalCount));
+        return this.makeConnection([], totalCount)
     }
 
 {%-     endfor %}
@@ -138,12 +144,27 @@ class GraphQLFilter {
 {%-     for association in entity.get_associations() %}
 
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req);
+        const parsedInfo = parseResolveInfo(info);
+        logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got info`, {parsedInfo});
+        let totalCount = 0;
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(association.get_other(entity)) }}?.totalCount) {
+            const countResult = await this.resolver.{{ resolve.count_association_for_entity(entity, association) }}(entity, args, req);
+            logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got totalCount ${countResult}`);
+            totalCount = countResult || 0;
+            if (totalCount == 0) {
+                return this.makeConnection([], 0)
+            }
+        }
+        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(association.get_other(entity)) }}?.edges) {
+            return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req).then(page => this.makeConnection(page, totalCount));
+        }
+        return this.makeConnection([], totalCount);
     }
 
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
+        logger.debug('GraphQLFilter.{{ resolve.create_entity(entity) }}', {args});
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req);
     }
 

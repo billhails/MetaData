@@ -103,11 +103,12 @@ class AuthFilter {
 {%-     for referrer in entity.get_referrers() %}
 
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info)
+        const models = await  this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info);
 {%-        if referrer.get_entity().is_auth_visibility("hidden") -%}
-            .then(models => models.filter(model => req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }}))
-{%-        endif -%}
-            ;
+        logger.debug('AuthFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got models', {models});
+        this.filterConnection(models, model => req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }});
+{%-        endif %}
+        return models;
     }
 
 {%-     endfor %}
@@ -121,10 +122,11 @@ class AuthFilter {
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
+        logger.debug('AuthFilter.{{ resolve.create_entity(entity) }}', {args});
         if (!req.user) {
             return null;
         }
-{%-     if entity.get_auth_owner_reference() %}
+{%-     if entity.has_auth_owner() %}
         args.input.{{ arguments.field_label(entity.get_auth_owner_reference()) }} = req.user.sub;
 {%-     endif %}
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req, info);

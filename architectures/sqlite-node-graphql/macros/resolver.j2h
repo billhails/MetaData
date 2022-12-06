@@ -21,6 +21,7 @@
 {% macro referrer_for_entity(entity, referrer) %}resolve{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro count_referrers_for_entity(entity, referrer) %}resolveCount{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro association_for_entity(entity, association) %}resolve{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}Association{% endmacro %}
+{% macro count_association_for_entity(entity, association) %}resolveCount{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}Association{% endmacro %}
 {% macro entity(entity) %}resolve{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro entities(entity) %}resolve{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro count_entities(entity) %}resolveCount{{ entity.get_name() | mixed_case }}{% endmacro %}

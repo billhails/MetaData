@@ -65,6 +65,14 @@ class Entity(Container):
         self.validate_auth_fields('token', ['token'])
         self.validate_auth_references('token', ['owner'])
 
+    def has_auth_role(self):
+        return self.has_attribute_not('auth-role', 'none')
+
+    def has_auth_owner(self):
+        for reference in self.get_references():
+            if reference.is_auth_role('owner'):
+                return True
+        return False
 
     def validate_auth_fields(self, entity_role, field_roles):
         self.validate_auth_components(entity_role, field_roles, self.get_fields())

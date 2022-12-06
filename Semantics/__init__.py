@@ -103,6 +103,7 @@ class Semantics:
 
     def has_attribute_not(self, attribute, value):
         return self.has_attribute(attribute) and not self.attribute_value(attribute, value)
+
     def debug(self, message):
         print(message)
         return ''

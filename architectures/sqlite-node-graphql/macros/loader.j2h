@@ -24,4 +24,5 @@
 {% macro referrer(referrer) %}{{ referrer.get_entity().get_name() | camel_case }}By{{ referrer.get_name() | mixed_case }}Loader{% endmacro %}
 {% macro count_referrer(referrer) %}count{{ referrer.get_entity().get_name() | mixed_case }}By{{ referrer.get_name() | mixed_case }}Loader{% endmacro %}
 {% macro association_for_entity(entity, association) %}{{ association.get_name() | camel_case }}{% if not association.is_self_referential() %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}Loader{% endmacro %}
+{% macro count_association_for_entity(entity, association) %}count{{ association.get_name() | mixed_case }}{% if not association.is_self_referential() %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}Loader{% endmacro %}
 {% macro other_entity(entity, association) %}{{ association.get_other(entity).get_name() | camel_case | singular }}Loader{% endmacro %}

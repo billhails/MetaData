@@ -263,6 +263,7 @@ class Data {
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.create_entity(entity) }}(args) {
+        logger.debug('data.{{ data.create_entity(entity) }}', {args});
         const model = new Model.{{ model.name(entity) }}(args);
 {%-     for union in entity.get_unions() %}
         await this.{{ data.validate_union(entity, union) }}(model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }});
@@ -469,8 +470,8 @@ class Data {
 {%-         if referrer.is_union() %}
             SELECT count(*) AS count, {{ arguments.field_label(referrer.get_union()) }}
               FROM {{ database.name(referrer.get_entity()) }}
-             WHERE {{ arguments.field_label(referrer.get_union()) }} = IN (${ Array(ids.length).fill('?').join(', ') })
-               AND {{ arguments.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
+             WHERE {{ arguments.field_label(referrer.get_union()) }} IN (${ Array(ids.length).fill('?').join(', ') })
+               AND {{ database.type_name(referrer.get_union()) }} = "{{ database.name(referrer) }}"
           GROUP BY {{ arguments.field_label(referrer.get_union()) }}
 {%-         else %}
             SELECT count(*) as count, {{ database.name(referrer) }}
@@ -566,7 +567,7 @@ class Data {
         ids_and_args.forEach(id_and_arg => {
             const id = id_and_arg.id;
             const limit = id_and_arg.args.first || 5;
-            const offset = id_and_arg.args.after || '';
+            const after = id_and_arg.args.after || '';
             const subQuery = `
             SELECT * FROM (
                 SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
@@ -584,6 +585,40 @@ class Data {
 {%-         endif %}
         return this.all(subQueries.join('UNION ALL'), args).then(rows => rows.map(row => new Model.{{ model.association(association) }}(row)));
     }
+
+    /**
+     * fetch associations for loader
+     *
+     * @param {[string]} ids
+     */
+    async {{ data.batch_count_association(entity, association) }}(ids_and_args) {
+        const ids = ids_and_args.map(({id}) => id);
+{%-         if association.is_self_referential() %}
+        const query = `
+            SELECT count(*) AS count, {{ association.get_rhs_column() }} AS id
+              FROM {{ database.name(association) }}
+             WHERE id in (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY id
+         UNION ALL
+            SELECT count(*) AS count, {{ association.get_lhs_column() }} AS id
+              FROM {{ database.name(association) }}
+             WHERE id in (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY id
+        `;
+        return this.all(query, ids.concat(ids));
+{%-         else %}
+        const query = `
+            SELECT count(*) AS count,
+                   {{ association.get_this_column(entity) }}
+              FROM {{ database.name(association) }}
+             WHERE {{ association.get_this_column(entity) }} IN (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY {{ association.get_this_column(entity) }}
+        `;
+        return this.all(query, ids);
+{%-         endif %}
+    }
+
+
 {%-     endfor %}
 
 {%- endfor %}

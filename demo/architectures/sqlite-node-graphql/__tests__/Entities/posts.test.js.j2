@@ -86,6 +86,90 @@ function deletePostMutation(id) {
     }
 }
 
+function categoriesQuery() {
+    return {
+        query: gql`query CountCategories {
+            categories {
+                totalCount
+                edges {
+                    node {
+                        id
+                        label
+                    }
+                }
+            }
+        }
+        `,
+        variables: {}
+    }
+}
+
+function addCategoryMutation(label) {
+    return {
+        mutation: gql`mutation AddCategory($label: String!) {
+            addCategory(input: {label: $label}) {
+                id
+            }
+        }
+        `,
+        variables: {
+            label
+        }
+    };
+}
+
+function createCategoryPostMutation(categoryId, postId) {
+    return {
+        mutation: gql`mutation CreateCategoryPost($categoryId: ID!, $postId: ID!) {
+            addPostsCategoryAssociation(postsLhsId: $postId, categoriesRhsId: $categoryId) {
+                status
+            }
+        }
+        `,
+
+        variables: {
+            categoryId,
+            postId
+        }
+    };
+}
+
+function postQuery(id) {
+    return {
+        query: gql`query GetPost($id: ID!) {
+            post(id: $id) {
+                title
+                categories {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+        `,
+        variables: {
+            id
+        }
+    }
+}
+
+async function ensureCategoriesExist(loggedInClient) {
+    const counter = categoriesQuery();
+    const data = await loggedInClient.request(counter.query, counter.variables);
+    if (data.categories.totalCount === 0) {
+        const results = await Promise.all(['Art', 'Science', 'Philosophy'].map(async (label) => {
+            const createCategory = addCategoryMutation(label);
+            const data = await loggedInClient.request(createCategory.mutation, createCategory.variables);
+            console.log(data);
+        }));
+        return loggedInClient.request(counter.query, counter.variables);
+    } else {
+        return data;
+    }
+}
+
 describe("posts", () => {
     it("cannot be created by a logged-out user", async () => {
         expect.assertions(1);
@@ -169,5 +253,20 @@ describe("posts", () => {
         const otherUser = getGraphQLClient(otherAccessToken);
         const deletedData = await otherUser.request(deletePost.mutation, deletePost.variables);
         expect(deletedData).toStrictEqual({deletePost: { status: false }});
+    });
+    it("can be associated with categories", async () => {
+        expect.assertions(3);
+        const { accessToken, id } = await createUser();
+        const loggedIn = getGraphQLClient(accessToken);
+        const post = createPostMutation();
+        const postData = await loggedIn.request(post.mutation, post.variables);
+        const categoryData = await ensureCategoriesExist(loggedIn);
+        expect(categoryData.categories.totalCount).toBeGreaterThanOrEqual(3);
+        const assoc = createCategoryPostMutation(categoryData.categories.edges[0].node.id, postData.addPost.id);
+        const assocResult = await loggedIn.request(assoc.mutation, assoc.variables);
+        expect(assocResult.addPostsCategoryAssociation.status).toBe(true);
+        const fetchPost = postQuery(postData.addPost.id);
+        const fetchPostResult = await loggedIn.request(fetchPost.query, fetchPost.variables);
+        expect(fetchPostResult.post.categories.edges[0].node.id).toBe(categoryData.categories.edges[0].node.id);
     });
 });
