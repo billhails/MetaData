@@ -35,4 +35,3 @@
 {% macro get_association_for_entity(entity, association) %}get{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
 {% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}
-{% macro get_entity_fields(entity) %}get{{ entity.get_name() | singular | mixed_case }}Fields{% endmacro %}

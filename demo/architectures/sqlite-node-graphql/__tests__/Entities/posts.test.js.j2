@@ -73,6 +73,11 @@ function updatePostMutation(id) {
     }
 }
 
+async function updatePost(client, id) {
+    const mutation = updatePostMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
 function deletePostMutation(id) {
     return {
         mutation: gql`mutation DeletePost($id: ID!) {
@@ -84,6 +89,11 @@ function deletePostMutation(id) {
             id
         }
     }
+}
+
+function deletePost(client, id) {
+    const mutation = deletePostMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
 }
 
 function categoriesQuery() {
@@ -170,103 +180,100 @@ async function ensureCategoriesExist(loggedInClient) {
     }
 }
 
+async function createPost(loggedInClient) {
+    const postMutation = createPostMutation()
+    return loggedInClient.request(postMutation.mutation, postMutation.variables);
+}
+
+async function createCategoryPost(loggedInClient, categoryId, postId) {
+    const mutation = createCategoryPostMutation(categoryId, postId);
+    return loggedInClient.request(mutation.mutation, mutation.variables);
+}
+
+async function fetchPost(client, postId) {
+    const query = postQuery(postId);
+    return client.request(query.query, query.variables);
+}
+
+async function getLoggedInUser() {
+    const user = await createUser();
+    const loggedIn = getGraphQLClient(user.accessToken);
+    return { loggedIn, ...user };
+}
+
+
 describe("posts", () => {
     it("cannot be created by a logged-out user", async () => {
         expect.assertions(1);
         const loggedOut = getGraphQLClient();
-        const post = createPostMutation();
-        const data = await loggedOut.request(post.mutation, post.variables);
+        const data = await createPost(loggedOut);
         expect(data).toStrictEqual({addPost: null});
     });
     it("can be created by a logged-in user", async () => {
         expect.assertions(2);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
+        const { loggedIn, id } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
         expect(data.addPost).not.toBeNull();
         expect(data.addPost?.owner?.id).toBe(id);
     });
     it("can be modified by the owner", async () => {
         expect.assertions(2);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
-        const updatePost = updatePostMutation(data.addPost.id);
-        const updatedData = await loggedIn.request(updatePost.mutation, updatePost.variables);
-        expect(updatedData.updatePost.body).toBe(updatePost.variables.body);
+        const { loggedIn, id } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
+        const update = updatePostMutation(data.addPost.id)
+        const updatedData = await loggedIn.request(update.mutation, update.variables);
+        expect(updatedData.updatePost.body).toBe(update.variables.body);
         expect(updatedData.updatePost.owner.id).toBe(id);
     });
     it("can not be modified by a logged-out user", async () => {
         expect.assertions(1);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
-        const updatePost = updatePostMutation(data.addPost.id);
+        const { loggedIn } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
         const loggedOut = getGraphQLClient();
-        const updatedData = await loggedOut.request(updatePost.mutation, updatePost.variables);
+        const updatedData = await updatePost(loggedOut, data.addPost.id);
         expect(updatedData.updatePost).toBeNull();
     });
     it("can not be modified by a different user", async () => {
         expect.assertions(1);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
-        const updatePost = updatePostMutation(data.addPost.id);
-        const { accessToken: otherAccessToken } = await createUser();
-        const otherUser = getGraphQLClient(otherAccessToken);
-        const updatedData = await otherUser.request(updatePost.mutation, updatePost.variables);
+        const { loggedIn } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
+        const { loggedIn: otherUser } = await getLoggedInUser();
+        const updatedData = await updatePost(otherUser, data.addPost.id);
         expect(updatedData.updatePost).toBeNull();
     });
     it("can be deleted by the owner", async () => {
         expect.assertions(1);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
+        const { loggedIn } = await getLoggedInUser();
         const post = createPostMutation();
         const data = await loggedIn.request(post.mutation, post.variables);
-        const deletePost = deletePostMutation(data.addPost.id);
-        const deletedData = await loggedIn.request(deletePost.mutation, deletePost.variables);
+        const deletedData = await deletePost(loggedIn, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: true }})
     });
     it("can not be deleted by a logged-out user", async () => {
         expect.assertions(1);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
-        const deletePost = deletePostMutation(data.addPost.id);
+        const { loggedIn } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
         const loggedOut = getGraphQLClient();
-        const deletedData = await loggedOut.request(deletePost.mutation, deletePost.variables);
+        const deletedData = await deletePost(loggedOut, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: false }})
     });
     it("can not be deleted by a different user", async () => {
         expect.assertions(1);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
-        const deletePost = deletePostMutation(data.addPost.id);
-        const { accessToken: otherAccessToken } = await createUser();
-        const otherUser = getGraphQLClient(otherAccessToken);
-        const deletedData = await otherUser.request(deletePost.mutation, deletePost.variables);
+        const { loggedIn } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
+        const { loggedIn: otherUser } = await getLoggedInUser();
+        const deletedData = await deletePost(otherUser, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: false }});
     });
     it("can be associated with categories", async () => {
         expect.assertions(3);
-        const { accessToken, id } = await createUser();
-        const loggedIn = getGraphQLClient(accessToken);
-        const post = createPostMutation();
-        const postData = await loggedIn.request(post.mutation, post.variables);
+        const { loggedIn } = await getLoggedInUser();
+        const postData = await createPost(loggedIn);
         const categoryData = await ensureCategoriesExist(loggedIn);
         expect(categoryData.categories.totalCount).toBeGreaterThanOrEqual(3);
-        const assoc = createCategoryPostMutation(categoryData.categories.edges[0].node.id, postData.addPost.id);
-        const assocResult = await loggedIn.request(assoc.mutation, assoc.variables);
+        const assocResult = await createCategoryPost(loggedIn, categoryData.categories.edges[0].node.id, postData.addPost.id);
         expect(assocResult.addPostsCategoryAssociation.status).toBe(true);
-        const fetchPost = postQuery(postData.addPost.id);
-        const fetchPostResult = await loggedIn.request(fetchPost.query, fetchPost.variables);
+        const fetchPostResult = await fetchPost(loggedIn, postData.addPost.id);
         expect(fetchPostResult.post.categories.edges[0].node.id).toBe(categoryData.categories.edges[0].node.id);
     });
 });

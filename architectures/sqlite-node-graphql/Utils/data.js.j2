@@ -58,6 +58,23 @@ class Data {
         });
     }
 
+{%- macro entity_fields(entity) %}
+{{database.name(entity) }}.id AS id
+{%-     for field in entity.get_fields() %}
+{{- ',' }}
+{{database.name(entity) }}.{{ database.name(field) }} AS {{ arguments.field_label(field) }}
+{%-     endfor %}
+{%-     for reference in entity.get_references() %}
+{{- ',' }}
+{{database.name(entity) }}.{{ database.name(reference) }} AS {{ arguments.field_label(reference) }}
+{%-     endfor %}
+{%-     for union in entity.get_unions() %}
+{{- ',' }}
+{{ database.name(entity) }}.{{ database.name(union) }} AS {{ arguments.field_label(union) }},
+{{ database.name(entity) }}.{{ database.type_name(union) }} AS {{ arguments.field_type(union) }}
+{%-     endfor %}
+{%- endmacro %}
+
 {%- if schema.is_auth_enabled() %}
 {%-     set auth_token_entity = schema.get_auth_token_entity() %}
 {%-     set auth_token_field = auth_token_entity.get_auth_token_field() %}
@@ -123,38 +140,17 @@ class Data {
 {%- for entity in schema.get_entities() %}
 
     /**
-     * build a list of all fields for an entity for a select statement instead of SELECT *
-     * because we need to rename them
-     *
-     * @returns {String}
-     */
-    {{ data.get_entity_fields(entity) }}() {
-        if (! ('{{ database.name(entity) }}' in this.select_fields)) {
-            this.select_fields['{{ database.name(entity) }}'] = [
-                "{{database.name(entity) }}.id AS id",
-{%-     for field in entity.get_fields() %}
-                "{{database.name(entity) }}.{{ database.name(field) }} AS {{ arguments.field_label(field) }}",
-{%-     endfor %}
-{%-     for reference in entity.get_references() %}
-                "{{database.name(entity) }}.{{ database.name(reference) }} AS {{ arguments.field_label(reference) }}",
-{%-     endfor %}
-{%-     for union in entity.get_unions() %}
-                "{{ database.name(entity) }}.{{ database.name(union) }} AS {{ arguments.field_label(union) }}",
-                "{{ database.name(entity) }}.{{ database.type_name(union) }} AS {{ arguments.field_type(union) }}",
-{%-     endfor %}
-            ].join(', ');
-        }
-        return this.select_fields['{{ database.name(entity) }}'];
-    }
-
-    /**
      * fetch entity
      *
      * @param {String} id
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.get_entity(entity) }}(id) {
-        return this.get(`SELECT ${ this.{{ data.get_entity_fields(entity) }}() } FROM {{ database.name(entity) }} WHERE id = ?`, [id])
+        return this.get(`
+            SELECT {{ entity_fields(entity) }}
+              FROM {{ database.name(entity) }}
+             WHERE id = ?
+            `, [id])
             .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
@@ -169,7 +165,7 @@ class Data {
      */
     async {{ data.get_entity_by_field(entity, field) }}(id) {
         return this.get(`
-                SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+                SELECT {{ entity_fields(entity) }}
                   FROM {{ database.name(entity) }}
                  WHERE {{ database.name(field) }} = ?
             `, [id])
@@ -186,7 +182,7 @@ class Data {
      */
     async {{ data.batch_get_entity(entity) }}(ids) {
         const rows = await this.all(
-            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+            `SELECT {{ entity_fields(entity) }}
                FROM {{ database.name(entity) }}
               WHERE id IN (${ Array(ids.length).fill('?').join(', ') })`,
             ids
@@ -204,7 +200,7 @@ class Data {
         const first = args.first || 20;
         const after = args.after || '';
         return this.all(
-            `SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+            `SELECT {{ entity_fields(entity) }}
                FROM {{ database.name(entity) }}
               WHERE id > ?
            ORDER BY id
@@ -243,14 +239,14 @@ class Data {
 {%-        endfor %}
         }
         const row = await this.get(`
-                SELECT count(*) AS c
+                SELECT count(*) AS count
                   FROM ${table}
                  WHERE id = ?
             `,
             [id]
         );
 
-        if (parseInt(row.c) != 1) {
+        if (parseInt(row.count) != 1) {
             throw new Error(`union {{ database.name(entity) }}.{{ database.name(union) }} reference failed, no ${type} with id ${id}`);
         }
     }
@@ -366,7 +362,7 @@ class Data {
      */
     async {{ data.get_reference_for_entity(entity, reference) }}(model) {
         return this.get(`
-            SELECT ${ this.{{ data.get_entity_fields(reference.get_referenced()) }}() }
+            SELECT {{ entity_fields(reference.get_referenced()) }}
               FROM {{ database.name(reference.get_referenced()) }}
              WHERE id = ?
             `, [model.{{ arguments.field_label(reference) }}])
@@ -386,7 +382,7 @@ class Data {
 {%-         for reference in union.get_references() %}
             case '{{ database.name(reference) }}':
                 return this.get(`
-                    SELECT  ${ this.{{ data.get_entity_fields(reference.get_referenced()) }}() }
+                    SELECT  {{ entity_fields(reference.get_referenced()) }}
                       FROM {{ database.name(reference.get_referenced()) }}
                      WHERE id = ?
                     `,
@@ -407,13 +403,13 @@ class Data {
     async {{ data.get_referrer_for_entity(entity, referrer) }}(model) {
         return this.all(
 {%-         if referrer.is_union() %}
-            `SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
+            `SELECT {{ entity_fields(referrer.get_entity()) }}
               FROM {{ database.name(referrer.get_entity()) }}
              WHERE {{ database.name(referrer.get_union()) }} = ?
              AND {{ database.type_name(referrer.get_union()) }} = "{{ database.name(referrer) }}"
              `,
 {%-         else %}
-            `SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
+            `SELECT {{ entity_fields(referrer.get_entity()) }}
                FROM {{ database.name(referrer.get_entity()) }}
               WHERE {{ database.name(referrer) }} = ?`,
 {%-         endif %}
@@ -436,14 +432,14 @@ class Data {
             const subQuery = `
                 SELECT * FROM (
 {%-         if referrer.is_union() %}
-                SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
+                SELECT {{ entity_fields(referrer.get_entity()) }}
                   FROM {{ database.name(referrer.get_entity()) }}
                  WHERE {{ arguments.field_label(referrer.get_union()) }} = ?
                    AND {{ arguments.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
 {%-         else %}
-                SELECT ${ this.{{ data.get_entity_fields(referrer.get_entity()) }}() }
+                SELECT {{ entity_fields(referrer.get_entity()) }}
                   FROM {{ database.name(referrer.get_entity()) }}
-                 WHERE {{ database.name(referrer) }} = ?
+                 WHERE {{ arguments.field_label(referrer) }} = ?
 {%-         endif %}
                    AND {{database.name(referrer.get_entity()) }}.id > ?
               ORDER BY {{database.name(referrer.get_entity()) }}.id
@@ -468,16 +464,18 @@ class Data {
         const ids = ids_and_args.map(({id}) => id);
         const query = `
 {%-         if referrer.is_union() %}
-            SELECT count(*) AS count, {{ arguments.field_label(referrer.get_union()) }}
+            SELECT count(*) AS count,
+                   {{ database.name(referrer.get_union()) }} AS id
               FROM {{ database.name(referrer.get_entity()) }}
-             WHERE {{ arguments.field_label(referrer.get_union()) }} IN (${ Array(ids.length).fill('?').join(', ') })
+             WHERE id IN (${ Array(ids.length).fill('?').join(', ') })
                AND {{ database.type_name(referrer.get_union()) }} = "{{ database.name(referrer) }}"
-          GROUP BY {{ arguments.field_label(referrer.get_union()) }}
+          GROUP BY id
 {%-         else %}
-            SELECT count(*) as count, {{ database.name(referrer) }}
+            SELECT count(*) as count,
+                   {{ database.name(referrer) }} AS id
               FROM {{ database.name(referrer.get_entity()) }}
-             WHERE {{ database.name(referrer) }} IN (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY {{ database.name(referrer) }}
+             WHERE id IN (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY id
 {%-         endif %}
         `;
 
@@ -497,13 +495,13 @@ class Data {
         return this.all(
 {%-         if association.is_self_referential() %}
             `
-    SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+    SELECT {{ entity_fields(entity) }}
       FROM {{ database.name(association) }}
       JOIN {{ database.name(entity) }}
         ON {{ database.name(association) }}.{{ database.rhs(association) }} = {{ database.name(entity) }}.id
      WHERE {{ database.name(association) }}.{{ database.lhs(association) }} = ?
      UNION
-    SELECT ${ this.{{ data.get_entity_fields(entity) }}() }
+    SELECT {{ entity_fields(entity) }}
       FROM {{ database.name(association) }}
       JOIN {{ database.name(entity) }}
         ON {{ database.name(association) }}.{{ database.lhs(association) }} = {{ database.name(entity) }}.id
@@ -512,7 +510,7 @@ class Data {
             [model.id, model.id]
 {%-         else %}
             `
-    SELECT ${ this.{{ data.get_entity_fields(association.get_other(entity)) }}() }
+    SELECT {{ entity_fields(association.get_other(entity)) }}
       FROM {{ database.name(association) }}
       JOIN {{ database.name(association.get_other(entity)) }}
         ON {{ database.name(association) }}.{{ database.other_column(entity, association) }} = {{ database.name(association.get_other(entity)) }}.id
@@ -595,12 +593,14 @@ class Data {
         const ids = ids_and_args.map(({id}) => id);
 {%-         if association.is_self_referential() %}
         const query = `
-            SELECT count(*) AS count, {{ association.get_rhs_column() }} AS id
+            SELECT count(*) AS count,
+                   {{ association.get_rhs_column() }} AS id
               FROM {{ database.name(association) }}
              WHERE id in (${ Array(ids.length).fill('?').join(', ') })
           GROUP BY id
          UNION ALL
-            SELECT count(*) AS count, {{ association.get_lhs_column() }} AS id
+            SELECT count(*) AS count,
+                   {{ association.get_lhs_column() }} AS id
               FROM {{ database.name(association) }}
              WHERE id in (${ Array(ids.length).fill('?').join(', ') })
           GROUP BY id
@@ -609,10 +609,10 @@ class Data {
 {%-         else %}
         const query = `
             SELECT count(*) AS count,
-                   {{ association.get_this_column(entity) }}
+                   {{ association.get_this_column(entity) }} AS id
               FROM {{ database.name(association) }}
              WHERE {{ association.get_this_column(entity) }} IN (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY {{ association.get_this_column(entity) }}
+          GROUP BY id
         `;
         return this.all(query, ids);
 {%-         endif %}
@@ -627,16 +627,19 @@ class Data {
 
     async {{ data.create_association(association) }}(args) {
 {%-     if association.is_self_referential() %}
+        if (args.{{ arguments.association_rhs_label(association) }} == args.{{ arguments.association_lhs_label(association) }}) {
+            throw new Error('cannot create {{ arguments.field_label(association) }} relationship with the same left and right hand entity');
+        }
         // check the inverse association doesn't already exist
         const row = await this.get(`
-                SELECT count(*) AS c
+                SELECT count(*) AS count
                   FROM {{ database.name(association) }}
                  WHERE {{ database.lhs(association) }} = ?
                    AND {{ database.rhs(association) }} = ?
             `,
             [args.{{ arguments.association_rhs_label(association) }}, args.{{ arguments.association_lhs_label(association) }}]
         );
-        if (parseInt(row.c) > 0) {
+        if (parseInt(row.count) > 0) {
             return true;
         }
 {%-     endif %}

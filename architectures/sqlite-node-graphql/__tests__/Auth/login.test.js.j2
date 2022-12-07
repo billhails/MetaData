@@ -71,7 +71,7 @@ describe("{{ id_label }}", () => {
         const graphQLClient = getGraphQLClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.user.{{ id_label }}).toBe("XXX");
+        expect(data.user.{{ id_label }}).toBeNull();
     });
     it ("is not visible to logged-out users", async () => {
         expect.assertions(1);
@@ -81,7 +81,7 @@ describe("{{ id_label }}", () => {
         const graphQLClient = getGraphQLClient();
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.user.{{ id_label }}).toBe("XXX");
+        expect(data.user.{{ id_label }}).toBeNull();
     });
 })
 {% else %}

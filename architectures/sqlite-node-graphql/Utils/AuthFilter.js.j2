@@ -34,11 +34,7 @@ class AuthFilter {
     }
 
     mapConnection(connection, transform) {
-        connection.edges.forEach(edge => transform(edge.node));
-    }
-
-    filterConnection(connection, filter) {
-        connection.edges = connection.edges.filter(edge => filter(edge.node));
+        connection.edges.forEach(edge => edge.node = transform(edge.node));
     }
 
 {%- for entity in schema.get_entities() %}
@@ -47,8 +43,9 @@ class AuthFilter {
 {%-         if field.is_auth_visibility('redacted') %}
     {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
         if (!req.user || req.user.sub != model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}) {
-            model.{{ arguments.field_label(field) }} = "XXX";
+            model.{{ arguments.field_label(field) }} = null;
         }
+        return model;
     }
 {%-         endif %}
 {%-     endfor %}
@@ -77,8 +74,8 @@ class AuthFilter {
         this.mapConnection(connection, model => this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req));
 {%-         endif %}
 {%-     endfor %}
-{%-       if entity.is_auth_visibility("hidden") -%}
-        this.filterConnection(connection, model => req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }});
+{%-       if not entity.is_auth_visibility("visible") -%}
+        this.mapConnection(connection, model => (req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}) ? model : null );
 {%      endif -%}
         logger.debug('{{ resolve.entities(entity) }} returning', {connection});
         return connection;
@@ -104,9 +101,9 @@ class AuthFilter {
 
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
         const models = await  this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info);
-{%-        if referrer.get_entity().is_auth_visibility("hidden") -%}
+{%-        if not referrer.get_entity().is_auth_visibility("visible") -%}
         logger.debug('AuthFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got models', {models});
-        this.filterConnection(models, model => req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }});
+        this.mapConnection(models, model => (req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }}) ? model : null);
 {%-        endif %}
         return models;
     }

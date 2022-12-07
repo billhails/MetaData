@@ -126,7 +126,7 @@ describe("{{ token_entity_label }}", () => {
         const graphQLClient = getGraphQLClient();
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.{{ owner_label }}?.{{ owner_token_name }}.edges).toStrictEqual([]);
+        expect(data.{{ owner_label }}?.{{ owner_token_name }}.edges).toStrictEqual([{node: null}]);
     });
     it("is invisible to a different user", async () => {
         expect.assertions(1);
@@ -135,7 +135,7 @@ describe("{{ token_entity_label }}", () => {
         const graphQLClient = getGraphQLClient(accessToken);
         const query = userQuery(id);
         const data = await graphQLClient.request(query);
-        expect(data.{{ owner_label }}?.{{ owner_token_name }}?.edges).toStrictEqual([]);
+        expect(data.{{ owner_label }}?.{{ owner_token_name }}?.edges).toStrictEqual([{node: null}]);
     });
 });
 {%- else %}

@@ -109,10 +109,6 @@ class ReferrerLoader extends AbstractLoader {
 }
 
 class ReferrerCountLoader extends AbstractLoader {
-    constructor({name, batch_get, referrer_column}) {
-        super(batch_get, name);
-        this.referrer_column = referrer_column;
-    }
 
     async loadBatch(keys) {
         this.debug('started', {keys});
@@ -120,8 +116,8 @@ class ReferrerCountLoader extends AbstractLoader {
         this.debug('got ids_and_args', ids_and_args);
         const referrerCounts = await this.batch_get(ids_and_args);
         this.debug('got raw referrer counts', referrerCounts);
-        const processedCounts = referrerCounts.reduce((acc, count) => ({...acc, [count[this.referrer_column]]: count.count}), {});
-        this.debug(`got referrer counts (${this.referrer_column})`, processedCounts);
+        const processedCounts = referrerCounts.reduce((acc, count) => ({...acc, [count.id]: count.count}), {});
+        this.debug(`got referrer counts`, processedCounts);
         return ids_and_args.map(({id}) => ({ count: processedCounts[id] || 0}));
     }
 }
@@ -181,31 +177,19 @@ class AssociationLoader extends AbstractLoader {
 }
 
 class AssociationCountLoader extends AbstractLoader {
-    constructor({name, batch_get, this_column, other_column}) {
-        super(batch_get, name);
-        this.this_column = this_column;
-        this.other_column = other_column;
-    }
-
     async loadBatch(keys) {
         this.debug('started', {keys});
         const ids_and_args = keys.map(key => this.lookup[key]);
         this.debug('ids and args', ids_and_args);
         const associationCounts = await this.batch_get(ids_and_args);
         this.debug('got raw association counts', associationCounts);
-        const processedCounts = associationCounts.reduce((acc, count) => ({...acc, [count[this.this_column]]: count.count}), {});
+        const processedCounts = associationCounts.reduce((acc, count) => ({...acc, [count.id]: count.count}), {});
         this.debug('got association counts', processedCounts);
         return ids_and_args.map(({id}) => processedCounts[id] || 0);
     }
 }
 
 class SelfReferentialAssociationCountLoader extends AbstractLoader {
-    constructor({name, batch_get, this_column, other_column}) {
-        super(batch_get, name);
-        this.this_column = this_column;
-        this.other_column = other_column;
-    }
-
     async loadBatch(keys) {
         this.debug('started', {keys});
         const ids_and_args = keys.map(key => this.lookup[key]);
@@ -253,8 +237,7 @@ module.exports = (data) => {
 
     const {{ loader.count_referrer(referrer) }} = new ReferrerCountLoader({
         name: '{{ loader.count_referrer(referrer) }}',
-        batch_get: async (ids_and_args) => data.{{ data.batch_count_referrer(referrer) }}(ids_and_args),
-        referrer_column: '{{ referrer.get_column_name() }}'
+        batch_get: async (ids_and_args) => data.{{ data.batch_count_referrer(referrer) }}(ids_and_args)
     });
 {%-     endfor %}
 
@@ -271,10 +254,9 @@ module.exports = (data) => {
 
     const {{ loader.count_association_for_entity(entity, association) }} = new SelfReferentialAssociationCountLoader({
         name: '{{ loader.count_association_for_entity(entity, association) }}',
-        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args),
-        this_column: '{{ arguments.this_column(entity, association) }}',
-        other_column: '{{ arguments.other_column(entity, association) }}',
+        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
     });
+
 {%-         else %}
 
     const {{ loader.association_for_entity(entity, association) }} = new AssociationLoader({
@@ -286,9 +268,7 @@ module.exports = (data) => {
 
     const {{ loader.count_association_for_entity(entity, association) }} = new AssociationCountLoader({
         name: '{{ loader.count_association_for_entity(entity, association) }}',
-        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args),
-        this_column: '{{ association.get_this_column(entity) }}',
-        other_column: '{{ association.get_other_column(entity) }}',
+        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
     });
 {%-         endif %}
 {%-     endfor %}

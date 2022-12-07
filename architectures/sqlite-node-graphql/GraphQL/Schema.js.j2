@@ -82,7 +82,11 @@ const make_schema = (resolver) => {
                 description: 'the cursor for this {{ entity.get_name() | singular }}'
             },
             node: {
+{%     if entity.auth_visibility() == "visible" %}
+                type: new GraphQLNonNull({{ arguments.entity_type(entity) }}),
+{%     else %}
                 type: {{ arguments.entity_type(entity) }},
+{%     endif %}
                 description: 'the {{ entity.get_name() | singular }} itself'
             }
         })
@@ -143,7 +147,11 @@ const make_schema = (resolver) => {
 {%-     for field in entity.get_fields() %}
 {%-         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
             {{ arguments.field_label(field) }}: {
+{%-             if field.auth_visibility() == 'visible' %}
                 type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
+{%-             else %}
+                type: {{ arguments.graphql_type(field.get_type()) }}
+{%-             endif %}
             },
 {%-         endif %}
 {%-     endfor %}
