@@ -32,7 +32,7 @@ class Field(Semantics):
     def optional_attributes(self):
         return super().optional_attributes() + [
             {'name': 'unique', 'values': ['n', 'y'], 'default': 'n'},
-            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token'], 'default': 'none'},
+            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role'], 'default': 'none'},
             {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'}
         ]
 

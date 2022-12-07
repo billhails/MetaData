@@ -1,17 +1,9 @@
-PRAGMA foreign_keys = ON;
-
-INSERT INTO users VALUES('f1890198-6686-4132-9e68-7e7851903132','Bill');
-INSERT INTO users VALUES('e770de73-8267-4a62-89c4-b9791f4f243c','Mary');
-INSERT INTO users VALUES('844479cd-a7fb-4326-8362-4f3dc0ea0f22','Harry');
-INSERT INTO users VALUES('2f0753a5-b8da-4fc0-a471-370952700a70','Harry II');
-INSERT INTO posts VALUES('13f36d7d-dc43-4cc8-8f7d-13e6606f52c9','my first post','f1890198-6686-4132-9e68-7e7851903132');
-INSERT INTO posts VALUES('6e33a940-e1f8-406e-8b62-1a91108b0296','another post','e770de73-8267-4a62-89c4-b9791f4f243c');
-INSERT INTO comments VALUES('b58817cb-1406-4a6d-b954-8473a57deea0','nice post','e770de73-8267-4a62-89c4-b9791f4f243c','post','13f36d7d-dc43-4cc8-8f7d-13e6606f52c9');
-INSERT INTO comments VALUES('eb138533-7eb4-4a1a-a53c-f8e521998907','thanks','f1890198-6686-4132-9e68-7e7851903132','comment','b58817cb-1406-4a6d-b954-8473a57deea0');
-INSERT INTO comments VALUES('8a81e296-c46e-474c-a17f-086ff032079c','nice hat','e770de73-8267-4a62-89c4-b9791f4f243c','user','844479cd-a7fb-4326-8362-4f3dc0ea0f22');
-INSERT INTO categories VALUES('6a82a00b-341e-41af-bf97-fe174fc0bf46','art');
-INSERT INTO categories VALUES('da1f62f5-7dd3-4a70-ba0f-62ac1a5a678b','science');
-INSERT INTO friends VALUES('f1890198-6686-4132-9e68-7e7851903132','e770de73-8267-4a62-89c4-b9791f4f243c');
-INSERT INTO posts_categories VALUES('13f36d7d-dc43-4cc8-8f7d-13e6606f52c9','6a82a00b-341e-41af-bf97-fe174fc0bf46');
-INSERT INTO posts_categories VALUES('13f36d7d-dc43-4cc8-8f7d-13e6606f52c9','da1f62f5-7dd3-4a70-ba0f-62ac1a5a678b');
-INSERT INTO posts_categories VALUES('6e33a940-e1f8-406e-8b62-1a91108b0296','da1f62f5-7dd3-4a70-ba0f-62ac1a5a678b');
+BEGIN TRANSACTION;
+INSERT INTO "categories" VALUES ('75588ab7-2ea1-49fb-ad52-7a79a3165ebf','Philosophy'),
+ ('889bbd27-2567-404a-ad8f-618d30286967','Science'),
+ ('d5c594a5-5c15-42a8-8ccf-c5eb3baa7664','Art');
+INSERT INTO "roles" VALUES ('c626306e-b092-4aed-ad66-3521b25654f1','admin');
+INSERT INTO "users" VALUES ('401fed0d-3c59-4ea1-bd7d-fc4acc4d2da2','bill','me@example.com','$2b$10$AQMez1dNfRW5BmVUF.BRfeMG3/cHFvH28T5muZkdcylrfo4vWjDnK');
+INSERT INTO "refresh_tokens" VALUES ('ce76e5ed-c6c6-4a3a-a01d-571f7280953b','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im1lQGV4YW1wbGUuY29tIiwic3ViIjoiNDAxZmVkMGQtM2M1OS00ZWExLWJkN2QtZmM0YWNjNGQyZGEyIiwiaWF0IjoxNjcwNDMzNjYzfQ.6mMDm4xKAHJA2Hj4Mczpgw5O2Y34m-iYDl1ojcOXDvM','401fed0d-3c59-4ea1-bd7d-fc4acc4d2da2');
+INSERT INTO "users_roles" VALUES ('401fed0d-3c59-4ea1-bd7d-fc4acc4d2da2','c626306e-b092-4aed-ad66-3521b25654f1');
+COMMIT;

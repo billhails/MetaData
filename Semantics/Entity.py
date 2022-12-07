@@ -41,7 +41,7 @@ class Entity(Container):
 
     def optional_attributes(self):
         return super().optional_attributes() + [
-            {'name': 'auth-role', 'values': ['owner', 'token', 'none'], 'default': 'none'},
+            {'name': 'auth-role', 'values': ['owner', 'token', 'role', 'none'], 'default': 'none'},
             {'name': 'auth-access', 'values': ['any', 'owner', 'admin'], 'default': 'any'},
             {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'}
         ]

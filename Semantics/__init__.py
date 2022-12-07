@@ -54,7 +54,7 @@ class Semantics:
             if 'values' in required_attribute:
                 if self.attributes[required_attribute['name']] not in required_attribute['values']:
                     raise SemanticException(
-                        "unrecognised value {value} for attribute {attribute}, allowed values: {values}".format(
+                        "unrecognised value '{value}' for attribute '{attribute}', allowed values: {values}".format(
                             value=self.attributes[required_attribute['name']],
                             attribute=required_attribute['name'],
                             values=required_attribute['values']
@@ -63,14 +63,14 @@ class Semantics:
         for attribute_name in self.attributes:
             if attribute_name not in self.required_attribute_names() and attribute_name not in self.optional_attribute_names():
                 raise SemanticException(
-                    "unrecognised attribute {attribute} for {type}".format(attribute=attribute_name, type=self.type)
+                    "unrecognised attribute '{attribute}' for {type}".format(attribute=attribute_name, type=self.type)
                 )
         for optional_attribute in self.optional_attributes():
             if optional_attribute['name'] in self.attributes:
                 if 'values' in optional_attribute:
                     if self.attributes[optional_attribute['name']] not in optional_attribute['values']:
                         raise SemanticException(
-                            "unrecognised value {value} for attribute {attribute}, allowed values: {values}".format(
+                            "unrecognised value '{value}' for attribute '{attribute}', allowed values: {values}".format(
                                 value=self.attributes[optional_attribute['name']],
                                 attribute=optional_attribute['name'],
                                 values=optional_attribute['values']
