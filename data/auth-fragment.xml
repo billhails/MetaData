@@ -5,11 +5,10 @@
         <reference name="owner" auth-role="owner" references="users"/>
     </entity>
 
-    <entity name="roles" auth-access="admin" auth-visibility="visible" auth-role="role">
+    <entity name="roles" auth-access="admin" auth-role="role">
         <description>Auth roles</description>
         <field name="label" type="title" unique="y" auth-role="role"/>
     </entity>
 
     <association name="owner_roles" lhs="" rhs="roles" auth-access="admin" auth-role="role"/>
-
 </schema>

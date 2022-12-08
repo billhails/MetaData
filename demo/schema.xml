@@ -19,7 +19,7 @@
 <!-- schema name is required -->
 <schema name="demo" auth="enabled" access-token-expiry="24h">
 
-    <entity name="users" auth-role="owner" auth-access="owner" auth-visibility="visible">
+    <entity name="users" auth-role="owner" auth-access="owner">
         <!-- descriptions end up in the graphql docs -->
         <description>A user of the service.</description>
         <!-- fields are the components of entities -->
@@ -28,7 +28,7 @@
         <field name="password" type="password" auth-role="password" auth-visibility="hidden"/>
     </entity>
 
-    <entity name="posts" auth-access="owner" auth-visibility="visible">
+    <entity name="posts" auth-access="owner">
         <description>A post by a user.</description>
         <field name="title" type="title"/>
         <field name="body" type="text"/>
@@ -36,7 +36,7 @@
         <reference name="owner" references="users" auth-role="owner"/>
     </entity>
 
-    <entity name="comments" auth-access="owner" auth-visibility="visible">
+    <entity name="comments" auth-access="owner">
         <description>A comment on a user, post or other comment.</description>
         <field name="body" type="text"/>
         <reference name="owner" references="users" auth-role="owner"/>
@@ -48,7 +48,7 @@
         </union>
     </entity>
 
-    <entity name="categories" auth-access="admin" auth-visibility="visible">
+    <entity name="categories" auth-access="admin">
         <description>Categories of Posts</description>
         <field name="label" type="title" unique="y"/>
     </entity>

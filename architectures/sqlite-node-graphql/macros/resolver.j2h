@@ -25,9 +25,11 @@
 {% macro entity(entity) %}resolve{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro entities(entity) %}resolve{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro count_entities(entity) %}resolveCount{{ entity.get_name() | mixed_case }}{% endmacro %}
-{% macro create_entity(entity) %}resolveCreate{{ entity.get_name() | mixed_case }}{% endmacro %}
-{% macro update_entity(entity) %}resolveUpdate{{ entity.get_name() | mixed_case }}{% endmacro %}
-{% macro delete_entity(entity) %}resolveDelete{{ entity.get_name() | mixed_case }}{% endmacro %}
-{% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
-{% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}
+{% macro create_entity(entity) %}resolveCreate{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro update_entity(entity) %}resolveUpdate{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro delete_entity(entity) %}resolveDelete{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro create_association(association) %}create{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
+{% macro delete_association(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro redact_field_for_entity(entity, field) %}redact{{ field.get_name() | mixed_case }}For{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro process_entity(entity) %}process{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{% macro process_entities(entity) %}process{{ entity.get_name() | mixed_case }}{% endmacro %}

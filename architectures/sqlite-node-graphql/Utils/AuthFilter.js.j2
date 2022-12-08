@@ -1,4 +1,4 @@
-{#
+{#-
  #  MetaData - API Generator.
  #  Copyright (C) 2022  Bill Hails
  #
@@ -14,15 +14,29 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+-#}
 // {{ warning }}
 
 {% import 'macros/resolver.j2h' as resolve %}
 {% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/model.j2h' as model %}
 
 const logger = require('./logger');
 const util = require('util');
+const Model = require('../Model');
 
+{%- macro auth_check(req, entity, failure) %}
+        if (!{{req}}.user) {
+            return {{ failure }};
+        }
+{%- if entity.is_auth_access('admin') %}
+        if (!self.isAdmin({{req}})) {
+            return {{ failure }};
+        }
+{%- endif %}
+{%- endmacro %}
+
+{% macro owner_label(entity) %}{{ arguments.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
 
 class AuthFilter {
     constructor(resolver) {
@@ -37,12 +51,18 @@ class AuthFilter {
         connection.edges.forEach(edge => edge.node = transform(edge.node));
     }
 
+    isAdmin(req) {
+        return req.user?.roles.find(role => role == 'admin');
+    }
+
 {%- for entity in schema.get_entities() %}
 
 {%-     for field in entity.get_fields() %}
 {%-         if field.is_auth_visibility('redacted') %}
+
+    // redact field for entity
     {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
-        if (!req.user || req.user.sub != model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}) {
+        if (!req.user || req.user.sub != model.{{ owner_label(entity) }}) {
             model.{{ arguments.field_label(field) }} = null;
         }
         return model;
@@ -50,103 +70,122 @@ class AuthFilter {
 {%-         endif %}
 {%-     endfor %}
 
-    async {{ resolve.entity(entity) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.entity(entity) }}(source, args, req, info).then(
-            model => {
+    // post-process entity
+    {{ resolve.process_entity(entity) }}(model, req) {
+        if (!model) {
+            return null;
+        }
+{%-     if entity.is_auth_visibility("hidden") %}
+        if (!req.user || req.user.sub != model.{{ owner_label(entity) }}) {
+            return null;
+        }
+{%-     endif %}
 {%-     for field in entity.get_fields() %}
 {%-         if field.is_auth_visibility('redacted') %}
-                this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
+        this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
 {%-         endif %}
 {%-     endfor %}
-                return model;
-            }
-        )
-{%-       if entity.is_auth_role("token") -%}
-            .then(model => req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }} ? model : null)
-{%-      endif -%}
-        ;
+        return model;
     }
 
-    async {{ resolve.entities(entity) }}(source, args, req, info) {
-        const connection = await this.resolver.{{ resolve.entities(entity) }}(source, args, req, info);
+    // post-process entities connection
+    {{ resolve.process_entities(entity)}}(connection, req) {
+        if (!connection) {
+            return null;
+        }
 {%-     for field in entity.get_fields() %}
 {%-         if field.is_auth_visibility('redacted') %}
         this.mapConnection(connection, model => this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req));
 {%-         endif %}
 {%-     endfor %}
-{%-       if not entity.is_auth_visibility("visible") -%}
-        this.mapConnection(connection, model => (req.user && req.user.sub == model.{{ arguments.field_label(entity.get_auth_owner_reference()) }}) ? model : null );
-{%      endif -%}
-        logger.debug('{{ resolve.entities(entity) }} returning', {connection});
+{%-     if not entity.is_auth_visibility("visible") -%}
+        this.mapConnection(connection, model => (req.user && req.user.sub == model.{{ owner_label(entity) }}) ? model : null );
+{%-     endif %}
         return connection;
+    }
+
+    // resolve entity
+    async {{ resolve.entity(entity) }}(source, args, req, info) {
+        return this.{{ resolve.process_entity(entity) }}(await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info), req);
+    }
+
+    // resolve entities
+    async {{ resolve.entities(entity) }}(source, args, req, info) {
+        return this.{{ resolve.process_entities(entity) }}(await this.resolver.{{ resolve.entities(entity) }}(source, args, req, info), req);
     }
 
 {%-     for reference in entity.get_references() %}
 
+    // resolve reference for entity
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info);
+        return this.{{ resolve.process_entity(reference.get_referenced()) }}(await this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
 
 {%-     for union in entity.get_unions() %}
 
+    // resolve union for entity
     async {{ resolve.union_for_entity(entity, union) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req, info);
+        const model = await this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req, info);
+{%-         for reference in union.get_references() %}
+        if (model instanceof Model.{{ model.name(reference.get_referenced()) }}) {
+            return {{ resolve.process_entity(reference.get_referenced()) }}(model, req);
+        }
+{%-         endfor %}
+        return null;
     }
 
 {%-     endfor %}
 
 {%-     for referrer in entity.get_referrers() %}
 
+    // resolve referrer for entity
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
-        const models = await  this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info);
-{%-        if not referrer.get_entity().is_auth_visibility("visible") -%}
-        logger.debug('AuthFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got models', {models});
-        this.mapConnection(models, model => (req.user && req.user.sub == model.{{ arguments.field_label(referrer.get_entity().get_auth_owner_reference()) }}) ? model : null);
-{%-        endif %}
-        return models;
+        return this.{{ resolve.process_entities(referrer.get_entity()) }}(await this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
 
 {%-     for association in entity.get_associations() %}
 
+    // resolve association for entity
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req, info);
+        return this.{{ resolve.process_entities(association.get_other(entity)) }}(await this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
 
+    // resolve create entity
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
-        logger.debug('AuthFilter.{{ resolve.create_entity(entity) }}', {args});
-        if (!req.user) {
-            return null;
-        }
+        {{- auth_check('req', entity, 'null') }}
 {%-     if entity.has_auth_owner() %}
-        args.input.{{ arguments.field_label(entity.get_auth_owner_reference()) }} = req.user.sub;
+        args.input.{{ owner_label(entity) }} = req.user.sub;
 {%-     endif %}
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req, info);
     }
 
+    // resolve update entity
     async {{ resolve.update_entity(entity) }}(source, args, req, info) {
-        if (!req.user) {
-            return null;
-        }
+        {{- auth_check('req', entity, 'null') }}
 {%-     if entity.get_auth_owner_reference() %}
         const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
-        if (model.{{ arguments.field_label(entity.get_auth_owner_reference()) }} != req.user.sub) {
+        if (model.{{ owner_label(entity) }} != req.user.sub) {
             return null;
         }
 {%-     endif %}
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req, info);
     }
 
+    // resolve delete entity
     async {{ resolve.delete_entity(entity) }}(source, args, req, info) {
-        if (!req.user) {
+        {{- auth_check('req', entity, '{ status: false }') }}
+{%-     if entity.get_auth_owner_reference() %}
+        const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
+        if (model.{{ owner_label(entity) }} != req.user.sub) {
             return { status: false };
         }
-
+{%-     endif %}
         return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req, info);
     }
 
@@ -154,11 +193,15 @@ class AuthFilter {
 
 {%- for association in schema.get_associations() %}
 
+    // resolve create association
     async {{ resolve.create_association(association) }}(source, args, req, info) {
+        {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association(association) }}(source, args, req, info);
     }
 
+    // resolve delete association
     async {{ resolve.delete_association(association) }}(source, args, req) {
+        {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.delete_association(association) }}(source, args, req, info);
     }
 

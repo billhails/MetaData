@@ -101,6 +101,9 @@ class Semantics:
     def is_auth_visibility(self, visibility):
         return self.is_auth_enabled() and self.attribute_value('auth-visibility', visibility)
 
+    def is_auth_access(self, access):
+        return self.is_auth_enabled() and self.attribute_value('auth-access', access)
+
     def has_attribute_not(self, attribute, value):
         return self.has_attribute(attribute) and not self.attribute_value(attribute, value)
 
