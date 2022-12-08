@@ -36,6 +36,7 @@ const Model = require('../Model');
 {%- endif %}
 {%- endmacro %}
 
+
 {% macro owner_label(entity) %}{{ arguments.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
 
 class AuthFilter {
@@ -93,14 +94,7 @@ class AuthFilter {
         if (!connection) {
             return null;
         }
-{%-     for field in entity.get_fields() %}
-{%-         if field.is_auth_visibility('redacted') %}
-        this.mapConnection(connection, model => this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req));
-{%-         endif %}
-{%-     endfor %}
-{%-     if not entity.is_auth_visibility("visible") -%}
-        this.mapConnection(connection, model => (req.user && req.user.sub == model.{{ owner_label(entity) }}) ? model : null );
-{%-     endif %}
+        this.mapConnection(connection, model => this.{{ resolve.process_entity(entity)}}(model, req));
         return connection;
     }
 
