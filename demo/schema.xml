@@ -53,22 +53,12 @@
         <field name="label" type="title" unique="y"/>
     </entity>
 
-    <entity name="refresh_tokens" auth-role="token" auth-access="owner" auth-visibility="hidden">
-        <description>Refresh tokens for auth.</description>
-        <field name="token" type="token" auth-role="token" unique="y"/>
-        <reference name="owner" auth-role="owner" references="users"/>
-    </entity>
 
-    <entity name="roles" auth-access="admin" auth-visibility="visible" auth-role="role">
-        <description>User roles</description>
-        <field name="label" type="title" unique="y" auth-role="role"/>
-    </entity>
 
     <!-- associations are many-to-many relationships -->
     <association name="friends" lhs="users" rhs="users" auth-access="owner" auth-path="lhs,rhs"/>
 
     <association name="posts_categories" lhs="posts" rhs="categories" auth-access="owner" auth-visibility="visible" auth-path="lhs.owner"/>
 
-    <association name="users_roles" lhs="users" rhs="roles" auth-access="admin"/>
 
 </schema>

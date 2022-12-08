@@ -47,28 +47,41 @@ class Schema(Container):
     def validate(self):
         super().validate()
         if self.is_auth_enabled():
-            found_user_auth = False
-            found_token_auth = False
-            for entity in self.entities:
-                if self.entities[entity].is_auth_role('owner'):
-                    if found_user_auth:
-                        raise SemanticException("duplicate entities with auth-role=owner")
-                    found_user_auth = True
-                if self.entities[entity].is_auth_role('token'):
-                    if found_token_auth:
-                        raise SemanticException('duplicate entities with auth-role=token')
-                    found_token_auth = True
-            if not found_user_auth:
-                raise SemanticException("schema has auth enabled but no entity with auth-role=owner was defined")
-            if not found_token_auth:
-                raise SemanticException('schema has auth enabled but no entity with auth-role=token was defined')
+            self.validate_auth_role('owner')
+            self.validate_auth_role('token')
+            self.validate_auth_role('role')
+            self.validate_auth_role_association()
+
+    def validate_auth_role(self, role):
+        found = False
+        for entity in self.entities:
+            if self.entities[entity].is_auth_role(role):
+                if found:
+                    raise SemanticException(f"duplicate entities with auth-role={role}")
+                found = True
+        if not found:
+            raise SemanticException(f"schema has auth enabled but no entity with auth-role={role} was defined")
+
+    def validate_auth_role_association(self):
+        auth_owner = self.get_auth_owner_entity()
+        auth_role = self.get_auth_role_entity()
+        found = False
+        for association in self.get_associations():
+            if association.is_auth_role('role'):
+                if found:
+                    raise SemanticException('multiple associations with auth-role=role')
+                found = True
+                lhs = association.get_lhs()
+                rhs = association.get_rhs()
+                if not((lhs == auth_owner and rhs == auth_role) or (lhs == auth_role and rhs == auth_owner)):
+                    raise SemanticException('auth role association does not connect owner to role')
+        if not found:
+            raise SemanticException('schema has auth enabled but no association with auth-role=role was defined')
 
     def find_entity(self, name):
         if name in self.entities:
             return self.entities[name]
-        raise SemanticException(
-            "entity {name} not found in schema".format(name=name)
-        )
+        raise SemanticException(f"entity {name} not found in schema")
 
     def get_entities(self):
         return self.entities.values()
@@ -85,9 +98,21 @@ class Schema(Container):
                 return entity
         return None
 
+    def get_auth_role_association(self):
+        for association in self.get_associations():
+            if association.is_auth_role('role'):
+                return association
+        return None
+
     def get_auth_token_entity(self):
         for entity in self.get_entities():
             if entity.is_auth_role('token'):
+                return entity
+        return None
+
+    def get_auth_role_entity(self):
+        for entity in self.get_entities():
+            if entity.is_auth_role('role'):
                 return entity
         return None
 

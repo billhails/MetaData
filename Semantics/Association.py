@@ -35,7 +35,8 @@ class Association(Semantics):
         return super().optional_attributes() + [
             {'name': 'auth-access', 'values': ['any', 'owner', 'admin'], 'default': 'any'},
             {'name': 'auth-path'},
-            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'}
+            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'},
+            {'name': 'auth-role', 'values': ['role', 'none'], 'default': 'none'}
         ]
 
     def build(self, schema):
@@ -85,3 +86,9 @@ class Association(Semantics):
 
     def is_lhs(self, entity):
         return entity == self.lhs
+
+    def get_schema(self):
+        return self.schema
+
+    def is_auth_enabled(self):
+        return self.get_schema().is_auth_enabled()

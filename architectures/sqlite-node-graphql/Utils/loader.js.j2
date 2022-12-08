@@ -44,6 +44,10 @@ class EntityLoader {
     debug(msg, args) {
         logger.debug(`loader.EntityLoader.${this.name} ${msg} ${util.inspect(args)}`);
     }
+
+    clearAll() {
+        this.loader().clearAll();
+    }
 }
 
 class EntityCountLoader {
@@ -54,6 +58,8 @@ class EntityCountLoader {
     async load (args) {
         return this.page_get(args);
     }
+
+    clearAll() {}
 }
 
 class AbstractLoader {
@@ -217,7 +223,7 @@ module.exports = (data) => {
     });
 
     const {{ loader.entities(entity) }} = new EntityLoader({
-        loader: () => {{ entity.get_name() | singular }}Loader,
+        loader: () => {{ loader.entity(entity) }},
         page_get: async args => data.{{ data.page_get_entity(entity) }}(args),
         name: '{{ loader.entities(entity) }}'
     });

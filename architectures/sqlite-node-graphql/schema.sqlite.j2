@@ -61,7 +61,16 @@ CREATE TABLE {{ database.name(entity) }} (
     FOREIGN KEY ({{ database.name(reference) }}) REFERENCES {{ database.name(reference.get_referenced()) }}(id) ON DELETE CASCADE
 {%-     endfor %}
 ) WITHOUT ROWID;
+
+{%-     for reference in entity.get_references() %}
+
+DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(reference) }};
+
+CREATE INDEX {{ database.name(entity) }}_{{ database.name(reference) }} ON {{ database.name(entity) }}({{ database.name(reference) }});
+{%-     endfor %}
 {%- endfor %}
+
+
 
 {%- for association in schema.get_associations() %}
 
@@ -74,6 +83,14 @@ CREATE TABLE {{ database.name(association) }} (
     FOREIGN KEY ({{ database.rhs(association) }}) REFERENCES {{ database.name(association.get_rhs()) }}(id) ON DELETE CASCADE,
     CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
+
+DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.lhs(association) }};
+
+CREATE INDEX {{ database.name(association) }}_{{ database.lhs(association) }} ON {{ database.name(association) }}({{ database.lhs(association) }});
+
+DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.rhs(association) }};
+
+CREATE INDEX {{ database.name(association) }}_{{ database.rhs(association) }} ON {{ database.name(association) }}({{ database.rhs(association) }});
 {%- endfor %}
 
 

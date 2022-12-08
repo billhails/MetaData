@@ -23,6 +23,7 @@ from Semantics.Field import Field
 from Semantics.Reference import Reference
 from Semantics.Schema import Schema
 from Semantics.Union import Union
+from Semantics import SemanticException
 
 
 def parse_schema(node):
@@ -47,7 +48,25 @@ def parse_schema(node):
 
 def get_semantics(schema):
     tree = eT.parse(schema)
-    semantics = parse_schema(tree.getroot())
+    root = tree.getroot()
+    if root.get('auth') == 'enabled':
+        # if auth is enabled then we stitch in an extra schema fragment that contains auth entities etc.
+        owner_entity = None
+        for entity in root.findall('entity'):
+            if entity.get('auth-role') == 'owner':
+                owner_entity = entity
+                break
+        if owner_entity is None:
+            raise SemanticException('schema has auth=enabled but no entity with auth-role=owner was found')
+        if not owner_entity.get('name'):
+            raise SemanticException("auth-role=owner entity has no 'name' attribute")
+        auth_tree = eT.parse('./data/auth-fragment.xml')
+        auth_root = auth_tree.getroot()
+        for entity in auth_root:
+            if entity.tag == 'association' and entity.get('auth-role') == 'role':
+                entity.attrib['lhs'] = owner_entity.get('name')
+            root.append(entity)
+    semantics = parse_schema(root)
     semantics.build()
     semantics.validate()
     return semantics

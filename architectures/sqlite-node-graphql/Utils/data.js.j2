@@ -31,27 +31,26 @@ class Data {
     constructor(db) {
         this.db = db;
         this.db.run('PRAGMA foreign_keys = ON');
-        this.select_fields = {};
     }
 
-    async get(query, params) {
-        // logger.debug(`get: ${query} ${params}`);
+    async get(query, params=[]) {
+        logger.debug(`get: ${query} ${params}`);
         return this.db.get(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
         });
     }
 
-    async run(query, params) {
-        // logger.debug(`run: ${query} ${params}`);
+    async run(query, params=[]) {
+        logger.debug(`run: ${query} ${params}`);
         return this.db.run(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
         });
     }
 
-    async all(query, params) {
-        // logger.debug(`all: ${query} ${params}`);
+    async all(query, params=[]) {
+        logger.debug(`all: ${query} ${params}`);
         return this.db.all(query, params).catch(error => {
             logger.error(`${error} while executing ${query}, ${util.inspect(params)}`);
             throw(error);
@@ -84,6 +83,20 @@ class Data {
 {%-     set auth_token_field_label = database.name(auth_token_field) %}
 {%-     set auth_owner_reference_label = database.name(auth_owner_reference) %}
 
+{%-     set auth_owner = schema.get_auth_owner_entity() %}
+{%-     set auth_role_association = schema.get_auth_role_association() %}
+
+    async getAuthRolesForOwner(id) {
+        // because auth is stitched in from a known xml source we can dodge some of the CG
+        // good idea or just lazy?
+        return this.all(`
+            SELECT roles.label AS role
+              FROM owner_roles
+              JOIN roles
+                ON roles.id = owner_roles.roles_rhs_id
+             WHERE owner_roles.{{ database.lhs(auth_role_association) }} = ?
+        `, [id]);
+    }
     /**
      * check if refresh token exists
      * @param {string} token

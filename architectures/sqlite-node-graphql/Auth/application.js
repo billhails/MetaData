@@ -22,4 +22,20 @@ function authenticateTokenMiddleware(req, res, next) {
     }
 }
 
-module.exports = authenticateTokenMiddleware;
+function makeAddUserRolesMiddleware(data) {
+    return async (req, res, next) => {
+        if (req.user) {
+            try {
+                const roles = await data.getAuthRolesForOwner(req.user.sub);
+                req.user.roles = roles.map(role => role.role);
+            } catch(error) {
+                logger.error('makeAddUserRolesMiddleware caught', error);
+                res.sendStatus(500);
+                return;
+            }
+        }
+        next();
+    };
+}
+
+module.exports = { authenticateTokenMiddleware, makeAddUserRolesMiddleware };
