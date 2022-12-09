@@ -63,7 +63,7 @@ class EntityCountLoader {
 }
 
 class AbstractLoader {
-    constructor(batch_get, name) {
+    constructor({batch_get, name}) {
         this.lookup = {};
         this.batch_get = batch_get;
         this.name = name;
@@ -88,7 +88,7 @@ class AbstractLoader {
 
 class ReferrerLoader extends AbstractLoader {
     constructor({name, batch_get, entity_loader, referrer_column}) {
-        super(batch_get, name);
+        super({batch_get, name});
         this.entity_loader = entity_loader;
         this.referrer_column = referrer_column;
     }
@@ -130,7 +130,7 @@ class ReferrerCountLoader extends AbstractLoader {
 
 class SelfReferentialAssociationLoader extends AbstractLoader {
     constructor({name, batch_get, lhs_column, rhs_column}) {
-        super(batch_get, name);
+        super({batch_get, name});
         this.lhs_column = lhs_column;
         this.rhs_column = rhs_column;
     }
@@ -157,7 +157,7 @@ class SelfReferentialAssociationLoader extends AbstractLoader {
 
 class AssociationLoader extends AbstractLoader {
     constructor({name, batch_get, this_column, other_column}) {
-        super(batch_get, name);
+        super({batch_get, name});
         this.this_column = this_column;
         this.other_column = other_column;
     }
@@ -260,7 +260,7 @@ module.exports = (data) => {
 
     const {{ loader.count_association_for_entity(entity, association) }} = new SelfReferentialAssociationCountLoader({
         name: '{{ loader.count_association_for_entity(entity, association) }}',
-        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
+        batch_get: async (ids_and_args) => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
     });
 
 {%-         else %}

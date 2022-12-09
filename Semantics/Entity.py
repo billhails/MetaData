@@ -43,7 +43,8 @@ class Entity(Container):
         return super().optional_attributes() + [
             {'name': 'auth-role', 'values': ['owner', 'token', 'role', 'none'], 'default': 'none'},
             {'name': 'auth-access', 'values': ['any', 'owner', 'admin'], 'default': 'any'},
-            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'}
+            {'name': 'auth-visibility', 'values': ['visible', 'hidden'], 'default': 'visible'},
+            {'name': 'debug', 'default': 'none'}
         ]
 
     def build(self, schema):
@@ -142,6 +143,9 @@ class Entity(Container):
     def get_fields(self):
         return self.fields.values()
 
+    def get_unique_fields(self):
+        return [field for field in self.get_fields() if field.is_unique()]
+
     def get_references(self):
         return self.references.values()
 
@@ -189,3 +193,6 @@ class Entity(Container):
 
     def is_auth_enabled(self):
         return self.get_schema().is_auth_enabled()
+
+    def is_debug(self, debug):
+        return self.attribute_value('debug', debug)

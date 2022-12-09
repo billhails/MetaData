@@ -65,8 +65,19 @@ CREATE TABLE {{ database.name(entity) }} (
 {%-     for reference in entity.get_references() %}
 
 DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(reference) }};
-
 CREATE INDEX {{ database.name(entity) }}_{{ database.name(reference) }} ON {{ database.name(entity) }}({{ database.name(reference) }});
+{%-     endfor %}
+
+{%-     for union in entity.get_unions() %}
+
+DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(union) }};
+CREATE INDEX {{ database.name(entity) }}_{{ database.name(union) }} ON {{ database.name(entity) }}({{ database.name(union) }});
+{%-     endfor %}
+
+{%-     for field in entity.get_unique_fields() %}
+
+DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(field) }};
+CREATE UNIQUE INDEX {{ database.name(entity) }}_{{ database.name(field) }} ON {{ database.name(entity) }}({{ database.name(field) }});
 {%-     endfor %}
 {%- endfor %}
 
@@ -75,7 +86,6 @@ CREATE INDEX {{ database.name(entity) }}_{{ database.name(reference) }} ON {{ da
 {%- for association in schema.get_associations() %}
 
 DROP TABLE IF EXISTS {{ database.name(association) }};
-
 CREATE TABLE {{ database.name(association) }} (
     {{ database.lhs(association) }} {{ sqlite_type("guid", database.lhs(association)) }} NOT NULL,
     {{ database.rhs(association) }} {{ sqlite_type("guid", database.rhs(association)) }} NOT NULL,
@@ -85,11 +95,9 @@ CREATE TABLE {{ database.name(association) }} (
 );
 
 DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.lhs(association) }};
-
 CREATE INDEX {{ database.name(association) }}_{{ database.lhs(association) }} ON {{ database.name(association) }}({{ database.lhs(association) }});
 
 DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.rhs(association) }};
-
 CREATE INDEX {{ database.name(association) }}_{{ database.rhs(association) }} ON {{ database.name(association) }}({{ database.rhs(association) }});
 {%- endfor %}
 

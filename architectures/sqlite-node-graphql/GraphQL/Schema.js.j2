@@ -365,6 +365,65 @@ const make_schema = (resolver) => {
                 },
                 resolve: (...args) => resolver.{{ resolve.create_association(association) }}(...args)
             },
+{%-     for lhs in association.get_lhs().get_unique_fields() %}
+// add association {{lhs.get_name()}}.{{association.get_name()}}.id
+            {{ arguments.add_association_label_lhs(association, lhs) }}: {
+                type: statusType,
+                args: {
+                    {{ arguments.association_lhs_field_label(association, lhs) }}: {
+                        type: new GraphQLNonNull({{ arguments.graphql_type(lhs.get_type()) }})
+                    },
+                    {{ arguments.association_rhs_label(association) }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.create_association_lhs(association, lhs) }}(...args)
+            },
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+// add association {{lhs.get_name()}}.{{association.get_name()}}.{{rhs.get_name()}}
+           {{ arguments.add_association_label_lhs_rhs(association, lhs, rhs) }}: {
+                type: statusType,
+                args: {
+                    {{ arguments.association_lhs_field_label(association, lhs) }}: {
+                        type: new GraphQLNonNull({{ arguments.graphql_type(lhs.get_type()) }})
+                    },
+                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(...args)
+            },
+// add association id.{{association.get_name()}}.{{rhs.get_name()}}
+            {{ arguments.add_association_label_rhs(association, rhs) }}: {
+                type: statusType,
+                args: {
+                    {{ arguments.association_lhs_label(association) }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.create_association_rhs(association, rhs) }}(...args)
+            },
+{%-         endfor %}
+{%-     else %}
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+// add association id.{{association.get_name()}}.{{rhs.get_name()}}
+            {{ arguments.add_association_label_rhs(association, rhs) }}: {
+                type: statusType,
+                args: {
+                    {{ arguments.association_lhs_label(association) }}: {
+                        type: new GraphQLNonNull(GraphQLID)
+                    },
+                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.create_association_rhs(association, rhs) }}(...args)
+            },
+{%-         endfor %}
+{%-     endfor %}
             {{ arguments.delete_association_label(association) }}: {
                 type: statusType,
                 args: {

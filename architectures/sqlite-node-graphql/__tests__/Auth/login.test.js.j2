@@ -30,6 +30,7 @@ const { faker, randomUser } = require('../test-utils/fakery');
 const { gql } = require('graphql-request');
 const { getGraphQLClient } = require('../test-utils/graphql');
 const jwt = require('jsonwebtoken');
+jest.mock('../../Utils/logger');
 
 {% if id_field.is_auth_visibility('redacted') %}
 

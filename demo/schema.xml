@@ -28,7 +28,7 @@
         <field name="password" type="password" auth-role="password" auth-visibility="hidden"/>
     </entity>
 
-    <entity name="posts" auth-access="owner">
+    <entity name="posts" auth-access="owner" debug="auth">
         <description>A post by a user.</description>
         <field name="title" type="title"/>
         <field name="body" type="text"/>

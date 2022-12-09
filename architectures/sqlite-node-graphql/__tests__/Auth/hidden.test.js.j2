@@ -23,6 +23,7 @@ const { faker, randomUser } = require('../test-utils/fakery');
 const { getGraphQLClient } = require('../test-utils/graphql')
 const { GraphQLClient, gql } = require('graphql-request');
 const jwt = require('jsonwebtoken');
+jest.mock('../../Utils/logger');
 
 {% if schema.is_auth_enabled %}
 {%-     set owner_entity = schema.get_auth_owner_entity() %}

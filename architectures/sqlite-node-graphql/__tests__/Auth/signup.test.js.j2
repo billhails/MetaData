@@ -27,6 +27,7 @@
 const { signup, login, refresh, logout } = require('../test-utils/auth');
 const { faker, randomUser } = require('../test-utils/fakery');
 const { getDb, refreshTokenExists } = require('../test-utils/db');
+jest.mock('../../Utils/logger');
 
 describe('the auth server', () => {
     describe('sign-up', () => {

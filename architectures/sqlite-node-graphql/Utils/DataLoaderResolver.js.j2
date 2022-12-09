@@ -37,21 +37,21 @@ class DataLoaderResolver {
 
 {%- for entity in schema.get_entities() %}
 
-    async {{ resolve.entity(entity) }}(source, args, req) {
+    async {{ resolve.entity(entity) }}(source, args) {
         return this.loaders.{{ loader.entity(entity) }}.load(args.id);
     }
 
-    async {{ resolve.entities(entity) }}(source, args, req) {
+    async {{ resolve.entities(entity) }}(source, args) {
         return this.loaders.{{ loader.entities(entity) }}.load(args);
     }
 
-    async {{ resolve.count_entities(entity) }}(source, args, req) {
+    async {{ resolve.count_entities(entity) }}(source, args) {
         return this.loaders.{{ loader.count_entities(entity) }}.load(args);
     }
 
 {%-     for reference in entity.get_references() %}
 
-    async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req) {
+    async {{ resolve.reference_for_entity(entity, reference) }}(entity, args) {
         return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})
     }
 
@@ -59,7 +59,7 @@ class DataLoaderResolver {
 
 {%-     for union in entity.get_unions() %}
 
-    async {{ resolve.union_for_entity(entity, union) }}(entity, args, req) {
+    async {{ resolve.union_for_entity(entity, union) }}(entity, args) {
         switch (entity.{{ arguments.field_label(union) }}Type) {
 {%-         for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
@@ -71,50 +71,77 @@ class DataLoaderResolver {
 
 {%-     for referrer in entity.get_referrers() %}
 
-    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req) {
+    async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args) {
         return this.loaders.{{ loader.referrer(referrer) }}.load(entity.id, args)
     }
 
-    async {{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, req) {
+    async {{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args) {
         return this.loaders.{{ loader.count_referrer(referrer) }}.load(entity.id, args);
     }
 {%-     endfor %}
 
 {%-     for association in entity.get_associations() %}
 
-    async {{ resolve.association_for_entity(entity, association) }}(entity, args, req) {
+    async {{ resolve.association_for_entity(entity, association) }}(entity, args) {
         const associations = await this.loaders.{{ loader.association_for_entity(entity, association) }}.load(entity.id, args);
         logger.debug(`DataLoaderResolver.{{ resolve.association_for_entity(entity, association) }} got associations from {{ loader.association_for_entity(entity, association) }} ${util.inspect(associations)}`);
         return Promise.all(associations.map(id => this.loaders.{{ loader.other_entity(entity, association) }}.load(id)));
     }
 
-    async {{ resolve.count_association_for_entity(entity, association) }}(entity, args, req) {
+    async {{ resolve.count_association_for_entity(entity, association) }}(entity, args) {
         return this.loaders.{{ loader.count_association_for_entity(entity, association) }}.load(entity.id, args);
     }
 {%-     endfor %}
 
-    async {{ resolve.create_entity(entity) }}(_, { input }, req) {
+    async {{ resolve.create_entity(entity) }}(_, { input }) {
         logger.debug('DataLoaderResolver.{{ resolve.create_entity(entity) }}', {input});
         return this.loaders.data.{{ data.create_entity(entity) }}(input);
     }
 
-    async {{ resolve.update_entity(entity) }}(_, { id, input }, req) {
+    async {{ resolve.update_entity(entity) }}(_, { id, input }) {
         return this.loaders.data.{{ data.update_entity(entity) }}(id, input);
     }
 
-    async {{ resolve.delete_entity(entity) }}(_, { id }, req) {
-        return this.loaders.data.{{ data.delete_entity(entity) }}(id, req.user.sub);
+    async {{ resolve.delete_entity(entity) }}(_, { id }) {
+        return this.loaders.data.{{ data.delete_entity(entity) }}(id);
     }
 
 {%- endfor %}
 
 {%- for association in schema.get_associations() %}
 
-    async {{ resolve.create_association(association) }}(_, args, req) {
+    async {{ resolve.create_association(association) }}(_, args) {
         return this.loaders.data.{{ data.create_association(association) }}(args);
     }
 
-    async {{ resolve.delete_association(association) }}(_, args, req) {
+{%-     for lhs in association.get_lhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_lhs(association, lhs) }}(source, args) {
+        return this.loaders.data.{{ data.create_association_lhs(association, lhs) }}(args);
+    }
+
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args) {
+        return this.loaders.data.{{ data.create_association_lhs_rhs(association, lhs, rhs) }}(args);
+    }
+
+    async {{ resolve.create_association_rhs(association, rhs) }}(source, args) {
+        return this.loaders.data.{{ data.create_association_rhs(association, rhs) }}(args);
+    }
+
+{%-         endfor %}
+{%-     else %}
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_rhs(association, rhs) }}(source, args) {
+        return this.loaders.data.{{ data.create_association_rhs(association, rhs) }}(args);
+    }
+
+{%-         endfor %}
+{%-     endfor %}
+
+    async {{ resolve.delete_association(association) }}(_, args) {
         return this.loaders.data.{{ data.delete_association(association) }}(args);
     }
 {%- endfor %}

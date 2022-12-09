@@ -1,0 +1,97 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+ // {{ warning }}
+{#- example test included by using the --extra override #}
+
+jest.mock('../../Utils/logger');
+
+const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
+const { getGraphQLClient, gql } = require('../test-utils/graphql');
+
+function userQuery(id) {
+    return {
+        query: gql`query getUser($id: ID!) {
+            user(id: $id) {
+                displayName
+                email
+                roles {
+                    totalCount
+                    edges {
+                        node {
+                            id
+                            label
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: { id }
+    };
+}
+
+function rolesQuery() {
+    return {
+        query: gql`query A {
+            roles {
+                totalCount
+                edges {
+                    node {
+                        id
+                        label
+                    }
+                }
+            }
+        }`,
+        variables: {}
+    };
+}
+
+async function getRoles(client) {
+    const request = rolesQuery();
+    return client.request(request.query, request.variables);
+}
+
+async function findUser(adminClient, id) {
+    const findUserQuery = userQuery(id);
+    return adminClient.request(findUserQuery.query, findUserQuery.variables);
+}
+
+describe('users', () => {
+    describe('normal users', () => {
+        it('are created by logging in', async () => {
+            expect.assertions(1);
+            const user = await createUser();
+            expect(user.id).not.toBeNull();
+        });
+    });
+
+    describe('admin users', () => {
+        it('can grant other users admin', async () => {
+            expect.assertions(3);
+            const { loggedIn: admin } = await getAdminUser();
+            const { loggedIn, id } = await getLoggedInUser();
+            const originalData = await findUser(admin, id);
+            expect(originalData.user.roles.totalCount).toBe(0);
+            const roles = await getRoles(admin);
+            expect(roles.roles.totalCount).toBeGreaterThan(0);
+            const adminRole = roles.roles.edges.find(edge => edge.node.label === 'admin');
+            expect(adminRole).toBeDefined();
+
+        });
+    });
+});

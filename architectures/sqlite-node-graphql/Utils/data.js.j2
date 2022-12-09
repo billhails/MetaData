@@ -28,6 +28,9 @@ const logger = require('./logger');
 {%- import 'macros/model.j2h' as model %}
 
 class Data {
+
+    static instance = null;
+
     constructor(db) {
         this.db = db;
         this.db.run('PRAGMA foreign_keys = ON');
@@ -167,8 +170,8 @@ class Data {
             .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
-{%-     if entity.is_auth_role('owner') -%}
-{%-         set field = entity.get_auth_id_field() %}
+{%-     for field in entity.get_fields() -%}
+{%-         if field.is_unique() %}
 
     /**
      * fetch auth entity {{ entity.get_name() }} by {{ database.name(field) }}
@@ -185,7 +188,8 @@ class Data {
             .then(row => row ? new Model.{{ model.name(entity) }}(row) : null);
     }
 
-{%-     endif %}
+{%-         endif %}
+{%-     endfor %}
 
     /**
      * batch fetch entities for loader
@@ -358,11 +362,7 @@ class Data {
      * @param {String} id
      */
     async {{ data.delete_entity(entity) }}(id, user) {
-{%-     if entity.get_auth_owner_reference() %}
-        return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ? and {{ database.name(entity.get_auth_owner_reference()) }} = ?', [id, user])
-{%- else %}
         return this.run('DELETE FROM {{ database.name(entity) }} WHERE id = ?', [id])
-{%- endif -%}
         .then(stats => stats.changes > 0);
     }
 
@@ -480,15 +480,15 @@ class Data {
             SELECT count(*) AS count,
                    {{ database.name(referrer.get_union()) }} AS id
               FROM {{ database.name(referrer.get_entity()) }}
-             WHERE id IN (${ Array(ids.length).fill('?').join(', ') })
+             WHERE {{ database.name(referrer.get_union()) }} IN (${ Array(ids.length).fill('?').join(', ') })
                AND {{ database.type_name(referrer.get_union()) }} = "{{ database.name(referrer) }}"
-          GROUP BY id
+          GROUP BY {{ database.name(referrer.get_union()) }}
 {%-         else %}
-            SELECT count(*) as count,
+            SELECT count(*) AS count,
                    {{ database.name(referrer) }} AS id
               FROM {{ database.name(referrer.get_entity()) }}
-             WHERE id IN (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY id
+             WHERE {{ database.name(referrer) }} IN (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY {{ database.name(referrer) }}
 {%-         endif %}
         `;
 
@@ -609,14 +609,14 @@ class Data {
             SELECT count(*) AS count,
                    {{ association.get_rhs_column() }} AS id
               FROM {{ database.name(association) }}
-             WHERE id in (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY id
+             WHERE {{ association.get_rhs_column() }} in (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY {{ association.get_rhs_column() }}
          UNION ALL
             SELECT count(*) AS count,
                    {{ association.get_lhs_column() }} AS id
               FROM {{ database.name(association) }}
-             WHERE id in (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY id
+             WHERE {{ association.get_lhs_column() }} in (${ Array(ids.length).fill('?').join(', ') })
+          GROUP BY {{ association.get_lhs_column() }}
         `;
         return this.all(query, ids.concat(ids));
 {%-         else %}
@@ -625,7 +625,7 @@ class Data {
                    {{ association.get_this_column(entity) }} AS id
               FROM {{ database.name(association) }}
              WHERE {{ association.get_this_column(entity) }} IN (${ Array(ids.length).fill('?').join(', ') })
-          GROUP BY id
+          GROUP BY {{ association.get_lhs_column() }}
         `;
         return this.all(query, ids);
 {%-         endif %}
@@ -664,6 +664,60 @@ class Data {
         ).then(stats => stats.changes > 0);
     }
 
+
+{%-     for lhs in association.get_lhs().get_unique_fields() %}
+
+    async {{ data.create_association_lhs(association, lhs) }}(args) {
+        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ arguments.association_lhs_field_label(association, lhs) }});
+        if (!lhs) {
+            return false;
+        }
+        args.{{ arguments.association_lhs_label(association) }} = lhs.id;
+        return this.{{ data.create_association(association) }}(args);
+    }
+
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ data.create_association_lhs_rhs(association, lhs, rhs) }}(args) {
+        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ arguments.association_lhs_field_label(association, lhs) }});
+        if (!lhs) {
+            return false;
+        }
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        if (!rhs) {
+            return false;
+        }
+        args.{{ arguments.association_lhs_label(association) }} = lhs.id;
+        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        return this.{{ data.create_association(association) }}(args);
+    }
+
+    async {{ data.create_association_rhs(association, rhs) }}(args) {
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        if (!rhs) {
+            return false;
+        }
+        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        return this.{{ data.create_association(association) }}(args);
+    }
+
+{%-         endfor %}
+{%-     else %}
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ data.create_association_rhs(association, rhs) }}(args) {
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        if (!rhs) {
+            return false;
+        }
+        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        return this.{{ data.create_association(association) }}(args);
+    }
+
+{%-         endfor %}
+{%-     endfor %}
+
+
     async {{ data.delete_association(association) }}(args) {
 {%-     if association.is_self_referential() %}
         return this.run(`
@@ -690,10 +744,13 @@ class Data {
 {%- endfor %}
 
     static async build() {
-        return openSqlite({
-            filename: './{{ schema.get_name() }}.db',
-            driver: sqlite3.Database
-        }).then(db => new Data(db))
+        if (!this.instance) {
+            this.instance = openSqlite({
+                filename: './{{ schema.get_name() }}.db',
+                driver: sqlite3.Database
+            }).then(db => new Data(db))
+        }
+        return this.instance;
     }
 }
 

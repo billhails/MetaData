@@ -21,8 +21,11 @@
 {% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}
 {% macro referrer_label(referrer) %}{{ referrer.get_referrer_name() | camel_case }}{% endmacro %}
 {% macro association_other_label(entity, association) %}{{ association.get_name_for_other_entity(entity) | camel_case }}{% endmacro %}
+
 {% macro association_lhs_label(association) %}{{ association.get_lhs_column() | camel_case }}{% endmacro %}
 {% macro association_rhs_label(association) %}{{ association.get_rhs_column() | camel_case }}{% endmacro %}
+{% macro association_lhs_field_label(association, field) %} {{ association.get_lhs().get_name() | camel_case }}Lhs{{ field.get_name() | mixed_case }}{% endmacro %}
+{% macro association_rhs_field_label(association, field) %} {{ association.get_rhs().get_name() | camel_case }}Rhs{{ field.get_name() | mixed_case }}{% endmacro %}
 
 {% macro lhs(association) %}{{ association.get_lhs_column() | camel_case }}{% endmacro %}
 {% macro rhs(association) %}{{ association.get_rhs_column() | camel_case }}{% endmacro %}
@@ -43,6 +46,35 @@
 {% macro add_union(entity, union) %}Add{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
 
 {% macro add_association_label(association) %}add{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
+{% macro add_association_label_lhs(association, field) -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- association.get_lhs().get_name() | mixed_case -}}
+    {{- field.get_name() | mixed_case -}}
+    And
+    {{- association.get_rhs().get_name() | mixed_case -}}
+    Id
+{%- endmacro %}
+{% macro add_association_label_rhs(association, field) -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- association.get_lhs().get_name() | mixed_case -}}
+    IdAnd
+    {{- association.get_rhs().get_name() | mixed_case -}}
+    {{- field.get_name() | mixed_case -}}
+{%- endmacro %}
+{% macro add_association_label_lhs_rhs(association, lhs_field, rhs_field) -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- association.get_lhs().get_name() | mixed_case -}}
+    {{- lhs_field.get_name() | mixed_case -}}
+    And
+    {{- association.get_rhs().get_name() | mixed_case -}}
+    {{- rhs_field.get_name() | mixed_case -}}
+{%- endmacro %}
 
 {% macro update_entity(entity) %}Update{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro update_entity_label(entity) %}update{{ entity.get_name() | mixed_case | singular }}{% endmacro %}

@@ -18,21 +18,16 @@
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
 
+{%- import 'macros/data.j2h' as data %}
+{%- import 'macros/schema.j2h' as arguments %}
+
 const sqlite3 = require('sqlite3').verbose();
 const { open: openSqlite } = require('sqlite');
+const Data = require('../../Utils/data');
 
-const getDb = (() => {
-    let db;
-    return () => {
-        if (!db) {
-            db = openSqlite({ // N.B. no await!
-                filename: './{{ schema.get_name() }}.db',
-                driver: sqlite3.Database
-            });
-        }
-        return db;
-    }
-})();
+const getDb = () => {
+    return Data.build(); // build does it's own memoization
+};
 
 async function refreshTokenExists(token) {
     const db = await getDb();
@@ -46,9 +41,30 @@ async function refreshTokenExists(token) {
     return(parseInt(row.c) == 1);
 }
 
+{%- set roles_entity = schema.get_auth_role_entity() %}
+{%- set roles_field = roles_entity.get_auth_field('role') %}
+
+async function getAdminRole() {
+    const db = await getDb();
+    return db.{{ data.get_entity_by_field(roles_entity, roles_field) }}('admin');
+}
+
+{%- set roles_association = schema.get_auth_role_association() %}
+
+async function grantAdminRole(userId) {
+    const db = await getDb();
+    const adminRole = await getAdminRole();
+    return db.{{ data.create_association(roles_association) }}({
+        '{{ arguments.association_lhs_label(roles_association) }}': userId,
+        '{{ arguments.association_rhs_label(roles_association) }}': adminRole.id
+    });
+}
+
 module.exports = {
     getDb,
-    refreshTokenExists
+    refreshTokenExists,
+    getAdminRole,
+    grantAdminRole
 };
 
 {% else %}

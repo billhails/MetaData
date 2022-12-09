@@ -30,7 +30,7 @@ const Model = require('../Model');
             return {{ failure }};
         }
 {%- if entity.is_auth_access('admin') %}
-        if (!self.isAdmin({{req}})) {
+        if (!this.isAdmin({{req}})) {
             return {{ failure }};
         }
 {%- endif %}
@@ -63,7 +63,7 @@ class AuthFilter {
 
     // redact field for entity
     {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
-        if (!req.user || req.user.sub != model.{{ owner_label(entity) }}) {
+        if (!req.user || (req.user.sub != model.{{ owner_label(entity) }} && !this.isAdmin(req))) {
             model.{{ arguments.field_label(field) }} = null;
         }
         return model;
@@ -77,7 +77,7 @@ class AuthFilter {
             return null;
         }
 {%-     if entity.is_auth_visibility("hidden") %}
-        if (!req.user || req.user.sub != model.{{ owner_label(entity) }}) {
+        if (!req.user || (req.user.sub != model.{{ owner_label(entity) }} && !this.isAdmin(req))) {
             return null;
         }
 {%-     endif %}
@@ -163,9 +163,11 @@ class AuthFilter {
     async {{ resolve.update_entity(entity) }}(source, args, req, info) {
         {{- auth_check('req', entity, 'null') }}
 {%-     if entity.get_auth_owner_reference() %}
-        const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
-        if (model.{{ owner_label(entity) }} != req.user.sub) {
-            return null;
+        if (!this.isAdmin(req)) {
+            const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
+            if (model.{{ owner_label(entity) }} != req.user.sub) {
+                return null;
+            }
         }
 {%-     endif %}
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req, info);
@@ -175,9 +177,11 @@ class AuthFilter {
     async {{ resolve.delete_entity(entity) }}(source, args, req, info) {
         {{- auth_check('req', entity, '{ status: false }') }}
 {%-     if entity.get_auth_owner_reference() %}
-        const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
-        if (model.{{ owner_label(entity) }} != req.user.sub) {
-            return { status: false };
+        if (!this.isAdmin(req)) {
+            const model = await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
+            if (model.{{ owner_label(entity) }} != req.user.sub) {
+                return { status: false };
+            }
         }
 {%-     endif %}
         return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req, info);
@@ -192,6 +196,37 @@ class AuthFilter {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association(association) }}(source, args, req, info);
     }
+
+{%-     for lhs in association.get_lhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info) {
+        {{- auth_check('req', association, '{ status: false }') }}
+        return this.resolver.{{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info);
+    }
+
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info) {
+        {{- auth_check('req', association, '{ status: false }') }}
+        return this.resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info);
+    }
+
+    async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
+        {{- auth_check('req', association, '{ status: false }') }}
+        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info);
+    }
+
+{%-         endfor %}
+{%-     else %}
+{%-         for rhs in association.get_rhs().get_unique_fields() %}
+
+    async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
+        {{- auth_check('req', association, '{ status: false }') }}
+        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info);
+    }
+
+{%-         endfor %}
+{%-     endfor %}
 
     // resolve delete association
     async {{ resolve.delete_association(association) }}(source, args, req) {

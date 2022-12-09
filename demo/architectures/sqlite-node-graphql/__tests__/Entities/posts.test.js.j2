@@ -14,18 +14,16 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
-{# example test included by using the --extra override #}
+-#}
+ // {{ warning }}
+{#- example test included by using the --extra override #}
 
-const { randomUser, faker } = require('../test-utils/fakery');
+const { faker } = require('../test-utils/fakery');
 const { signup, deconstruct } = require('../test-utils/auth');
+const { grantAdminRole } = require('../test-utils/db');
 const { getGraphQLClient, gql } = require('../test-utils/graphql');
-
-async function createUser() {
-    const user = randomUser();
-    const response = await signup(user);
-    return deconstruct(response);
-}
+const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
+jest.mock('../../Utils/logger');
 
 function randomPost() {
     return {
@@ -195,13 +193,6 @@ async function fetchPost(client, postId) {
     return client.request(query.query, query.variables);
 }
 
-async function getLoggedInUser() {
-    const user = await createUser();
-    const loggedIn = getGraphQLClient(user.accessToken);
-    return { loggedIn, ...user };
-}
-
-
 describe("posts", () => {
     it("cannot be created by a logged-out user", async () => {
         expect.assertions(1);
@@ -216,12 +207,29 @@ describe("posts", () => {
         expect(data.addPost).not.toBeNull();
         expect(data.addPost?.owner?.id).toBe(id);
     });
+    it("can be created by admin", async () => {
+        expect.assertions(2);
+        const { loggedIn: admin, id } = await getAdminUser();
+        const data = await createPost(admin);
+        expect(data.addPost).not.toBeNull();
+        expect(data.addPost?.owner?.id).toBe(id);
+    });
     it("can be modified by the owner", async () => {
         expect.assertions(2);
         const { loggedIn, id } = await getLoggedInUser();
         const data = await createPost(loggedIn);
         const update = updatePostMutation(data.addPost.id)
         const updatedData = await loggedIn.request(update.mutation, update.variables);
+        expect(updatedData.updatePost.body).toBe(update.variables.body);
+        expect(updatedData.updatePost.owner.id).toBe(id);
+    });
+    it("can be modified by admin", async () => {
+        expect.assertions(2);
+        const { loggedIn, id } = await getLoggedInUser();
+        const data = await createPost(loggedIn);
+        const { loggedIn: admin } = await getAdminUser();
+        const update = updatePostMutation(data.addPost.id);
+        const updatedData = await admin.request(update.mutation, update.variables);
         expect(updatedData.updatePost.body).toBe(update.variables.body);
         expect(updatedData.updatePost.owner.id).toBe(id);
     });
@@ -247,6 +255,15 @@ describe("posts", () => {
         const post = createPostMutation();
         const data = await loggedIn.request(post.mutation, post.variables);
         const deletedData = await deletePost(loggedIn, data.addPost.id);
+        expect(deletedData).toStrictEqual({deletePost: { status: true }})
+    });
+    it("can be deleted by admin", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const post = createPostMutation();
+        const data = await loggedIn.request(post.mutation, post.variables);
+        const { loggedIn: admin } = await getAdminUser();
+        const deletedData = await deletePost(admin, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: true }})
     });
     it("can not be deleted by a logged-out user", async () => {

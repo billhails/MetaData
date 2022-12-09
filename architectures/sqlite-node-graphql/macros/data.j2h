@@ -34,4 +34,7 @@
 {% macro get_referrer_for_entity(entity, referrer) %}get{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro get_association_for_entity(entity, association) %}get{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro create_association(association) %}create{{ association.get_name() | mixed_case }}Association{% endmacro %}
+{% macro create_association_lhs(association, lhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByLhs{{ lhs.get_name() | mixed_case }}{% endmacro %}
+{% macro create_association_rhs(association, rhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByRhs{{ rhs.get_name() | mixed_case }}{% endmacro %}
+{% macro create_association_lhs_rhs(association, lhs, rhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByLhs{{ lhs.get_name() | mixed_case }}AndRhs{{ rhs.get_name() | mixed_case }}{% endmacro %}
 {% macro delete_association(association) %}delete{{ association.get_name() | mixed_case }}Association{% endmacro %}
