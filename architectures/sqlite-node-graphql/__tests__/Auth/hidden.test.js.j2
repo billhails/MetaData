@@ -16,7 +16,7 @@
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  #}
 // {{ warning }}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 
 const { signup, deconstruct } = require('../test-utils/auth');
 const { faker, randomUser } = require('../test-utils/fakery');
@@ -27,17 +27,17 @@ jest.mock('../../Utils/logger');
 
 {% if schema.is_auth_enabled %}
 {%-     set owner_entity = schema.get_auth_owner_entity() %}
-{%-     set owner_label = arguments.singular_entity_label(owner_entity) %}
+{%-     set owner_label = gql.singular_entity_label(owner_entity) %}
 
 {%-     set id_field = owner_entity.get_auth_id_field() %}
-{%-     set id_label = arguments.field_label(id_field) %}
+{%-     set id_label = gql.field_label(id_field) %}
 
 {%-     set token_entity = schema.get_auth_token_entity() %}
-{%-     set token_entity_label = arguments.field_label(token_entity) %}
-{%-     set token_entity_name = arguments.singular_entity_label(token_entity) %}
+{%-     set token_entity_label = gql.field_label(token_entity) %}
+{%-     set token_entity_name = gql.singular_entity_label(token_entity) %}
 
-{%-     set owner_token_name = arguments.referrer_label(token_entity.get_auth_owner_reference()) %}
-{%-     set token_field_label = arguments.field_label(token_entity.get_auth_token_field()) %}
+{%-     set owner_token_name = gql.referrer_label(token_entity.get_auth_owner_reference()) %}
+{%-     set token_field_label = gql.field_label(token_entity.get_auth_token_field()) %}
 function userQuery(id) {
     return gql`
         {

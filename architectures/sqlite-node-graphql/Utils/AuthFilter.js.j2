@@ -18,7 +18,7 @@
 // {{ warning }}
 
 {% import 'macros/resolver.j2h' as resolve %}
-{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/gql.j2h' as gql %}
 {% import 'macros/model.j2h' as model %}
 
 const logger = require('./logger');
@@ -37,7 +37,7 @@ const Model = require('../Model');
 {%- endmacro %}
 
 
-{% macro owner_label(entity) %}{{ arguments.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
+{% macro owner_label(entity) %}{{ gql.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
 
 class AuthFilter {
     constructor(resolver) {
@@ -64,7 +64,7 @@ class AuthFilter {
     // redact field for entity
     {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
         if (!req.user || (req.user.sub != model.{{ owner_label(entity) }} && !this.isAdmin(req))) {
-            model.{{ arguments.field_label(field) }} = null;
+            model.{{ gql.field_label(field) }} = null;
         }
         return model;
     }

@@ -17,12 +17,12 @@
  #}
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
-{%-     import 'macros/schema.j2h' as arguments %}
+{%-     import 'macros/gql.j2h' as gql %}
 {%-     set owner_entity = schema.get_auth_owner_entity() %}
 {%-     set password_field = owner_entity.get_auth_password_field() %}
 {%-     set id_field = owner_entity.get_auth_id_field() %}
-{%-     set password_label = arguments.field_label(password_field) %}
-{%-     set id_label = arguments.field_label(id_field) %}
+{%-     set password_label = gql.field_label(password_field) %}
+{%-     set id_label = gql.field_label(id_field) %}
 
 const { faker } = require('@faker-js/faker');
 
@@ -49,9 +49,9 @@ function randomUser() {
         {{ password_label }}: {{ faker_type(password_field) }}(),
 {%-     for field in schema.get_auth_owner_entity().get_fields() if not (field.is_auth_role('external-id') or field.is_auth_role('password')) %}
 {%-         if field.get_type() == 'name' %}
-        {{ arguments.field_label(field) }}: {{ name_field_generator }}
+        {{ gql.field_label(field) }}: {{ name_field_generator }}
 {%-         else %}
-        {{ arguments.field_label(field) }}: {{ faker_type(field) }}(),
+        {{ gql.field_label(field) }}: {{ faker_type(field) }}(),
 {%-         endif %}
 {%-     endfor %}
     };

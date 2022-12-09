@@ -20,7 +20,7 @@
 {%- import 'macros/loader.j2h' as loader %}
 {%- import 'macros/data.j2h' as data %}
 {%- import 'macros/database.j2h' as database %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 
 const DataLoader = require('dataloader');
 const util = require('util');
@@ -253,8 +253,8 @@ module.exports = (data) => {
 
     const {{ loader.association_for_entity(entity, association) }} = new SelfReferentialAssociationLoader({
         batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        lhs_column: '{{ arguments.lhs(association) }}',
-        rhs_column: '{{ arguments.rhs(association) }}',
+        lhs_column: '{{ gql.lhs(association) }}',
+        rhs_column: '{{ gql.rhs(association) }}',
         name: '{{ loader.association_for_entity(entity, association) }}'
     });
 
@@ -267,8 +267,8 @@ module.exports = (data) => {
 
     const {{ loader.association_for_entity(entity, association) }} = new AssociationLoader({
         batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        this_column: '{{ arguments.this_column(entity, association) }}',
-        other_column: '{{ arguments.other_column(entity, association) }}',
+        this_column: '{{ gql.this_column(entity, association) }}',
+        other_column: '{{ gql.other_column(entity, association) }}',
         name: '{{ loader.association_for_entity(entity, association) }}'
     });
 

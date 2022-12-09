@@ -17,13 +17,13 @@
  #}
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 {%-     set owner_entity = schema.get_auth_owner_entity() %}
-{%-     set owner_label = arguments.singular_entity_label(owner_entity) %}
+{%-     set owner_label = gql.singular_entity_label(owner_entity) %}
 {%-     set password_field = owner_entity.get_auth_password_field() %}
 {%-     set id_field = owner_entity.get_auth_id_field() %}
-{%-     set password_label = arguments.field_label(password_field) %}
-{%-     set id_label = arguments.field_label(id_field) %}
+{%-     set password_label = gql.field_label(password_field) %}
+{%-     set id_label = gql.field_label(id_field) %}
 
 const { signup } = require('../test-utils/auth');
 const { faker, randomUser } = require('../test-utils/fakery');

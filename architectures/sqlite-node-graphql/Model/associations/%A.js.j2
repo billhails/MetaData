@@ -20,14 +20,14 @@
 const logger = require('../../Utils/logger');
 const util = require('util');
 
-{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/gql.j2h' as gql %}
 {% import 'macros/database.j2h' as database %}
 {% import 'macros/model.j2h' as model %}
 
 class {{ model.association(association) }} {
     constructor(args) {
-        this.{{ arguments.lhs(association) }} = args.{{ arguments.lhs(association) }};
-        this.{{ arguments.rhs(association) }} = args.{{ arguments.rhs(association) }};
+        this.{{ gql.lhs(association) }} = args.{{ gql.lhs(association) }};
+        this.{{ gql.rhs(association) }} = args.{{ gql.rhs(association) }};
     }
 }
 

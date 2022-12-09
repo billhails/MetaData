@@ -19,7 +19,7 @@
 {%- if schema.is_auth_enabled() %}
 
 {%- import 'macros/data.j2h' as data %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 
 const sqlite3 = require('sqlite3').verbose();
 const { open: openSqlite } = require('sqlite');
@@ -55,8 +55,8 @@ async function grantAdminRole(userId) {
     const db = await getDb();
     const adminRole = await getAdminRole();
     return db.{{ data.create_association(roles_association) }}({
-        '{{ arguments.association_lhs_label(roles_association) }}': userId,
-        '{{ arguments.association_rhs_label(roles_association) }}': adminRole.id
+        '{{ gql.association_lhs_label(roles_association) }}': userId,
+        '{{ gql.association_rhs_label(roles_association) }}': adminRole.id
     });
 }
 

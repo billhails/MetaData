@@ -19,13 +19,13 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../Utils/logger');
 
-{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/gql.j2h' as gql %}
 
 class AuthServer {
 {%- if schema.is_auth_enabled() %}
 {%-     set owner_entity = schema.get_auth_owner_entity() %}
-{%-     set password_label = arguments.field_label(owner_entity.get_auth_password_field()) %}
-{%-     set id_label = arguments.field_label(owner_entity.get_auth_id_field()) %}
+{%-     set password_label = gql.field_label(owner_entity.get_auth_password_field()) %}
+{%-     set id_label = gql.field_label(owner_entity.get_auth_id_field()) %}
 
     constructor(db) {
         this.db = db;
@@ -105,7 +105,7 @@ class AuthServer {
                 {{ password_label }}: hashedPassword
             };
 {%-      for field in owner_entity.get_fields() %}
-{%-          set label = arguments.field_label(field) %}
+{%-          set label = gql.field_label(field) %}
 {%-          if not field.is_auth_role('password') %}
             if (req.body.{{ label }}) {
                 user['{{ label }}'] = req.body.{{ label }};

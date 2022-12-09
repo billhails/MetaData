@@ -23,7 +23,7 @@ const Model = require('../Model');
 const logger = require('./logger');
 
 {%- import 'macros/data.j2h' as data %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 {%- import 'macros/database.j2h' as database %}
 {%- import 'macros/model.j2h' as model %}
 
@@ -64,16 +64,16 @@ class Data {
 {{database.name(entity) }}.id AS id
 {%-     for field in entity.get_fields() %}
 {{- ',' }}
-{{database.name(entity) }}.{{ database.name(field) }} AS {{ arguments.field_label(field) }}
+{{database.name(entity) }}.{{ database.name(field) }} AS {{ gql.field_label(field) }}
 {%-     endfor %}
 {%-     for reference in entity.get_references() %}
 {{- ',' }}
-{{database.name(entity) }}.{{ database.name(reference) }} AS {{ arguments.field_label(reference) }}
+{{database.name(entity) }}.{{ database.name(reference) }} AS {{ gql.field_label(reference) }}
 {%-     endfor %}
 {%-     for union in entity.get_unions() %}
 {{- ',' }}
-{{ database.name(entity) }}.{{ database.name(union) }} AS {{ arguments.field_label(union) }},
-{{ database.name(entity) }}.{{ database.type_name(union) }} AS {{ arguments.field_type(union) }}
+{{ database.name(entity) }}.{{ database.name(union) }} AS {{ gql.field_label(union) }},
+{{ database.name(entity) }}.{{ database.type_name(union) }} AS {{ gql.field_type(union) }}
 {%-     endfor %}
 {%- endmacro %}
 
@@ -176,7 +176,7 @@ class Data {
     /**
      * fetch auth entity {{ entity.get_name() }} by {{ database.name(field) }}
      *
-     * @param {String} {{ arguments.field_label(field) }}
+     * @param {String} {{ gql.field_label(field) }}
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.get_entity_by_field(entity, field) }}(id) {
@@ -279,7 +279,7 @@ class Data {
         logger.debug('data.{{ data.create_entity(entity) }}', {args});
         const model = new Model.{{ model.name(entity) }}(args);
 {%-     for union in entity.get_unions() %}
-        await this.{{ data.validate_union(entity, union) }}(model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }});
+        await this.{{ data.validate_union(entity, union) }}(model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }});
 {%-     endfor %}
         const sql = `
         INSERT INTO {{ database.name(entity) }}(
@@ -290,9 +290,9 @@ class Data {
         VALUES (?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
         `;
         const params = [
-           model.id{% for field in entity.get_fields() %}, model.{{ arguments.field_label(field) }}{% endfor %}
-          {%- for reference in entity.get_references() %}, model.{{ arguments.field_label(reference) }}{% endfor %}
-          {%- for union in entity.get_unions() %}, model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }}{% endfor %}
+           model.id{% for field in entity.get_fields() %}, model.{{ gql.field_label(field) }}{% endfor %}
+          {%- for reference in entity.get_references() %}, model.{{ gql.field_label(reference) }}{% endfor %}
+          {%- for union in entity.get_unions() %}, model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }}{% endfor %}
         ]
         await this.run(sql, params);
         return model;
@@ -308,8 +308,8 @@ class Data {
     async {{ data.update_entity(entity) }}(id, args) {
         const model = new Model.{{ model.name(entity) }}({id, ...args});
 {%-     for union in entity.get_unions() %}
-        if ("{{ arguments.field_label(union) }}" in model) {
-            await this.{{ data.validate_union(entity, union) }}(model.{{ arguments.field_label(union) }}, model.{{ arguments.field_type(union) }});
+        if ("{{ gql.field_label(union) }}" in model) {
+            await this.{{ data.validate_union(entity, union) }}(model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }});
         }
 {%-     endfor %}
 
@@ -318,26 +318,26 @@ class Data {
 
 {%-     for field in entity.get_fields() %}
 
-        if ('{{ arguments.field_label(field) }}' in args) {
+        if ('{{ gql.field_label(field) }}' in args) {
             fields.push("{{ database.name(field) }} = ?");
-            params.push(model.{{ arguments.field_label(field) }});
+            params.push(model.{{ gql.field_label(field) }});
         }
 {%-     endfor %}
 {%-     for reference in entity.get_references() %}
 {%-        if not reference.is_auth_role('owner') %}{# can not change owner #}
-        if ('{{ arguments.field_label(reference) }}' in args) {
+        if ('{{ gql.field_label(reference) }}' in args) {
             fields.push("{{ database.name(reference) }} = ?");
-            params.push(model.{{ arguments.field_label(reference) }});
+            params.push(model.{{ gql.field_label(reference) }});
         }
 {%-         endif %}
 {%-     endfor %}
 {%-     for union in entity.get_unions() %}
 
-        if ('{{ arguments.field_label(union) }}' in args) {
+        if ('{{ gql.field_label(union) }}' in args) {
             fields.push("{{ database.name(union) }} = ?");
-            params.push(model.{{ arguments.field_label(union) }});
+            params.push(model.{{ gql.field_label(union) }});
             fields.push("{{ database.type_name(union) }} = ?");
-            params.push(model.{{ arguments.field_type(union) }});
+            params.push(model.{{ gql.field_type(union) }});
         }
 {%-     endfor %}
 
@@ -378,7 +378,7 @@ class Data {
             SELECT {{ entity_fields(reference.get_referenced()) }}
               FROM {{ database.name(reference.get_referenced()) }}
              WHERE id = ?
-            `, [model.{{ arguments.field_label(reference) }}])
+            `, [model.{{ gql.field_label(reference) }}])
         .then(row => new Model.{{ database.name(reference.get_referenced()) }}(row));
     }
 {%-     endfor %}
@@ -391,7 +391,7 @@ class Data {
      * @param {Model.{{ model.name(entity) }}} model
      */
     async {{ data.get_union_for_entity(entity, union) }}(model) {
-        switch (model.{{ arguments.field_type(union) }}) {
+        switch (model.{{ gql.field_type(union) }}) {
 {%-         for reference in union.get_references() %}
             case '{{ database.name(reference) }}':
                 return this.get(`
@@ -399,7 +399,7 @@ class Data {
                       FROM {{ database.name(reference.get_referenced()) }}
                      WHERE id = ?
                     `,
-                    [model.{{ arguments.field_label(union) }}]
+                    [model.{{ gql.field_label(union) }}]
                 ).then(row => new Model.{{ model.name(reference.get_referenced()) }}(row));
 {%-         endfor %}
         }
@@ -447,12 +447,12 @@ class Data {
 {%-         if referrer.is_union() %}
                 SELECT {{ entity_fields(referrer.get_entity()) }}
                   FROM {{ database.name(referrer.get_entity()) }}
-                 WHERE {{ arguments.field_label(referrer.get_union()) }} = ?
-                   AND {{ arguments.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
+                 WHERE {{ gql.field_label(referrer.get_union()) }} = ?
+                   AND {{ gql.field_type(referrer.get_union()) }} = "{{ database.name(referrer) }}"
 {%-         else %}
                 SELECT {{ entity_fields(referrer.get_entity()) }}
                   FROM {{ database.name(referrer.get_entity()) }}
-                 WHERE {{ arguments.field_label(referrer) }} = ?
+                 WHERE {{ gql.field_label(referrer) }} = ?
 {%-         endif %}
                    AND {{database.name(referrer.get_entity()) }}.id > ?
               ORDER BY {{database.name(referrer.get_entity()) }}.id
@@ -549,22 +549,22 @@ class Data {
             const after = id_and_arg.args.after || '';
             const subQuery = `
             SELECT * FROM (
-                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
-                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
+                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ gql.lhs(association) }},
+                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ gql.rhs(association) }}
                   FROM {{ database.name(association) }}
-                 WHERE {{ arguments.lhs(association) }} = ?
-                   AND {{ arguments.rhs(association) }} > ?
-              ORDER BY {{ arguments.rhs(association) }}
+                 WHERE {{ gql.lhs(association) }} = ?
+                   AND {{ gql.rhs(association) }} > ?
+              ORDER BY {{ gql.rhs(association) }}
                  LIMIT ?
             )
             UNION ALL
             SELECT * FROM (
-                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
-                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
+                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ gql.lhs(association) }},
+                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ gql.rhs(association) }}
                   FROM {{ database.name(association) }}
-                 WHERE {{ arguments.rhs(association) }} = ?
-                   AND {{ arguments.lhs(association) }} > ?
-              ORDER BY {{ arguments.lhs(association) }}
+                 WHERE {{ gql.rhs(association) }} = ?
+                   AND {{ gql.lhs(association) }} > ?
+              ORDER BY {{ gql.lhs(association) }}
                  LIMIT ?
             )
             `;
@@ -581,12 +581,12 @@ class Data {
             const after = id_and_arg.args.after || '';
             const subQuery = `
             SELECT * FROM (
-                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ arguments.lhs(association) }},
-                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ arguments.rhs(association) }}
+                SELECT {{database.name(association) }}.{{ database.lhs(association) }} AS {{ gql.lhs(association) }},
+                       {{database.name(association) }}.{{ database.rhs(association) }} AS {{ gql.rhs(association) }}
                   FROM {{ database.name(association) }}
-                 WHERE {{ arguments.this_column(entity, association) }} = ?
-                   AND {{ arguments.other_column(entity, association) }} > ?
-              ORDER BY {{ arguments.other_column(entity, association) }}
+                 WHERE {{ gql.this_column(entity, association) }} = ?
+                   AND {{ gql.other_column(entity, association) }} > ?
+              ORDER BY {{ gql.other_column(entity, association) }}
                  LIMIT ?
             )
             `;
@@ -640,8 +640,8 @@ class Data {
 
     async {{ data.create_association(association) }}(args) {
 {%-     if association.is_self_referential() %}
-        if (args.{{ arguments.association_rhs_label(association) }} == args.{{ arguments.association_lhs_label(association) }}) {
-            throw new Error('cannot create {{ arguments.field_label(association) }} relationship with the same left and right hand entity');
+        if (args.{{ gql.association_rhs_label(association) }} == args.{{ gql.association_lhs_label(association) }}) {
+            throw new Error('cannot create {{ gql.field_label(association) }} relationship with the same left and right hand entity');
         }
         // check the inverse association doesn't already exist
         const row = await this.get(`
@@ -650,7 +650,7 @@ class Data {
                  WHERE {{ database.lhs(association) }} = ?
                    AND {{ database.rhs(association) }} = ?
             `,
-            [args.{{ arguments.association_rhs_label(association) }}, args.{{ arguments.association_lhs_label(association) }}]
+            [args.{{ gql.association_rhs_label(association) }}, args.{{ gql.association_lhs_label(association) }}]
         );
         if (parseInt(row.count) > 0) {
             return true;
@@ -660,7 +660,7 @@ class Data {
             INSERT INTO {{ database.name(association) }}({{ database.lhs(association) }}, {{ database.rhs(association) }})
                  VALUES (?, ?)
             `,
-            [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
+            [args.{{ gql.association_lhs_label(association) }}, args.{{ gql.association_rhs_label(association) }}]
         ).then(stats => stats.changes > 0);
     }
 
@@ -668,36 +668,36 @@ class Data {
 {%-     for lhs in association.get_lhs().get_unique_fields() %}
 
     async {{ data.create_association_lhs(association, lhs) }}(args) {
-        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ arguments.association_lhs_field_label(association, lhs) }});
+        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ gql.association_lhs_field_label(association, lhs) }});
         if (!lhs) {
             return false;
         }
-        args.{{ arguments.association_lhs_label(association) }} = lhs.id;
+        args.{{ gql.association_lhs_label(association) }} = lhs.id;
         return this.{{ data.create_association(association) }}(args);
     }
 
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
     async {{ data.create_association_lhs_rhs(association, lhs, rhs) }}(args) {
-        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ arguments.association_lhs_field_label(association, lhs) }});
+        const lhs = await this.{{ data.get_entity_by_field(association.get_lhs(), lhs) }}(args.{{ gql.association_lhs_field_label(association, lhs) }});
         if (!lhs) {
             return false;
         }
-        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ gql.association_rhs_field_label(association, rhs) }});
         if (!rhs) {
             return false;
         }
-        args.{{ arguments.association_lhs_label(association) }} = lhs.id;
-        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        args.{{ gql.association_lhs_label(association) }} = lhs.id;
+        args.{{ gql.association_rhs_label(association) }} = rhs.id;
         return this.{{ data.create_association(association) }}(args);
     }
 
     async {{ data.create_association_rhs(association, rhs) }}(args) {
-        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ gql.association_rhs_field_label(association, rhs) }});
         if (!rhs) {
             return false;
         }
-        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        args.{{ gql.association_rhs_label(association) }} = rhs.id;
         return this.{{ data.create_association(association) }}(args);
     }
 
@@ -706,11 +706,11 @@ class Data {
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
     async {{ data.create_association_rhs(association, rhs) }}(args) {
-        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ arguments.association_rhs_field_label(association, rhs) }});
+        const rhs = await this.{{ data.get_entity_by_field(association.get_rhs(), rhs) }}(args.{{ gql.association_rhs_field_label(association, rhs) }});
         if (!rhs) {
             return false;
         }
-        args.{{ arguments.association_rhs_label(association) }} = rhs.id;
+        args.{{ gql.association_rhs_label(association) }} = rhs.id;
         return this.{{ data.create_association(association) }}(args);
     }
 
@@ -726,10 +726,10 @@ class Data {
                      OR ({{ database.rhs(association) }} = ? AND {{ database.lhs(association) }} = ?)
             `,
             [
-                args.{{ arguments.association_lhs_label(association) }},
-                args.{{ arguments.association_rhs_label(association) }},
-                args.{{ arguments.association_lhs_label(association) }},
-                args.{{ arguments.association_rhs_label(association) }}
+                args.{{ gql.association_lhs_label(association) }},
+                args.{{ gql.association_rhs_label(association) }},
+                args.{{ gql.association_lhs_label(association) }},
+                args.{{ gql.association_rhs_label(association) }}
             ]
         ).then(stats => stats.changes > 0);
 {%-     else %}
@@ -737,7 +737,7 @@ class Data {
             DELETE FROM {{ database.name(association) }}
                   WHERE {{ database.lhs(association) }} = ? AND {{ database.rhs(association) }} = ?
             `,
-            [args.{{ arguments.association_lhs_label(association) }}, args.{{ arguments.association_rhs_label(association) }}]
+            [args.{{ gql.association_lhs_label(association) }}, args.{{ gql.association_rhs_label(association) }}]
         ).then(stats => stats.changes > 0);
 {%-     endif %}
     }

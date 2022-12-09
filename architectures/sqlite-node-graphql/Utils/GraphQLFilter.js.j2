@@ -18,7 +18,7 @@
 // {{ warning }}
 
 {%- import 'macros/resolver.j2h' as resolve %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 
 const logger = require('./logger');
 const util = require('util');
@@ -81,14 +81,14 @@ class GraphQLFilter {
     async {{ resolve.entities(entity) }}(source, args, req, info) {
         const parsedInfo = parseResolveInfo(info);
         let totalCount = 0;
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(entity) }}?.totalCount) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(entity) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_entities(entity) }}(source, args, info);
             totalCount = countResult.count || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0);
             }
         }
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(entity) }}?.edges) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(entity) }}?.edges) {
             if (args.after) {
                 const cursor = args.after;
                 const id = this.cursorToId(args.after);
@@ -121,14 +121,14 @@ class GraphQLFilter {
         const parsedInfo = parseResolveInfo(info);
         logger.debug(`GraphQLFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got info`, {parsedInfo});
         let totalCount = 0;
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(referrer.get_entity()) }}?.totalCount) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, info);
             totalCount = countResult.count || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0);
             }
         }
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(referrer.get_entity()) }}?.edges) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.edges) {
             if (args.after) {
                 const cursor = args.after;
                 const id = this.cursorToId(args.after);
@@ -147,7 +147,7 @@ class GraphQLFilter {
         const parsedInfo = parseResolveInfo(info);
         logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got info`, {parsedInfo});
         let totalCount = 0;
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(association.get_other(entity)) }}?.totalCount) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(association.get_other(entity)) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_association_for_entity(entity, association) }}(entity, args);
             logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got totalCount ${countResult}`);
             totalCount = countResult || 0;
@@ -155,7 +155,7 @@ class GraphQLFilter {
                 return this.makeConnection([], 0)
             }
         }
-        if (parsedInfo.fieldsByTypeName?.{{ arguments.entity_connection(association.get_other(entity)) }}?.edges) {
+        if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(association.get_other(entity)) }}?.edges) {
             return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount);

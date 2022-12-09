@@ -21,7 +21,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../../Utils/logger');
 const util = require('util');
 
-{% import 'macros/schema.j2h' as arguments %}
+{% import 'macros/gql.j2h' as gql %}
 {% import 'macros/database.j2h' as database %}
 {% import 'macros/model.j2h' as model %}
 
@@ -30,19 +30,19 @@ class {{ model.name(entity) }} {
         logger.debug('new Model.{{ model.name(entity) }}', {args});
         this.id = args.id || uuidv4();
 {% for field in entity.get_fields() %}
-        this.{{ arguments.field_label(field) }} = args.{{ arguments.field_label(field) }};
+        this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
 {% endfor %}
 {% for reference in entity.get_references() %}
-    this.{{ arguments.field_label(reference) }} = args.{{ arguments.field_label(reference) }};
+    this.{{ gql.field_label(reference) }} = args.{{ gql.field_label(reference) }};
 {% endfor %}
 {% for union in entity.get_unions() %}
-        if (args.{{ arguments.field_label(union) }}) {
+        if (args.{{ gql.field_label(union) }}) {
             if (typeof args.{{ database.name(union) }} == "string") {
-                this.{{ arguments.field_label(union) }} = args.{{ arguments.field_label(union) }};
-                this.{{ arguments.field_type(union) }} = args.{{ arguments.field_type(union) }};
+                this.{{ gql.field_label(union) }} = args.{{ gql.field_label(union) }};
+                this.{{ gql.field_type(union) }} = args.{{ gql.field_type(union) }};
             } else {
-                this.{{ arguments.field_label(union) }} = args.{{ arguments.field_label(union) }}.id;
-                this.{{ arguments.field_type(union) }} = args.{{ arguments.field_type(union) }}.type;
+                this.{{ gql.field_label(union) }} = args.{{ gql.field_label(union) }}.id;
+                this.{{ gql.field_type(union) }} = args.{{ gql.field_type(union) }}.type;
             }
         }
 {% endfor %}
@@ -53,15 +53,15 @@ class {{ model.name(entity) }} {
             id: this.id,
 {%- for field in entity.get_fields() %}
 {%-     if not field.is_auth_role('password') %}
-            {{ arguments.field_label(field) }}: this.{{ arguments.field_label(field) }},
+            {{ gql.field_label(field) }}: this.{{ gql.field_label(field) }},
 {%-     endif %}
 {%- endfor %}
 {%- for reference in entity.get_references() %}
-            {{ arguments.field_label(reference) }}: this.{{ arguments.field_label(reference) }},
+            {{ gql.field_label(reference) }}: this.{{ gql.field_label(reference) }},
 {%- endfor %}
 {%- for union in entity.get_unions() %}
-            {{ arguments.field_label(union) }}: this.{{ arguments.field_label(union) }},
-            {{ arguments.field_type(union) }}: this.{{ arguments.field_type(union) }},
+            {{ gql.field_label(union) }}: this.{{ gql.field_label(union) }},
+            {{ gql.field_type(union) }}: this.{{ gql.field_type(union) }},
 {%- endfor %}
         };
     }

@@ -18,7 +18,7 @@
 // {{ warning }}
 
 {%- import 'macros/resolver.j2h' as resolve %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 {%- import 'macros/model.j2h' as model %}
 {%- import 'macros/database.j2h' as database %}
 
@@ -73,8 +73,8 @@ const make_schema = (resolver) => {
 
 {%- for entity in schema.get_entities() %}
 
-    const {{ arguments.entity_edge(entity) }} = new GraphQLObjectType({
-        name: '{{ arguments.entity_edge(entity) }}',
+    const {{ gql.entity_edge(entity) }} = new GraphQLObjectType({
+        name: '{{ gql.entity_edge(entity) }}',
         description: 'a single paginated {{ entity.get_name() | singular }}',
         fields: () => ({
             cursor: {
@@ -83,17 +83,17 @@ const make_schema = (resolver) => {
             },
             node: {
 {%     if entity.auth_visibility() == "visible" %}
-                type: new GraphQLNonNull({{ arguments.entity_type(entity) }}),
+                type: new GraphQLNonNull({{ gql.entity_type(entity) }}),
 {%     else %}
-                type: {{ arguments.entity_type(entity) }},
+                type: {{ gql.entity_type(entity) }},
 {%     endif %}
                 description: 'the {{ entity.get_name() | singular }} itself'
             }
         })
     });
 
-    const {{ arguments.entity_connection(entity) }} = new GraphQLObjectType({
-        name: '{{ arguments.entity_connection(entity) }}',
+    const {{ gql.entity_connection(entity) }} = new GraphQLObjectType({
+        name: '{{ gql.entity_connection(entity) }}',
         description: 'relay-conformant pagination for {{ entity.get_name() }}',
         fields: () => ({
             totalCount: {
@@ -101,7 +101,7 @@ const make_schema = (resolver) => {
                 description: 'total number of entities that could be returned by the query',
             },
             edges: {
-                type: new GraphQLNonNull(new GraphQLList({{ arguments.entity_edge(entity) }}))
+                type: new GraphQLNonNull(new GraphQLList({{ gql.entity_edge(entity) }}))
             },
             pageInfo: {
                 type: new GraphQLNonNull(pageInfo),
@@ -112,32 +112,32 @@ const make_schema = (resolver) => {
 
 {%-     for union in entity.get_unions() %}
 
-    const {{ arguments.union_enum_type(entity, union) }} = new GraphQLEnumType({
-        name: '{{ arguments.union_enum_type(entity, union) }}',
+    const {{ gql.union_enum_type(entity, union) }} = new GraphQLEnumType({
+        name: '{{ gql.union_enum_type(entity, union) }}',
         values: {
 {%-         for reference in union.get_references() %}
-            {{ arguments.field_label(reference) }}: { value: '{{ database.name(reference) }}' },
+            {{ gql.field_label(reference) }}: { value: '{{ database.name(reference) }}' },
 {%-         endfor %}
         }
     });
 
-    const {{ arguments.union_type(entity, union) }} = new GraphQLUnionType({
-        name: '{{ arguments.union_type(entity, union) }}',
+    const {{ gql.union_type(entity, union) }} = new GraphQLUnionType({
+        name: '{{ gql.union_type(entity, union) }}',
         types: () => ([
-{%-         for reference in union.get_references() %}{{ arguments.entity_type(reference.get_referenced()) }}, {% endfor -%}
+{%-         for reference in union.get_references() %}{{ gql.entity_type(reference.get_referenced()) }}, {% endfor -%}
         ]),
         resolveType(value) {
 {%-         for reference in union.get_references() %}
             if (value instanceof Model.{{ model.name(reference.get_referenced()) }}) {
-                return {{ arguments.entity_type(reference.get_referenced()) }};
+                return {{ gql.entity_type(reference.get_referenced()) }};
             }
 {%-         endfor %}
         }
     });
 {%-     endfor %}
 
-    const {{ arguments.entity_type(entity) }} = new GraphQLObjectType ({
-        name: '{{ arguments.entity_type(entity) }}',
+    const {{ gql.entity_type(entity) }} = new GraphQLObjectType ({
+        name: '{{ gql.entity_type(entity) }}',
         description: '{{ entity.get_description() }}',
         fields: () => ({
             id: {
@@ -146,30 +146,30 @@ const make_schema = (resolver) => {
             },
 {%-     for field in entity.get_fields() %}
 {%-         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
-            {{ arguments.field_label(field) }}: {
+            {{ gql.field_label(field) }}: {
 {%-             if field.auth_visibility() == 'visible' %}
-                type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
+                type: new GraphQLNonNull({{ gql.graphql_type(field.get_type()) }})
 {%-             else %}
-                type: {{ arguments.graphql_type(field.get_type()) }}
+                type: {{ gql.graphql_type(field.get_type()) }}
 {%-             endif %}
             },
 {%-         endif %}
 {%-     endfor %}
 {%-     for reference in entity.get_references() %}
-            {{ arguments.field_label(reference) }}: {
-                type: new GraphQLNonNull({{ arguments.entity_type(reference.get_referenced()) }}),
+            {{ gql.field_label(reference) }}: {
+                type: new GraphQLNonNull({{ gql.entity_type(reference.get_referenced()) }}),
                 resolve: (...args) => resolver.{{ resolve.reference_for_entity(entity, reference) }}(...args)
             },
 {%-     endfor %}
 {%-     for union in entity.get_unions() %}
-            {{ arguments.field_label(union) }}: {
-                type: new GraphQLNonNull({{ arguments.union_type(entity, union) }}),
+            {{ gql.field_label(union) }}: {
+                type: new GraphQLNonNull({{ gql.union_type(entity, union) }}),
                 resolve: (...args) => resolver.{{ resolve.union_for_entity(entity, union) }}(...args)
             },
 {%-     endfor %}
 {%-     for referrer in entity.get_referrers() %}
-            {{ arguments.referrer_label(referrer) }}: {
-                type: {{ arguments.entity_connection(referrer.get_entity()) }},
+            {{ gql.referrer_label(referrer) }}: {
+                type: {{ gql.entity_connection(referrer.get_entity()) }},
                 args: {
                     first: {
                         description: 'limit',
@@ -184,8 +184,8 @@ const make_schema = (resolver) => {
             },
 {%-     endfor %}
 {%-     for association in entity.get_associations() %}
-            {{ arguments.association_other_label(entity, association) }}: {
-                type: {{ arguments.entity_connection(association.get_other(entity)) }},
+            {{ gql.association_other_label(entity, association) }}: {
+                type: {{ gql.entity_connection(association.get_other(entity)) }},
                 args: {
                     first: {
                         description: 'limit',
@@ -204,15 +204,15 @@ const make_schema = (resolver) => {
 
 {%-     for union in entity.get_unions() %}
 
-    const {{ arguments.add_union(entity, union) }} = new GraphQLInputObjectType({
-        name: '{{ arguments.add_union(entity, union) }}',
+    const {{ gql.add_union(entity, union) }} = new GraphQLInputObjectType({
+        name: '{{ gql.add_union(entity, union) }}',
         description: 'input object to create {{ database.name(entity) | singular }} {{ database.name(union) | singular }} unions.',
         fields: () => ({
             id: {
                 type: new GraphQLNonNull(GraphQLID)
             },
             type: {
-                type: new GraphQLNonNull({{ arguments.union_enum_type(entity, union) }})
+                type: new GraphQLNonNull({{ gql.union_enum_type(entity, union) }})
             }
         })
     });
@@ -220,25 +220,25 @@ const make_schema = (resolver) => {
 
 {%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}{# no add or delete on auth-controlled entities #}
 
-    const {{ arguments.add_entity(entity) }} = new GraphQLInputObjectType({
-        name: '{{ arguments.add_entity(entity) }}',
+    const {{ gql.add_entity(entity) }} = new GraphQLInputObjectType({
+        name: '{{ gql.add_entity(entity) }}',
         description: 'input object to create a new {{ database.name(entity) | singular }}',
         fields: () => ({
 {%-         for field in entity.get_fields() %}
-            {{ arguments.field_label(field) }}: {
-                type: new GraphQLNonNull({{ arguments.graphql_type(field.get_type()) }})
+            {{ gql.field_label(field) }}: {
+                type: new GraphQLNonNull({{ gql.graphql_type(field.get_type()) }})
             },
 {%-         endfor %}
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
-            {{ arguments.field_label(reference) }}: {
+            {{ gql.field_label(reference) }}: {
               type: new GraphQLNonNull(GraphQLID)
             },
 {%-             endif %}
 {%-         endfor %}
 {%-     for union in entity.get_unions() %}
-            {{ arguments.field_label(union) }}: {
-              type: new GraphQLNonNull({{ arguments.add_union(entity, union) }})
+            {{ gql.field_label(union) }}: {
+              type: new GraphQLNonNull({{ gql.add_union(entity, union) }})
             },
 {%-         endfor %}
         }),
@@ -247,27 +247,27 @@ const make_schema = (resolver) => {
 
 {%-     if not ((entity.is_auth_role('token') or entity.is_auth_role('owner')) and entity.has_only_auth_components()) %}
 
-    const {{ arguments.update_entity(entity) }} = new GraphQLInputObjectType({
-        name: '{{ arguments.update_entity(entity) }}',
+    const {{ gql.update_entity(entity) }} = new GraphQLInputObjectType({
+        name: '{{ gql.update_entity(entity) }}',
         description: 'input object to update an existing {{ database.name(entity) | singular }}',
         fields: () => ({
 {%-         for field in entity.get_fields() %}
 {%-             if not (entity.is_auth_role('owner') and (field.is_auth_role('external-id') or field.is_auth_role('password'))) %}
-            {{ arguments.field_label(field) }}: {
-                type: {{ arguments.graphql_type(field.get_type()) }}
+            {{ gql.field_label(field) }}: {
+                type: {{ gql.graphql_type(field.get_type()) }}
             },
 {%-             endif %}
 {%-         endfor %}
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
-            {{ arguments.field_label(reference) }}: {
+            {{ gql.field_label(reference) }}: {
               type: GraphQLID
             },
 {%-             endif %}
 {%-         endfor %}
 {%-         for union in entity.get_unions() %}
-            {{ arguments.field_label(union) }}: {
-              type: {{ arguments.add_union(entity, union) }}
+            {{ gql.field_label(union) }}: {
+              type: {{ gql.add_union(entity, union) }}
             },
 {%-         endfor %}
         }),
@@ -280,8 +280,8 @@ const make_schema = (resolver) => {
         name: 'Query',
         fields: () => ({
 {%- for entity in schema.get_entities() %}
-            {{ arguments.singular_entity_label(entity) }}: {
-                type: {{ arguments.entity_type(entity) }},
+            {{ gql.singular_entity_label(entity) }}: {
+                type: {{ gql.entity_type(entity) }},
                 args: {
                     id: {
                         description: '{{ database.name(entity) | singular }} id',
@@ -290,8 +290,8 @@ const make_schema = (resolver) => {
                 },
                 resolve: (...args) => resolver.{{ resolve.entity(entity) }}(...args),
             },
-            {{ arguments.plural_entity_label(entity) }}: {
-                type: {{ arguments.entity_connection(entity) }},
+            {{ gql.plural_entity_label(entity) }}: {
+                type: {{ gql.entity_connection(entity) }},
                 args: {
                     first: {
                         description: 'limit',
@@ -313,11 +313,11 @@ const make_schema = (resolver) => {
         fields: () => ({
 {%- for entity in schema.get_entities() %}
 {%-   if not (entity.is_auth_role('token') or entity.is_auth_role('owner')) %}
-            {{ arguments.add_entity_label(entity) }}: {
-                type: {{ arguments.entity_type(entity) }},
+            {{ gql.add_entity_label(entity) }}: {
+                type: {{ gql.entity_type(entity) }},
                 args: {
                     input: {
-                        type: new GraphQLNonNull({{ arguments.add_entity(entity) }})
+                        type: new GraphQLNonNull({{ gql.add_entity(entity) }})
                     }
                 },
                 resolve: (...args) => resolver.{{ resolve.create_entity(entity) }}(...args),
@@ -325,14 +325,14 @@ const make_schema = (resolver) => {
 {%-     endif %}
 
 {%-     if not ((entity.is_auth_role('token') or entity.is_auth_role('owner')) and entity.has_only_auth_components()) %}
-            {{ arguments.update_entity_label(entity) }}: {
-                type: {{ arguments.entity_type(entity) }},
+            {{ gql.update_entity_label(entity) }}: {
+                type: {{ gql.entity_type(entity) }},
                 args: {
                     id: {
                          type: new GraphQLNonNull(GraphQLID)
                     },
                     input: {
-                        type: new GraphQLNonNull({{ arguments.update_entity(entity) }})
+                        type: new GraphQLNonNull({{ gql.update_entity(entity) }})
                     }
                 },
                 resolve: (...args) => resolver.{{ resolve.update_entity(entity) }}(...args),
@@ -340,7 +340,7 @@ const make_schema = (resolver) => {
 {%-     endif %}
 
 {%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}
-            {{ arguments.delete_entity_label(entity) }}: {
+            {{ gql.delete_entity_label(entity) }}: {
                 type: statusType,
                 args: {
                     id: {
@@ -353,13 +353,13 @@ const make_schema = (resolver) => {
 {%- endfor %}
 
 {%- for association in schema.get_associations() %}
-            {{ arguments.add_association_label(association) }}: {
+            {{ gql.add_association_label(association) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_label(association) }}: {
+                    {{ gql.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ arguments.association_rhs_label(association) }}: {
+                    {{ gql.association_rhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
@@ -367,13 +367,13 @@ const make_schema = (resolver) => {
             },
 {%-     for lhs in association.get_lhs().get_unique_fields() %}
 // add association {{lhs.get_name()}}.{{association.get_name()}}.id
-            {{ arguments.add_association_label_lhs(association, lhs) }}: {
+            {{ gql.add_association_label_lhs(association, lhs) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_field_label(association, lhs) }}: {
-                        type: new GraphQLNonNull({{ arguments.graphql_type(lhs.get_type()) }})
+                    {{ gql.association_lhs_field_label(association, lhs) }}: {
+                        type: new GraphQLNonNull({{ gql.graphql_type(lhs.get_type()) }})
                     },
-                    {{ arguments.association_rhs_label(association) }}: {
+                    {{ gql.association_rhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },
@@ -381,27 +381,27 @@ const make_schema = (resolver) => {
             },
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 // add association {{lhs.get_name()}}.{{association.get_name()}}.{{rhs.get_name()}}
-           {{ arguments.add_association_label_lhs_rhs(association, lhs, rhs) }}: {
+           {{ gql.add_association_label_lhs_rhs(association, lhs, rhs) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_field_label(association, lhs) }}: {
-                        type: new GraphQLNonNull({{ arguments.graphql_type(lhs.get_type()) }})
+                    {{ gql.association_lhs_field_label(association, lhs) }}: {
+                        type: new GraphQLNonNull({{ gql.graphql_type(lhs.get_type()) }})
                     },
-                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
-                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    {{ gql.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ gql.graphql_type(rhs.get_type()) }})
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(...args)
             },
 // add association id.{{association.get_name()}}.{{rhs.get_name()}}
-            {{ arguments.add_association_label_rhs(association, rhs) }}: {
+            {{ gql.add_association_label_rhs(association, rhs) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_label(association) }}: {
+                    {{ gql.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
-                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    {{ gql.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ gql.graphql_type(rhs.get_type()) }})
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.create_association_rhs(association, rhs) }}(...args)
@@ -410,27 +410,27 @@ const make_schema = (resolver) => {
 {%-     else %}
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 // add association id.{{association.get_name()}}.{{rhs.get_name()}}
-            {{ arguments.add_association_label_rhs(association, rhs) }}: {
+            {{ gql.add_association_label_rhs(association, rhs) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_label(association) }}: {
+                    {{ gql.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ arguments.association_rhs_field_label(association, rhs) }}: {
-                        type: new GraphQLNonNull({{ arguments.graphql_type(rhs.get_type()) }})
+                    {{ gql.association_rhs_field_label(association, rhs) }}: {
+                        type: new GraphQLNonNull({{ gql.graphql_type(rhs.get_type()) }})
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.create_association_rhs(association, rhs) }}(...args)
             },
 {%-         endfor %}
 {%-     endfor %}
-            {{ arguments.delete_association_label(association) }}: {
+            {{ gql.delete_association_label(association) }}: {
                 type: statusType,
                 args: {
-                    {{ arguments.association_lhs_label(association) }}: {
+                    {{ gql.association_lhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
-                    {{ arguments.association_rhs_label(association) }}: {
+                    {{ gql.association_rhs_label(association) }}: {
                         type: new GraphQLNonNull(GraphQLID)
                     },
                 },

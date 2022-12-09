@@ -15,7 +15,7 @@
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  #}
-{# declares keys for values (arguments) declared in the schema and used in the data layer #}
+{# declares keys for values declared in the schema and used in the data layer #}
 
 {% macro field_label(field) %}{{ field.get_name() | camel_case }}{% endmacro %}
 {% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}

@@ -20,7 +20,7 @@
 {%- import 'macros/resolver.j2h' as resolve %}
 {%- import 'macros/loader.j2h' as loader %}
 {%- import 'macros/data.j2h' as data %}
-{%- import 'macros/schema.j2h' as arguments %}
+{%- import 'macros/gql.j2h' as gql %}
 {%- import 'macros/database.j2h' as database %}
 
 const logger = require('./logger');
@@ -52,7 +52,7 @@ class DataLoaderResolver {
 {%-     for reference in entity.get_references() %}
 
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args) {
-        return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(reference) }})
+        return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ gql.field_label(reference) }})
     }
 
 {%-     endfor %}
@@ -60,10 +60,10 @@ class DataLoaderResolver {
 {%-     for union in entity.get_unions() %}
 
     async {{ resolve.union_for_entity(entity, union) }}(entity, args) {
-        switch (entity.{{ arguments.field_label(union) }}Type) {
+        switch (entity.{{ gql.field_label(union) }}Type) {
 {%-         for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
-                return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ arguments.field_label(union) }});
+                return this.loaders.{{ loader.reference(reference) }}.load(entity.{{ gql.field_label(union) }});
 {%-         endfor %}
         }
     }
