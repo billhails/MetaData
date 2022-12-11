@@ -98,6 +98,33 @@ class AuthFilter {
         return connection;
     }
 
+{%-    if entity.is_auth_role('owner') %}
+
+    async {{ resolve.owner() }}(source, args, req, info) {
+        {{ auth_check('req', entity, 'null') }}
+        return this.{{ resolve.entity(entity) }}(source, { id: req.user.sub }, req, info);
+    }
+
+{%-        for referrer in entity.get_referrers() %}
+
+    async {{ resolve.owned_entities(referrer) }}(source, args, req, info) {
+        {{ auth_check('req', referrer.get_entity(), 'null') }}
+        return this.{{ resolve.referrer_for_entity(entity, referrer) }}({ id: req.user.sub }, args, req, info)
+    }
+
+{%-        endfor %}
+
+{%-        for association in entity.get_associations() %}
+
+    async {{ resolve.owned_association_for_entity(entity, association) }}(source, args, req, info) {
+        {{ auth_check('req', association.get_other(entity), 'null') }}
+        return this.{{ resolve.association_for_entity(entity, association) }}({ id: req.user.sub }, args, req, info);
+    }
+
+{%-        endfor %}
+
+{%-    endif %}
+
     // resolve entity
     async {{ resolve.entity(entity) }}(source, args, req, info) {
         return this.{{ resolve.process_entity(entity) }}(await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info), req);

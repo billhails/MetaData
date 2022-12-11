@@ -73,6 +73,7 @@ const make_schema = (resolver) => {
 
 {%- for entity in schema.get_entities() %}
 
+
     const {{ gql.entity_edge(entity) }} = new GraphQLObjectType({
         name: '{{ gql.entity_edge(entity) }}',
         description: 'a single paginated {{ entity.get_name() | singular }}',
@@ -168,6 +169,7 @@ const make_schema = (resolver) => {
             },
 {%-     endfor %}
 {%-     for referrer in entity.get_referrers() %}
+
             {{ gql.referrer_label(referrer) }}: {
                 type: {{ gql.entity_connection(referrer.get_entity()) }},
                 args: {
@@ -184,6 +186,7 @@ const make_schema = (resolver) => {
             },
 {%-     endfor %}
 {%-     for association in entity.get_associations() %}
+
             {{ gql.association_other_label(entity, association) }}: {
                 type: {{ gql.entity_connection(association.get_other(entity)) }},
                 args: {
@@ -279,7 +282,56 @@ const make_schema = (resolver) => {
     const queryType = new GraphQLObjectType({
         name: 'Query',
         fields: () => ({
+
 {%- for entity in schema.get_entities() %}
+
+{%-    if entity.is_auth_role('owner') %}
+
+            {{ gql.owner_entity() }}: {
+                type: {{ gql.entity_type(entity) }},
+                resolve: (...args) => resolver.{{ resolve.owner() }}(...args),
+            },
+
+{%-        for referrer in entity.get_referrers() %}
+
+            {{ gql.owned_entity_label(referrer) }}: {
+                type: {{ gql.entity_connection(referrer.get_entity()) }},
+                args: {
+                    first: {
+                        description: 'limit',
+                        type: GraphQLInt,
+                    },
+                    after: {
+                        description: 'cursor',
+                        type: GraphQLString,
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.owned_entities(referrer) }}(...args)
+            },
+
+{%-        endfor %}
+
+{%-        for association in entity.get_associations() %}
+
+            {{ gql.owned_association_other_label(entity, association) }}: {
+                type: {{ gql.entity_connection(association.get_other(entity)) }},
+                args: {
+                    first: {
+                        description: 'limit',
+                        type: GraphQLInt,
+                    },
+                    after: {
+                        description: 'cursor',
+                        type: GraphQLString,
+                    },
+                },
+                resolve: (...args) => resolver.{{ resolve.owned_association_for_entity(entity, association) }}(...args)
+            },
+
+{%-        endfor %}
+
+{%-    endif %}
+
             {{ gql.singular_entity_label(entity) }}: {
                 type: {{ gql.entity_type(entity) }},
                 args: {

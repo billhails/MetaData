@@ -75,7 +75,6 @@ class GraphQLFilter {
 
     async {{ resolve.entity(entity) }}(source, args, req, info) {
         return this.resolver.{{ resolve.entity(entity) }}(source, args);
-        ;
     }
 
     async {{ resolve.entities(entity) }}(source, args, req, info) {

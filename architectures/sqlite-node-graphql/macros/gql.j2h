@@ -21,6 +21,7 @@
 {% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}
 {% macro referrer_label(referrer) %}{{ referrer.get_referrer_name() | camel_case }}{% endmacro %}
 {% macro association_other_label(entity, association) %}{{ association.get_name_for_other_entity(entity) | camel_case }}{% endmacro %}
+{% macro owned_association_other_label(entity, association) %}my{{ association.get_name_for_other_entity(entity) | mixed_case }}{% endmacro %}
 
 {% macro association_lhs_label(association) %}{{ association.get_lhs_column() | camel_case }}{% endmacro %}
 {% macro association_rhs_label(association) %}{{ association.get_rhs_column() | camel_case }}{% endmacro %}
@@ -36,7 +37,7 @@
 
 {% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}Enum{% endmacro %}
 {% macro union_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
-{% macro entity_type(entity) %}{{ entity.get_name() | mixed_case }}{% endmacro %}
+{% macro entity_type(entity) %}{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro singular_entity_label(entity) %}{{ entity.get_name() | singular | camel_case }}{% endmacro %}
 {% macro plural_entity_label(entity) %}{{ entity.get_name() | camel_case }}{% endmacro %}
 
@@ -85,3 +86,6 @@
 {% macro delete_association_label(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro entity_connection(entity) %}{{ entity.get_name() | camel_case }}Connection{% endmacro %}
 {% macro entity_edge(entity) %}{{ entity.get_name() | camel_case }}Edge{% endmacro %}
+
+{% macro owner_entity() %}me{% endmacro %}
+{% macro owned_entity_label(referrer) %}my{{ referrer.get_referrer_name() | mixed_case }}{% endmacro %}

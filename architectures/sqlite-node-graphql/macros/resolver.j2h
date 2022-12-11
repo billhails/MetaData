@@ -22,6 +22,7 @@
 {% macro count_referrers_for_entity(entity, referrer) %}resolveCount{{ referrer.get_referrer_name() | mixed_case }}For{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 
 {% macro association_for_entity(entity, association) %}resolve{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}Association{% endmacro %}
+{% macro owned_association_for_entity(entity, association) %}resolveMy{{ association.get_name_for_other_entity(entity) | mixed_case }}Association{% endmacro %}
 
 {% macro count_association_for_entity(entity, association) %}resolveCount{{ association.get_name_for_other_entity(entity) | mixed_case }}For{{ entity.get_name() | singular | mixed_case }}Association{% endmacro %}
 {% macro entity(entity) %}resolve{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
@@ -40,3 +41,6 @@
 {% macro redact_field_for_entity(entity, field) %}redact{{ field.get_name() | mixed_case }}For{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro process_entity(entity) %}process{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro process_entities(entity) %}process{{ entity.get_name() | mixed_case }}{% endmacro %}
+
+{% macro owner() %}resolveMe{% endmacro %}
+{% macro owned_entities(referrer) %}resolveMy{{ referrer.get_referrer_name() | mixed_case }}{% endmacro %}
