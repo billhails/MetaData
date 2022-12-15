@@ -30,6 +30,7 @@ const {
     GraphQLObjectType,
     GraphQLUnionType,
     GraphQLInputObjectType,
+    GraphQLScalarType,
 } = require('graphql/type/definition');
 const { GraphQLInt, GraphQLBoolean } = require('graphql/type');
 const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
@@ -37,6 +38,36 @@ const { GraphQLSchema } = require('graphql/type/schema');
 const { printSchema } = require('graphql/utilities');
 const logger = require('../Utils/logger');
 const Model = require('../Model');
+
+const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const base64Pattern = /^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/;
+
+function idToCursor(id) {
+    if (idPattern.test(id)) {
+        return Buffer.from(id.replaceAll('-', ''), 'hex').toString('base64');
+    }
+    logger.error('invalid id cannot be converted to cursor', {id});
+    return null;
+}
+
+function cursorToId(cursor) {
+    if (!base64Pattern.test(cursor)) {
+        logger.error("invalid cursor detected", {cursor});
+        return null;
+    }
+    const hex = Buffer.from(cursor, 'base64').toString('hex');
+    if (hex.length !== 32) {
+        logger.error("invalid cursor detected", {cursor});
+        return null;
+    }
+    return [
+        hex.substring(0, 8),
+        hex.substring(8, 12),
+        hex.substring(12, 16),
+        hex.substring(16, 20),
+        hex.substring(20, 32)
+    ].join('-');
+}
 
 const make_schema = (resolver) => {
     const statusType = new GraphQLObjectType ({
@@ -48,25 +79,43 @@ const make_schema = (resolver) => {
         },
     });
 
+    const cursorType = new GraphQLScalarType({
+        name: 'Cursor',
+        description: 'Cursor type.',
+        serialize(id) {
+            return idToCursor(id);
+        },
+        parseValue(cursor) {
+            return cursorToId(cursor);
+        },
+        parseLiteral(ast) {
+            if (ast.kind === "StringValue") {
+                return cursorToId(ast.value);
+            }
+            logger.error('invalid type for cursor', {kind: ast.kind});
+            return null;
+        },
+    });
+
     const pageInfo = new GraphQLObjectType({
         name: 'pageInfo',
-        description: 'information about this page of results',
+        description: 'Information about this page of results.',
         fields: {
             startCursor: {
-                type: GraphQLString,
-                description: 'the first cursor on this page'
+                type: cursorType,
+                description: 'The first cursor on this page.'
             },
             endCursor: {
-                type: GraphQLString,
-                description: 'the last cursor on this page'
+                type: cursorType,
+                description: 'The last cursor on this page.'
             },
             hasPreviousPage: {
                 type: new GraphQLNonNull(GraphQLBoolean),
-                description: 'true if there is a previous page'
+                description: 'True if there is a previous page.'
             },
             hasNextPage: {
                 type: new GraphQLNonNull(GraphQLBoolean),
-                description: 'true if there is a next page'
+                description: 'True if there is a next page.'
             }
         }
     });
@@ -76,11 +125,11 @@ const make_schema = (resolver) => {
 
     const {{ gql.entity_edge(entity) }} = new GraphQLObjectType({
         name: '{{ gql.entity_edge(entity) }}',
-        description: 'a single paginated {{ entity.get_name() | singular }}',
+        description: 'A single paginated {{ entity.get_name() | singular }}.',
         fields: () => ({
             cursor: {
-                type: new GraphQLNonNull(GraphQLString),
-                description: 'the cursor for this {{ entity.get_name() | singular }}'
+                type: new GraphQLNonNull(cursorType),
+                description: 'The cursor for this {{ entity.get_name() | singular }}.'
             },
             node: {
 {%     if entity.auth_visibility() == "visible" %}
@@ -88,25 +137,25 @@ const make_schema = (resolver) => {
 {%     else %}
                 type: {{ gql.entity_type(entity) }},
 {%     endif %}
-                description: 'the {{ entity.get_name() | singular }} itself'
+                description: 'The {{ entity.get_name() | singular }} itself.'
             }
         })
     });
 
     const {{ gql.entity_connection(entity) }} = new GraphQLObjectType({
         name: '{{ gql.entity_connection(entity) }}',
-        description: 'relay-conformant pagination for {{ entity.get_name() }}',
+        description: 'Relay-conformant pagination for {{ entity.get_name() }}.',
         fields: () => ({
             totalCount: {
                 type: new GraphQLNonNull(GraphQLInt),
-                description: 'total number of entities that could be returned by the query',
+                description: 'Total number of {{ gql.entity_edge(entity) }} that could be returned by the query.',
             },
             edges: {
                 type: new GraphQLNonNull(new GraphQLList({{ gql.entity_edge(entity) }}))
             },
             pageInfo: {
                 type: new GraphQLNonNull(pageInfo),
-                description: 'information about this page'
+                description: 'Information about this page of results.'
             }
         })
     });
@@ -143,7 +192,7 @@ const make_schema = (resolver) => {
         fields: () => ({
             id: {
                 type: new GraphQLNonNull(GraphQLID),
-                description: '{{ database.name(entity) }} id.',
+                description: 'The {{ database.name(entity) }} id.',
             },
 {%-     for field in entity.get_fields() %}
 {%-         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
@@ -179,7 +228,7 @@ const make_schema = (resolver) => {
                     },
                     after: {
                         description: 'cursor',
-                        type: GraphQLString,
+                        type: cursorType,
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(...args)
@@ -196,7 +245,7 @@ const make_schema = (resolver) => {
                     },
                     after: {
                         description: 'cursor',
-                        type: GraphQLString,
+                        type: cursorType,
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.association_for_entity(entity, association) }}(...args)
@@ -303,7 +352,7 @@ const make_schema = (resolver) => {
                     },
                     after: {
                         description: 'cursor',
-                        type: GraphQLString,
+                        type: cursorType,
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.owned_entities(referrer) }}(...args)
@@ -322,7 +371,7 @@ const make_schema = (resolver) => {
                     },
                     after: {
                         description: 'cursor',
-                        type: GraphQLString,
+                        type: cursorType,
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.owned_association_for_entity(entity, association) }}(...args)
@@ -351,7 +400,7 @@ const make_schema = (resolver) => {
                     },
                     after: {
                         description: 'cursor',
-                        type: GraphQLString,
+                        type: cursorType,
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.entities(entity) }}(...args),

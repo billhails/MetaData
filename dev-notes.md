@@ -153,3 +153,46 @@ order?
 
 Looks like there is no generic solution that will satisfy all requirements,
 this may be as close as we can get.
+
+## Application-specific Middleware
+
+Easiest way to achieve that is to have an abstract class of `resolver.js.j2` in the core templates
+which just forwards all requests downstream unaltered:
+```text
+class AbstractResolver {
+    constructor(resolver) {
+        this.resolver = resolver;
+    }
+
+{%- for entity in schema.get_entities() %}
+
+    async {{ resolve.entity(entity) }}(source, args, req, info) {
+        return this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
+    }
+
+// etc.
+{%- endfor %}
+
+module.exports = AbstractResolver;
+```
+
+Then we declare an empty implementation `application-middleware.js` that extends that, but
+overrides nothing.
+
+```javascript
+class ApplicationMiddleware extends AbstractResolver {
+}
+
+module.exports = resolver => new ApplicationMiddleware(resolver);
+```
+We want to make it a function just in case it needs extra initialisation, and the core should
+`await` it in case it's async.
+
+In `core.js` we require `application-middleware.js` and inject it at the front of the stack.
+
+We can then optionally provide another `application-middleware.js`
+or `application-middleware.js.j2` in the extra templates from the application (demo)
+that also extends `AbstractResolver` and can selectively or wholesale implement
+resolvers that it needs to override. When the application is generated, if that
+extra `application-middleware.js` or `application-middleware.js.j2` exists, it will
+overwrite the do-nothing one generated from the core templates.

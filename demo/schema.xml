@@ -40,11 +40,20 @@
         <description>A comment on a user, post or other comment.</description>
         <field name="body" type="text"/>
         <reference name="owner" references="users" auth-role="owner"/>
-        <!-- unions are discriminated foregn keys, this "about" union can refer to a user, post or comment -->
+        <!-- unions are discriminated foreign keys, this "about" union can refer to a user, post or comment -->
         <union name="about">
             <reference name="user" references="users" inverse="comments_about_me"/>
             <reference name="post" references="posts"/>
             <reference name="comment" references="comments" inverse="replies"/>
+        </union>
+    </entity>
+
+    <entity name="likes" auth-access="owner">
+        <description>Likes of a comment or post.</description>
+        <reference name="owner" references="users" auth-role="owner"/>
+        <union name="about">
+            <reference name="post" references="posts"/>
+            <reference name="comment" references="comments"/>
         </union>
     </entity>
 

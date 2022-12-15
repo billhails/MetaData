@@ -55,13 +55,13 @@ class GraphQLFilter {
 
     makeConnection(rows, count) {
         logger.debug('GraphQLFilter.makeConnection got rows', {rows});
-        const startCursor = rows.length ? this.idToCursor(rows[0].id) : null;
-        const endCursor = rows.length ? this.idToCursor(rows[rows.length - 1].id) : null;
+        const startCursor = rows.length ? rows[0].id : null;
+        const endCursor = rows.length ? rows[rows.length - 1].id : null;
         const hasPreviousPage = false;
         const hasNextPage = false;
         return {
             totalCount: count,
-            edges: rows.map(row => ({ cursor: this.idToCursor(row.id), node: row })),
+            edges: rows.map(row => ({ cursor: row.id, node: row })),
             pageInfo: {
                 startCursor,
                 endCursor,
@@ -88,11 +88,6 @@ class GraphQLFilter {
             }
         }
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(entity) }}?.edges) {
-            if (args.after) {
-                const cursor = args.after;
-                const id = this.cursorToId(args.after);
-                args.after = id;
-            }
             return this.resolver.{{ resolve.entities(entity) }}(source, args).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount);
@@ -128,11 +123,6 @@ class GraphQLFilter {
             }
         }
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.edges) {
-            if (args.after) {
-                const cursor = args.after;
-                const id = this.cursorToId(args.after);
-                args.after = id;
-            }
             return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount)
