@@ -1,0 +1,592 @@
+{
+	"info": {
+		"_postman_id": "56093b9c-1878-4817-8353-e2415ca4b818",
+		"name": "MetaData",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24639652"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Sign Up",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"bill\",\n    \"password\": \"password\",\n    \"email\": \"me@example.com\"\n}"
+						},
+						"url": {
+							"raw": "http://{{auth_host}}:{{auth_port}}/signup",
+							"protocol": "http",
+							"host": [
+								"{{auth_host}}"
+							],
+							"port": "{{auth_port}}",
+							"path": [
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"me@example.com\",\n    \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "http://{{auth_host}}:{{auth_port}}/login",
+							"protocol": "http",
+							"host": [
+								"{{auth_host}}"
+							],
+							"port": "{{auth_port}}",
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OGFmZDRmYi1mOWI2LTQ4YjEtODMwYS01MTc4YjIxYjdmMWIiLCJpZCI6Im1lQGV4YW1wbGUuY29tIiwiYWRtaW4iOmZhbHNlLCJpYXQiOjE2Njk3MjIyOTN9.Sa_p8k4wFs6P-UysoCeiLvxmuFktqHWTS9fsH1IzLZ8\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{auth_host}}:{{auth_port}}/logout",
+							"protocol": "http",
+							"host": [
+								"{{auth_host}}"
+							],
+							"port": "{{auth_port}}",
+							"path": [
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{auth_host}}:{{auth_port}}/refresh",
+							"protocol": "http",
+							"host": [
+								"{{auth_host}}"
+							],
+							"port": "{{auth_port}}",
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "noauth"
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"",
+							"if (jsonData.accessToken) {",
+							"    pm.environment.set(\"access_token\", jsonData.accessToken);",
+							"    const [header, payload, sig] = jsonData.accessToken.split('.');",
+							"    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');",
+							"    const json = atob(base64);",
+							"    const content = JSON.parse(json);",
+							"    pm.environment.set(\"owner\", content.sub);",
+							"}",
+							"",
+							"if (jsonData.refreshToken) {",
+							"    pm.environment.set(\"refresh_token\", jsonData.refreshToken);",
+							"}"
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "GraphQL",
+			"item": [
+				{
+					"name": "Mutations",
+					"item": [
+						{
+							"name": "Add Category",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "mutation A {\n    addCategory(input: {label: \"Science\"}) {\n        id\n        label\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Role",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "mutation A {\n    addRole (input: {label: \"user\"}) {\n        id\n        label\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Friend",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "mutation MakeFriends($lhs: ID!, $rhs: ID!) {\n    addFriendAssociation(usersLhsId: $lhs, usersRhsId: $rhs) {\n        status\n    }\n}",
+										"variables": "{\n    \"lhs\": \"{{owner}}\",\n    \"rhs\": \"{{owner}}\"\n}"
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Give Me Admin",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "mutation MakeMeAdmun($lhs: ID!, $rhs: ID!) {\n    addUsersRoleAssociation(usersLhsId: $lhs, rolesRhsId: $rhs) {\n        status\n    }\n}",
+										"variables": "{\n    \"lhs\": \"{{owner}}\",\n    \"rhs\": \"{{admin_role}}\"\n}"
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Give Me User Role",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "mutation MakeMeAdmun($email: String!, $role: String!) {\n    addOwnerRoleAssociationByUsersEmailAndRolesLabel(usersLhsEmail: $email, rolesRhsLabel: $role) {\n        status\n    }\n}",
+										"variables": "{\n    \"email\": \"me@example.com\",\n    \"role\": \"user\"\n}"
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Queries",
+					"item": [
+						{
+							"name": "User",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    user(id: \"{{owner}}\") {\n        id\n        displayName\n        email\n        refreshTokens {\n            edges {\n                node {\n                    token\n                }\n            }\n        }\n        friends {\n            totalCount\n            edges {\n                node {\n                    id\n                    displayName\n                }\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Me",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    me {\n        id\n        displayName\n        email\n        refreshTokens {\n            edges {\n                node {\n                    token\n                }\n            }\n        }\n        friends {\n            totalCount\n            edges {\n                node {\n                    id\n                    displayName\n                }\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "My Refresh Tokens",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    myRefreshTokens {\n        totalCount\n        edges {\n            node {\n                token\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "My Roles",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    myRoles {\n        totalCount\n        edges {\n            node {\n                label\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Categories",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    categories {\n        totalCount\n        edges {\n            node {\n                id\n                label\n                posts {\n                    totalCount\n                    edges {\n                        node {\n                            id\n                            title\n                            owner {\n                                displayName\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Roles",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    roles {\n        edges {\n            node {\n                id\n                label\n                users(after: \"PK9ygLQEQgG0K7EBIUnmZQ==\") {\n                    edges {\n                        node {\n                            displayName\n                        }\n                    }\n                    pageInfo {\n                        endCursor\n                    }\n                }\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Tokens",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    refreshTokens {\n        totalCount\n        edges {\n            node {\n                id\n                token\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Users",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "graphql",
+									"graphql": {
+										"query": "query One {\n    users(first: 40) {\n        totalCount\n        edges {\n            node {\n                id\n                displayName\n                email\n                posts {\n                    totalCount\n                    edges {\n                        node {\n                            id\n                        }\n                    }\n                }\n                refreshTokens {\n                    totalCount\n                    edges {\n                        node {\n                            token\n                        }\n                    }\n                }\n                roles {\n                    totalCount\n                    edges {\n                        node {\n                            label\n                        }\n                    }\n                }\n            }\n        }\n    }\n}",
+										"variables": ""
+									}
+								},
+								"url": {
+									"raw": "http://{{graphql_host}}:{{graphql_port}}/graphql",
+									"protocol": "http",
+									"host": [
+										"{{graphql_host}}"
+									],
+									"port": "{{graphql_port}}",
+									"path": [
+										"graphql"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Introspection",
+					"item": [
+						{
+							"name": "schema",
+							"request": {
+								"method": "GET",
+								"header": []
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{access_token}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	]
+}

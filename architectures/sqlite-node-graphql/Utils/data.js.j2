@@ -61,7 +61,9 @@ class Data {
     }
 
 {%- macro entity_fields(entity) %}
-{{database.name(entity) }}.id AS id
+{{database.name(entity) }}.id AS id,
+{{database.name(entity) }}.date_created AS dateCreated,
+{{database.name(entity) }}.date_last_updated AS dateLastUpdated
 {%-     for field in entity.get_fields() %}
 {{- ',' }}
 {{database.name(entity) }}.{{ database.name(field) }} AS {{ gql.field_label(field) }}
@@ -131,11 +133,13 @@ class Data {
         return this.run(`
             INSERT OR IGNORE INTO {{ auth_token_entity_label }}(
                                       id,
+                                      date_created,
+                                      date_last_updated,
                                       {{ auth_token_field_label }},
                                       {{ auth_owner_reference_label }}
                                   )
-                           VALUES (?, ?, ?)
-            `, [model.id, model.{{ auth_token_field_label }}, model.{{ auth_owner_reference_label }}]
+                           VALUES (?, ?, ?, ?, ?)
+            `, [model.id, model.dateCreated, model.dateLastUpdated, model.{{ auth_token_field_label }}, model.{{ auth_owner_reference_label }}]
         );
     }
 
@@ -283,16 +287,22 @@ class Data {
 {%-     endfor %}
         const sql = `
         INSERT INTO {{ database.name(entity) }}(
-          id{% for field in entity.get_fields() %}, {{ database.name(field) }}{% endfor %}
-          {%- for reference in entity.get_references() %}, {{ database.name(reference) }}{% endfor %}
-          {%- for union in entity.get_unions() %}, {{ database.name(union) }}, {{ database.type_name(union) }}{% endfor %}
+          id,
+          date_created,
+          date_last_updated
+{%-         for field in entity.get_fields() %}, {{ database.name(field) }}{% endfor %}
+{%-         for reference in entity.get_references() %}, {{ database.name(reference) }}{% endfor %}
+{%-         for union in entity.get_unions() %}, {{ database.name(union) }}, {{ database.type_name(union) }}{% endfor %}
         )
-        VALUES (?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
+        VALUES (?, ?, ?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
         `;
         const params = [
-           model.id{% for field in entity.get_fields() %}, model.{{ gql.field_label(field) }}{% endfor %}
-          {%- for reference in entity.get_references() %}, model.{{ gql.field_label(reference) }}{% endfor %}
-          {%- for union in entity.get_unions() %}, model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }}{% endfor %}
+           model.id,
+           model.dateCreated,
+           model.dateLastUpdated
+{%-         for field in entity.get_fields() %}, model.{{ gql.field_label(field) }}{% endfor %}
+{%-         for reference in entity.get_references() %}, model.{{ gql.field_label(reference) }}{% endfor %}
+{%-         for union in entity.get_unions() %}, model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }}{% endfor %}
         ]
         await this.run(sql, params);
         return model;
@@ -315,6 +325,9 @@ class Data {
 
         const fields = [];
         const params = [];
+
+        fields.push('date_last_updated = ?');
+        params.push((new Date()).toISOString());
 
 {%-     for field in entity.get_fields() %}
 

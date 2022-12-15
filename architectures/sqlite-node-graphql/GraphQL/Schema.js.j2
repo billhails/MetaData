@@ -31,11 +31,13 @@ const {
     GraphQLUnionType,
     GraphQLInputObjectType,
     GraphQLScalarType,
-} = require('graphql/type/definition');
-const { GraphQLInt, GraphQLBoolean } = require('graphql/type');
-const { GraphQLString, GraphQLID } = require('graphql/type/scalars');
-const { GraphQLSchema } = require('graphql/type/schema');
-const { printSchema } = require('graphql/utilities');
+    GraphQLInt,
+    GraphQLBoolean,
+    GraphQLString,
+    GraphQLID,
+    GraphQLSchema,
+    printSchema
+} = require('graphql');
 const logger = require('../Utils/logger');
 const Model = require('../Model');
 
@@ -192,7 +194,15 @@ const make_schema = (resolver) => {
         fields: () => ({
             id: {
                 type: new GraphQLNonNull(GraphQLID),
-                description: 'The {{ database.name(entity) }} id.',
+                description: 'The {{ database.name(entity) | singular }} id.',
+            },
+            dateCreated: {
+                type: new GraphQLNonNull(GraphQLString),
+                description: 'The datetime the {{ database.name(entity) | singular }} was originally created.',
+            },
+            dateLastUpdated: {
+                type: new GraphQLNonNull(GraphQLString),
+                description: 'The datetime the {{ database.name(entity) | singular }} was last updated.',
             },
 {%-     for field in entity.get_fields() %}
 {%-         if not (schema.is_auth_enabled() and entity.is_auth_role('owner') and field.is_auth_role('password')) %}
@@ -288,7 +298,7 @@ const make_schema = (resolver) => {
             },
 {%-             endif %}
 {%-         endfor %}
-{%-     for union in entity.get_unions() %}
+{%-         for union in entity.get_unions() %}
             {{ gql.field_label(union) }}: {
               type: new GraphQLNonNull({{ gql.add_union(entity, union) }})
             },

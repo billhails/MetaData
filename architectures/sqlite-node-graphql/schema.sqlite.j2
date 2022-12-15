@@ -27,6 +27,7 @@
 {%- elif type == "password" %}TEXT
 {%- elif type == "token" %}TEXT
 {%- elif type == "guid" %}TEXT CHECK(LENGTH({{ name }} == 36))
+{%- elif type == "date" %}TEXT
 {%- else %}???
 {%- endif %}
 {%- endmacro %}
@@ -42,7 +43,9 @@ PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS {{ database.name(entity) }};
 
 CREATE TABLE {{ database.name(entity) }} (
-    id {{ sqlite_type("guid", "id") }} NOT NULL PRIMARY KEY
+    id {{ sqlite_type("guid", "id") }} NOT NULL PRIMARY KEY,
+    date_created {{ sqlite_type("date", "date_created")}} NOT NULL,
+    date_last_updated {{ sqlite_type("date", "date_last_updated")}} NOT NULL
 {%-     for field in entity.get_fields() -%}
 ,
     {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL{% if field.is_unique() or field.is_auth_role('external-id') %} UNIQUE{% endif %}
@@ -80,7 +83,6 @@ DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(field) }};
 CREATE UNIQUE INDEX {{ database.name(entity) }}_{{ database.name(field) }} ON {{ database.name(entity) }}({{ database.name(field) }});
 {%-     endfor %}
 {%- endfor %}
-
 
 
 {%- for association in schema.get_associations() %}

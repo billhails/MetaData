@@ -163,16 +163,16 @@ function postQuery(id) {
     }
 }
 
-async function ensureCategoriesExist(loggedInClient) {
+async function ensureCategoriesExist(adminClient) {
     const counter = categoriesQuery();
-    const data = await loggedInClient.request(counter.query, counter.variables);
+    const data = await adminClient.request(counter.query, counter.variables);
     if (data.categories.totalCount === 0) {
         const results = await Promise.all(['Art', 'Science', 'Philosophy'].map(async (label) => {
             const createCategory = addCategoryMutation(label);
-            const data = await loggedInClient.request(createCategory.mutation, createCategory.variables);
+            const data = await adminClient.request(createCategory.mutation, createCategory.variables);
             console.log(data);
         }));
-        return loggedInClient.request(counter.query, counter.variables);
+        return adminClient.request(counter.query, counter.variables);
     } else {
         return data;
     }
@@ -285,8 +285,9 @@ describe("posts", () => {
     it("can be associated with categories", async () => {
         expect.assertions(3);
         const { loggedIn } = await getLoggedInUser();
+        const { loggedIn: admin } = await getAdminUser();
         const postData = await createPost(loggedIn);
-        const categoryData = await ensureCategoriesExist(loggedIn);
+        const categoryData = await ensureCategoriesExist(admin);
         expect(categoryData.categories.totalCount).toBeGreaterThanOrEqual(3);
         const assocResult = await createCategoryPost(loggedIn, categoryData.categories.edges[0].node.id, postData.addPost.id);
         expect(assocResult.addPostsCategoryAssociation.status).toBe(true);

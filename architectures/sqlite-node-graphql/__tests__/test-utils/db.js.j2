@@ -46,7 +46,11 @@ async function refreshTokenExists(token) {
 
 async function getAdminRole() {
     const db = await getDb();
-    return db.{{ data.get_entity_by_field(roles_entity, roles_field) }}('admin');
+    const adminRole = await db.{{ data.get_entity_by_field(roles_entity, roles_field) }}('admin');
+    if (!adminRole) {
+        return db.{{ data.create_entity(roles_entity) }}({ {{gql.field_label(roles_field)}}: "admin" });
+    }
+    return adminRole;
 }
 
 {%- set roles_association = schema.get_auth_role_association() %}
