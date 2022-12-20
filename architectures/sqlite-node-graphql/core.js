@@ -4,6 +4,7 @@ const { graphqlHTTP } = require('express-graphql');
 
 const { authenticateTokenMiddleware, makeAddUserRolesMiddleware } = require('./Auth/application');
 const make_schema = require('./GraphQL/Schema');
+const { Catalogue } = require('./GraphQL/Catalogue');
 const Data = require('./DB/data');
 const loader = require('./Filters/loader');
 const DataLoaderResolver = require('./Filters/DataLoaderResolver');
@@ -42,7 +43,7 @@ const useDataLoader = true;
         authenticateTokenMiddleware,
         makeAddUserRolesMiddleware(data),
         graphqlHTTP({
-            schema: make_schema(filters),
+            schema: make_schema(new Catalogue(), filters),
             graphiql: process.env.NODE_ENV === 'development',
         })
     );
