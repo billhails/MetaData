@@ -4,11 +4,11 @@ const { graphqlHTTP } = require('express-graphql');
 
 const { authenticateTokenMiddleware, makeAddUserRolesMiddleware } = require('./Auth/application');
 const make_schema = require('./GraphQL/Schema');
-const Data = require('./Utils/data');
-const loader = require('./Utils/loader');
-const DataLoaderResolver = require('./Utils/DataLoaderResolver');
-const AuthFilter = require('./Utils/AuthFilter');
-const GraphQLFilter = require('./Utils/GraphQLFilter');
+const Data = require('./DB/data');
+const loader = require('./Filters/loader');
+const DataLoaderResolver = require('./Filters/DataLoaderResolver');
+const AuthFilter = require('./Filters/AuthFilter');
+const GraphQLFilter = require('./Filters/GraphQLFilter');
 const { parseArgs } = require('node:util');
 
 const cliOptions = {

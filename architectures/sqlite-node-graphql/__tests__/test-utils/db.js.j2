@@ -23,7 +23,7 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const { open: openSqlite } = require('sqlite');
-const Data = require('../../Utils/data');
+const Data = require('../../DB/data');
 
 const getDb = () => {
     return Data.build(); // build does it's own memoization

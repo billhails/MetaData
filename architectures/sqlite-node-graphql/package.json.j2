@@ -21,11 +21,11 @@
   "main": "core.js",
   "scripts": {
     "test": "jest",
-    "init-db": "sqlite3 < ./schema.sqlite",
+    "init-db": "sqlite3 < ./DB/schema.sqlite",
     "dev": "NODE_ENV=development nodemon core.js",
     "dev-auth": "NODE_ENV=development nodemon auth.js",
     "prod": "NODE_ENV=production node core.js",
-    "lint": "npx eslint GraphQL Model Utils Auth core.js"
+    "lint": "npx eslint GraphQL Model Utils DB Filters Auth core.js"
   },
   "keywords": [
     "API"

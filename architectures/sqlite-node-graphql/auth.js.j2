@@ -19,7 +19,7 @@ require('dotenv').config();
 const express = require('express');
 const AuthServer = require('./Auth/server');
 const AuthDatabaseAccess = require('./Auth/dbaccess');
-const Data = require('./Utils/data');
+const Data = require('./DB/data');
 
 const app = express();
 app.use(express.json());

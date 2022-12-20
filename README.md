@@ -114,28 +114,36 @@ The mistake often made with code generation is to parse some XML to a basic DOM 
 directly to the templates. That requires the templates to do an awful lot of work just to get at
 the data they require. Instead this application further processes the parsed XML into a highly
 self-referential graph of semantic objects which have high-level methods like
-`schema.get_entities()` and`entity.get_fields()` making the maintenance of the templates much
+`schema.get_entities()` and `entity.get_fields()` making the maintenance of the templates much
 more practical.
 
 ## TODO
 
 Lots, but specifically
-* general
+
+* **general**
   * business logic
-  * local template overrides
-  * think about how to share templates across architectures (later, see [dev-notes](dev-notes.md))
-  * think about using the null object pattern
-  * enumeration data type
-  * more data types (date, money &c.)
+    * custom filters and transforms (spec done, see [dev-notes](dev-notes.md))
+    * custom queries and mutations
+    * local template overrides - done
+  * think about how to share templates across architectures - later (see [dev-notes](dev-notes.md))
+  * think about using the null object pattern for redacted and/or missing data
+  * enumerations
+  * more data types (date, money, boolean, e-mail &c.)
   * demonstrate the use of middleware to handle linkedin-style friend requests
-* sqlite-node-graphql architecture Specific
-  * tests (generated)
-  * auth (in progress)
+* **`sqlite-node-graphql` architecture specific**
+  * tests (generated) - in progress
+  * auth - in progress
     * see [Auth](auth.md) for specific scenarios
   * deferred data retrieval - done (but dataloader is sub-optimal)
-    * separate dataloader per request, or cache management (done)
+    * separate dataloader per request, or cache management - done
   * pagination - done
   * mutation - done
   * OpenTracing or OpenTelemetry metrics
+* **demo-specific**
   * Redis for push notifications
-
+  * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
+  consider moving to containers for testing and deployment. Evaluate the pros and cons of
+    * Docker
+    * Vagrant
+    * Kubernites?
