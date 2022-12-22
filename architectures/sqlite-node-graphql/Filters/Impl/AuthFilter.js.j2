@@ -21,9 +21,9 @@
 {% import 'macros/gql.j2h' as gql %}
 {% import 'macros/model.j2h' as model %}
 
-const logger = require('../Utils/logger');
+const logger = require('../../Utils/logger');
 const util = require('util');
-const Model = require('../Model');
+const Model = require('../../Model');
 
 {%- macro auth_check(req, entity, failure) %}
         if (!{{req}}.user) {
