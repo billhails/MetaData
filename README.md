@@ -127,10 +127,11 @@ as follows:
 
 The `Auth`, `Transform`, `DataLoaderResolver` and `Data` classes in the diagram are empty and
 merely extend their respective implementation classes, the intention being that developers can
-provide override templates for those empty classes in which the can can then override or add methods.
+provide override templates for those empty classes in which they can can then override or add methods.
 
 Likewise the `Builder` and `Core Builder` packages both export a function `build`, that takes
-a `Catalogue` object, adds GraphQL types, queries and mutations to it, and returns the resulting
+a `Catalogue` object (pluss the downstream middleware), adds GraphQL types, queries and mutations
+to the catalogue, and returns the resulting
 catalogue. The `Core Builder` adds the core types specified in the XML schema, whereas the `Builder`
 package is a no-op that returns its argument unchanged and can be overridden.
 

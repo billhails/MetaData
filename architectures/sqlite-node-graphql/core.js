@@ -4,6 +4,7 @@ const { graphqlHTTP } = require('express-graphql');
 
 const { authenticateTokenMiddleware, makeAddUserRolesMiddleware } = require('./Auth/application');
 const make_schema = require('./GraphQL/Schema');
+const CoreBuilder = require('./GraphQL/CoreBuilder');
 const Builder = require('./GraphQL/Builder');
 const { Catalogue } = require('./GraphQL/Catalogue');
 const Data = require('./DB/data');
@@ -35,11 +36,16 @@ const useDataLoader = true;
         )
       )
     );
+
     const clearCacheMiddleware = (req, res, next) => {
         filters.clearAll();
         next();
     };
-    const catalogue = Builder.build(new Catalogue(), filters);
+
+    const catalogue = Builder.build(
+        CoreBuilder.build(new Catalogue(), filters),
+        filters
+    );
 
     app.use('/graphql',
         clearCacheMiddleware,
@@ -50,6 +56,7 @@ const useDataLoader = true;
             graphiql: process.env.NODE_ENV === 'development',
         })
     );
+
     app.listen(parseInt(values.port || '4000'));
     console.log('Running a GraphQL API server at http://localhost:4000/graphql');
 })();
