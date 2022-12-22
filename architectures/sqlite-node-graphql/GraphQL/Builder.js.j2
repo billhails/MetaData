@@ -82,7 +82,7 @@ function cursorToId(cursor) {
     return null;
 }
 
-const make_schema = (catalogue, resolver) => {
+function build(catalogue, resolver) {
     catalogue.addType('boolean', () => GraphQLBoolean);
 
     catalogue.addType('nonNullBoolean', () => new GraphQLNonNull(catalogue.getType('boolean')));
@@ -605,24 +605,7 @@ const make_schema = (catalogue, resolver) => {
     }));
 {%- endfor %}
 
+    return catalogue;
+}
 
-    const queryType = new GraphQLObjectType({
-        name: 'Query',
-        fields: () => catalogue.getAllQueries()
-    });
-
-    const mutationType = new GraphQLObjectType({
-        name: 'Mutation',
-        fields: () => catalogue.getAllMutations()
-    });
-
-    const schema = new GraphQLSchema({
-        query: queryType,
-        mutation: mutationType
-    });
-    // logger.debug(printSchema(schema));
-    return schema;
-
-};
-
-module.exports = make_schema;
+module.exports = { build };

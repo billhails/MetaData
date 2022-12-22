@@ -4,6 +4,7 @@ const { graphqlHTTP } = require('express-graphql');
 
 const { authenticateTokenMiddleware, makeAddUserRolesMiddleware } = require('./Auth/application');
 const make_schema = require('./GraphQL/Schema');
+const Builder = require('./GraphQL/Builder');
 const { Catalogue } = require('./GraphQL/Catalogue');
 const Data = require('./DB/data');
 const loader = require('./Filters/loader');
@@ -38,12 +39,14 @@ const useDataLoader = true;
         filters.clearAll();
         next();
     };
+    const catalogue = Builder.build(new Catalogue(), filters);
+
     app.use('/graphql',
         clearCacheMiddleware,
         authenticateTokenMiddleware,
         makeAddUserRolesMiddleware(data),
         graphqlHTTP({
-            schema: make_schema(new Catalogue(), filters),
+            schema: make_schema(catalogue),
             graphiql: process.env.NODE_ENV === 'development',
         })
     );
