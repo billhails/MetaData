@@ -214,102 +214,129 @@ class SelfReferentialAssociationCountLoader extends AbstractLoader {
     }
 }
 
-module.exports = (data) => {
+class Loader {
+    constructor(data) {
+        this.data = data;
+
 {%- for entity in schema.get_entities() %}
 
-    const {{ loader.entity(entity) }} = new DataLoader(async ids => {
-        logger.debug(`loader.{{ loader.entity(entity) }} got ids ${util.inspect(ids)}`);
-        return data.{{ data.batch_get_entity(entity) }}(ids);
-    });
+        this.{{ loader.entity(entity) }}Object = new DataLoader(async ids => {
+            logger.debug(`loader.{{ loader.entity(entity) }} got ids ${util.inspect(ids)}`);
+            return this.data.{{ data.batch_get_entity(entity) }}(ids);
+        });
 
-    const {{ loader.entities(entity) }} = new EntityLoader({
-        loader: () => {{ loader.entity(entity) }},
-        page_get: async args => data.{{ data.page_get_entity(entity) }}(args),
-        name: '{{ loader.entities(entity) }}'
-    });
+        this.{{ loader.entities(entity) }}Object = new EntityLoader({
+            loader: () => this.{{ loader.entity(entity) }}Object,
+            page_get: async args => this.data.{{ data.page_get_entity(entity) }}(args),
+            name: '{{ loader.entities(entity) }}'
+        });
 
-    const {{ loader.count_entities(entity) }} = new EntityCountLoader({
-        page_get: async args => data.{{ data.count_entities(entity) }}(args)
-    });
+        this.{{ loader.count_entities(entity) }}Object = new EntityCountLoader({
+            page_get: async args => this.data.{{ data.count_entities(entity) }}(args)
+        });
 
 {%-     for referrer in entity.get_referrers() %}
 
-    const {{ loader.referrer(referrer) }} = new ReferrerLoader({
-        batch_get: async (ids_and_args) => data.{{ data.batch_get_referrer(referrer) }}(ids_and_args),
-        entity_loader: () => {{ loader.entity(referrer.get_entity()) }},
-        referrer_column: '{{ referrer.get_column_name() }}',
-        name: '{{ loader.referrer(referrer) }}'
-    });
+        this.{{ loader.referrer(referrer) }}Object = new ReferrerLoader({
+            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_referrer(referrer) }}(ids_and_args),
+            entity_loader: () => this.{{ loader.entity(referrer.get_entity()) }}Object,
+            referrer_column: '{{ referrer.get_column_name() }}',
+            name: '{{ loader.referrer(referrer) }}'
+        });
 
-    const {{ loader.count_referrer(referrer) }} = new ReferrerCountLoader({
-        name: '{{ loader.count_referrer(referrer) }}',
-        batch_get: async (ids_and_args) => data.{{ data.batch_count_referrer(referrer) }}(ids_and_args)
-    });
+        this.{{ loader.count_referrer(referrer) }}Object = new ReferrerCountLoader({
+            name: '{{ loader.count_referrer(referrer) }}',
+            batch_get: async (ids_and_args) => this.data.{{ data.batch_count_referrer(referrer) }}(ids_and_args)
+        });
 {%-     endfor %}
 
 {%-     for association in entity.get_associations() %}
 
 {%-         if association.is_self_referential() %}
 
-    const {{ loader.association_for_entity(entity, association) }} = new SelfReferentialAssociationLoader({
-        batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        lhs_column: '{{ gql.lhs(association) }}',
-        rhs_column: '{{ gql.rhs(association) }}',
-        name: '{{ loader.association_for_entity(entity, association) }}'
-    });
+        this.{{ loader.association_for_entity(entity, association) }}Object = new SelfReferentialAssociationLoader({
+            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
+            lhs_column: '{{ gql.lhs(association) }}',
+            rhs_column: '{{ gql.rhs(association) }}',
+            name: '{{ loader.association_for_entity(entity, association) }}'
+        });
 
-    const {{ loader.count_association_for_entity(entity, association) }} = new SelfReferentialAssociationCountLoader({
-        name: '{{ loader.count_association_for_entity(entity, association) }}',
-        batch_get: async (ids_and_args) => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
-    });
+        this.{{ loader.count_association_for_entity(entity, association) }}Object = new SelfReferentialAssociationCountLoader({
+            name: '{{ loader.count_association_for_entity(entity, association) }}',
+            batch_get: async (ids_and_args) => this.data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
+        });
 
 {%-         else %}
 
-    const {{ loader.association_for_entity(entity, association) }} = new AssociationLoader({
-        batch_get: async (ids_and_args) => data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
-        this_column: '{{ gql.this_column(entity, association) }}',
-        other_column: '{{ gql.other_column(entity, association) }}',
-        name: '{{ loader.association_for_entity(entity, association) }}'
-    });
+        this.{{ loader.association_for_entity(entity, association) }}Object = new AssociationLoader({
+            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
+            this_column: '{{ gql.this_column(entity, association) }}',
+            other_column: '{{ gql.other_column(entity, association) }}',
+            name: '{{ loader.association_for_entity(entity, association) }}'
+        });
 
-    const {{ loader.count_association_for_entity(entity, association) }} = new AssociationCountLoader({
-        name: '{{ loader.count_association_for_entity(entity, association) }}',
-        batch_get: async ids_and_args => data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
-    });
+        this.{{ loader.count_association_for_entity(entity, association) }}Object = new AssociationCountLoader({
+            name: '{{ loader.count_association_for_entity(entity, association) }}',
+            batch_get: async ids_and_args => this.data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
+        });
 {%-         endif %}
 {%-     endfor %}
 {%- endfor %}
+    }
 
-    const clearAll = () => {
+    clearAll() {
 {%- for entity in schema.get_entities() %}
-        {{ loader.entity(entity) }}.clearAll();
-        {{ loader.entities(entity) }}.clearAll();
+        this.{{ loader.entity(entity) }}Object.clearAll();
+        this.{{ loader.entities(entity) }}Object.clearAll();
 {%-     for referrer in entity.get_referrers() %}
-        {{ loader.referrer(referrer) }}.clearAll();
-        {{ loader.count_referrer(referrer) }}.clearAll();
+        this.{{ loader.referrer(referrer) }}Object.clearAll();
+        this.{{ loader.count_referrer(referrer) }}Object.clearAll();
 {%-     endfor %}
 {%-     for association in entity.get_associations() %}
-        {{ loader.association_for_entity(entity, association) }}.clearAll();
-        {{ loader.count_association_for_entity(entity, association) }}.clearAll();
+        this.{{ loader.association_for_entity(entity, association) }}Object.clearAll();
+        this.{{ loader.count_association_for_entity(entity, association) }}Object.clearAll();
 {%-     endfor %}
 {%- endfor %}
     };
 
-    return {
 {%- for entity in schema.get_entities() %}
-        {{ loader.entity(entity) }},
-        {{ loader.entities(entity) }},
-        {{ loader.count_entities(entity) }},
+
+    {{ loader.entity(entity) }}(id) {
+        return this.{{ loader.entity(entity) }}Object.load(id);
+    }
+
+    {{ loader.entities(entity) }}(args) {
+        return this.{{ loader.entities(entity) }}Object.load(args);
+    }
+
+    {{ loader.count_entities(entity) }}(args) {
+        return this.{{ loader.count_entities(entity) }}Object.load(args);
+    }
+
 {%-     for referrer in entity.get_referrers() %}
-        {{ loader.referrer(referrer) }},
-        {{ loader.count_referrer(referrer) }},
+
+    {{ loader.referrer(referrer) }}(id, args) {
+        return this.{{ loader.referrer(referrer) }}Object.load(id, args);
+    }
+
+    {{ loader.count_referrer(referrer) }}(id, args) {
+        return this.{{ loader.count_referrer(referrer) }}Object.load(id, args);
+    }
+
 {%-     endfor %}
+
 {%-     for association in entity.get_associations() %}
-        {{ loader.association_for_entity(entity, association) }},
-        {{ loader.count_association_for_entity(entity, association) }},
+
+    {{ loader.association_for_entity(entity, association) }}(id, args) {
+        return this.{{ loader.association_for_entity(entity, association) }}Object.load(id, args);
+    }
+
+    {{ loader.count_association_for_entity(entity, association) }}(id, args) {
+        return this.{{ loader.count_association_for_entity(entity, association) }}Object.load(id, args);
+    }
+
 {%-     endfor %}
 {%- endfor %}
-        data,
-        clearAll
-    };
 };
+
+module.exports = Loader;

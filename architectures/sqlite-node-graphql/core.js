@@ -8,7 +8,7 @@ const CoreBuilder = require('./GraphQL/CoreBuilder');
 const Builder = require('./GraphQL/Builder');
 const { Catalogue } = require('./GraphQL/Catalogue');
 const Data = require('./DB/data');
-const loader = require('./Filters/loader');
+const Loader = require('./Filters/loader');
 const DataLoaderResolver = require('./Filters/DataLoaderResolver');
 const AuthFilter = require('./Filters/AuthFilter');
 const GraphQLFilter = require('./Filters/GraphQLFilter');
@@ -29,10 +29,11 @@ const useDataLoader = true;
 
 (async () => {
     const data = await Data.build();
+
     const filters = new AuthFilter(
       new GraphQLFilter(
         new DataLoaderResolver(
-          loader(data)
+          new Loader(data)
         )
       )
     );

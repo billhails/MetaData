@@ -1,3 +1,6 @@
-const loaderImpl = require('./Impl/loader');
+const LoaderImpl = require('./Impl/loader');
 
-module.exports = (data) => loaderImpl(data);
+class Loader extends LoaderImpl {
+}
+
+module.exports = Loader;
