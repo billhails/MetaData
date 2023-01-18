@@ -158,6 +158,9 @@ Lots, but specifically
   * pagination - done
   * mutation - done
   * OpenTracing or OpenTelemetry metrics
+  * Security
+    * review XSS vulnerabilities
+    * review SQL injection vulnerabilities
 * **demo-specific**
   * Redis for push notifications
   * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
