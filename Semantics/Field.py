@@ -26,14 +26,15 @@ class Field(Semantics):
 
     def required_attributes(self):
         return super().required_attributes() + [
-            {'name': 'type', 'values': ["text", "title", "guid", "small_string", "name", "email", "password", "token"]}
+            {'name': 'type', 'values': ["text", "title", "guid", "small_string", "name", "email", "password", "token", "boolean"]}
         ]
 
     def optional_attributes(self):
         return super().optional_attributes() + [
             {'name': 'unique', 'values': ['n', 'y'], 'default': 'n'},
             {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role'], 'default': 'none'},
-            {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'}
+            {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'},
+            {'name': 'default'}
         ]
 
     def get_type(self):
@@ -53,3 +54,9 @@ class Field(Semantics):
 
     def is_auth_enabled(self):
         return self.get_schema().is_auth_enabled()
+
+    def has_default(self):
+        return self.has_attribute('default')
+
+    def get_default(self):
+        return self.attributes['default']
