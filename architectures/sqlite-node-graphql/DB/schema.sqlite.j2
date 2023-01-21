@@ -28,11 +28,43 @@
 {%- elif type == "token" %}TEXT
 {%- elif type == "guid" %}TEXT CHECK(LENGTH({{ name }} == 36))
 {%- elif type == "date" %}TEXT
+{%- elif type == "boolean" %}TEXT
+{%- else %}???
+{%- endif %}
+{%- endmacro %}
+
+{%- macro sqlite_make_type(type, value) %}
+{%- if type == "string" %}"{{ value }}"
+{%- elif type == "title" %}"{{ value }}"
+{%- elif type == "text" %}"{{ value }}"
+{%- elif type == "small_string" %}"{{ value }}"
+{%- elif type == "email" %}"{{ value }}"
+{%- elif type == "name" %}"{{ value }}"
+{%- elif type == "password" %}"{{ value }}"
+{%- elif type == "token" %}"{{ value }}"
+{%- elif type == "guid" %}"{{ value }}"
+{%- elif type == "date" %}"{{ value }}"
+{%- elif type == "boolean" %}"{{ value }}"
 {%- else %}???
 {%- endif %}
 {%- endmacro %}
 
 {%- import 'macros/database.j2h' as database %}
+
+{%- macro field_declaration(field) -%}
+{{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL
+{%- if field.is_unique() or field.is_auth_role('external-id') %} UNIQUE{% endif %}
+{%- if field.has_default() %} DEFAULT {{ sqlite_make_type(field.get_type(), field.get_default()) }}{% endif %}
+{%- endmacro %}
+
+{%- macro add_unique_field_indexes(entity) %}
+{%-     for field in entity.get_unique_fields() %}
+
+DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(field) }};
+
+CREATE UNIQUE INDEX {{ database.name(entity) }}_{{ database.name(field) }} ON {{ database.name(entity) }}({{ database.name(field) }});
+{%-     endfor %}
+{%- endmacro %}
 
 .open {{ schema.get_name() }}.db
 
@@ -48,7 +80,7 @@ CREATE TABLE {{ database.name(entity) }} (
     date_last_updated {{ sqlite_type("date", "date_last_updated")}} NOT NULL
 {%-     for field in entity.get_fields() -%}
 ,
-    {{ database.name(field) }} {{ sqlite_type(field.get_type(), database.name(field)) }} NOT NULL{% if field.is_unique() or field.is_auth_role('external-id') %} UNIQUE{% endif %}
+    {{ field_declaration(field) }}
 {%-     endfor %}
 {%-     for reference in entity.get_references() -%}
 ,
@@ -68,39 +100,46 @@ CREATE TABLE {{ database.name(entity) }} (
 {%-     for reference in entity.get_references() %}
 
 DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(reference) }};
+
 CREATE INDEX {{ database.name(entity) }}_{{ database.name(reference) }} ON {{ database.name(entity) }}({{ database.name(reference) }});
+
 {%-     endfor %}
 
 {%-     for union in entity.get_unions() %}
 
 DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(union) }};
+
 CREATE INDEX {{ database.name(entity) }}_{{ database.name(union) }} ON {{ database.name(entity) }}({{ database.name(union) }});
 {%-     endfor %}
 
-{%-     for field in entity.get_unique_fields() %}
-
-DROP INDEX IF EXISTS {{ database.name(entity) }}_{{ database.name(field) }};
-CREATE UNIQUE INDEX {{ database.name(entity) }}_{{ database.name(field) }} ON {{ database.name(entity) }}({{ database.name(field) }});
-{%-     endfor %}
+{{ add_unique_field_indexes(entity) }}
 {%- endfor %}
 
 
 {%- for association in schema.get_associations() %}
 
 DROP TABLE IF EXISTS {{ database.name(association) }};
+
 CREATE TABLE {{ database.name(association) }} (
     {{ database.lhs(association) }} {{ sqlite_type("guid", database.lhs(association)) }} NOT NULL,
     {{ database.rhs(association) }} {{ sqlite_type("guid", database.rhs(association)) }} NOT NULL,
+{%-     for field in association.get_fields() %}
+    {{ field_declaration(field) }},
+{%-     endfor %}
     FOREIGN KEY ({{ database.lhs(association) }}) REFERENCES {{ database.name(association.get_lhs()) }}(id) ON DELETE CASCADE,
     FOREIGN KEY ({{ database.rhs(association) }}) REFERENCES {{ database.name(association.get_rhs()) }}(id) ON DELETE CASCADE,
     CONSTRAINT no_duplicate_{{ database.name(association) }} UNIQUE ({{ database.lhs(association) }}, {{ database.rhs(association) }}) ON CONFLICT IGNORE
 );
 
 DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.lhs(association) }};
+
 CREATE INDEX {{ database.name(association) }}_{{ database.lhs(association) }} ON {{ database.name(association) }}({{ database.lhs(association) }});
 
 DROP INDEX IF EXISTS {{ database.name(association) }}_{{ database.rhs(association) }};
+
 CREATE INDEX {{ database.name(association) }}_{{ database.rhs(association) }} ON {{ database.name(association) }}({{ database.rhs(association) }});
+
+{{ add_unique_field_indexes(association) }}
 {%- endfor %}
 
 
