@@ -160,7 +160,9 @@ Lots, but specifically
   * OpenTracing or OpenTelemetry metrics
   * Security
     * review XSS vulnerabilities
+      * add `security="xss"` schema attribute to globally enable html escaping of text input.
     * review SQL injection vulnerabilities
+    * add graphql-query-complexity analysis and rejection
 * **demo-specific**
   * Redis for push notifications
   * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
