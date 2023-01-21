@@ -41,7 +41,7 @@ def parse_schema(node):
         case 'union':
             return Union(node.attrib, [parse_schema(n) for n in node])
         case 'association':
-            return Association(node.attrib)
+            return Association(node.attrib, [parse_schema(n) for n in node])
         case _:
             raise "Error unrecognised node type {}".format(node.tag)
 
