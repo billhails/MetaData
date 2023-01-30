@@ -94,7 +94,11 @@ class AuthServer {
                 return;
             }
 
+{%-     if owner_entity.get_auth_id_field().is_xss_susceptible() %}
 
+            externalId = xss(externalId);
+
+{%-     endif %}
 
             const existingUser = await this.db.findUserByExternalId(externalId);
 
