@@ -151,7 +151,7 @@ class AuthFilter {
         const model = await this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req, info);
 {%-         for reference in union.get_references() %}
         if (model instanceof Model.{{ model.name(reference.get_referenced()) }}) {
-            return {{ resolve.process_entity(reference.get_referenced()) }}(model, req);
+            return this.{{ resolve.process_entity(reference.get_referenced()) }}(model, req);
         }
 {%-         endfor %}
         return null;
@@ -256,7 +256,7 @@ class AuthFilter {
 {%-     endfor %}
 
     // resolve delete association
-    async {{ resolve.delete_association(association) }}(source, args, req) {
+    async {{ resolve.delete_association(association) }}(source, args, req, info) {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.delete_association(association) }}(source, args, req, info);
     }

@@ -189,7 +189,7 @@ class SecurityFilter {
 {%-     endfor %}
 
     // resolve delete association
-    async {{ resolve.delete_association(association) }}(source, args, req) {
+    async {{ resolve.delete_association(association) }}(source, args, req, info) {
         return this.resolver.{{ resolve.delete_association(association) }}(source, args, req, info);
     }
 

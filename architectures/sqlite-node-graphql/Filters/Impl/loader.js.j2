@@ -297,7 +297,7 @@ class Loader {
         this.{{ loader.count_association_for_entity(entity, association) }}Object.clearAll();
 {%-     endfor %}
 {%- endfor %}
-    };
+    }
 
 {%- for entity in schema.get_entities() %}
 
@@ -337,6 +337,6 @@ class Loader {
 
 {%-     endfor %}
 {%- endfor %}
-};
+}
 
 module.exports = Loader;
