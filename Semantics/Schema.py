@@ -33,7 +33,8 @@ class Schema(Container):
     def optional_attributes(self):
         return super().optional_attributes() + [
             {'name': 'auth', 'values': ['enabled', 'disabled'], 'default': 'disabled'},
-            {'name': 'access-token-expiry'}
+            {'name': 'access-token-expiry'},
+            {'name': 'security', 'values': ['xss']}
         ]
 
     def build(self):
@@ -91,6 +92,9 @@ class Schema(Container):
 
     def is_auth_enabled(self):
         return self.attribute_value('auth', 'enabled')
+
+    def is_xss_secure(self):
+        return self.attribute_value('security', 'xss')
 
     def get_auth_owner_entity(self):
         for entity in self.get_entities():

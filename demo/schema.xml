@@ -17,7 +17,7 @@
   -  along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 <!-- schema name is required -->
-<schema name="demo" auth="enabled" access-token-expiry="24h">
+<schema name="demo" auth="enabled" access-token-expiry="24h" security="xss">
 
     <entity name="users" auth-role="owner" auth-access="owner">
         <!-- descriptions end up in the graphql docs -->

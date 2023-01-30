@@ -7,9 +7,11 @@ const make_schema = require('./GraphQL/Schema');
 const CoreBuilder = require('./GraphQL/CoreBuilder');
 const Builder = require('./GraphQL/Builder');
 const { Catalogue } = require('./GraphQL/Catalogue');
+const complexity = require('./GraphQL/Complexity');
 const Data = require('./DB/data');
 const Loader = require('./Filters/loader');
 const DataLoaderResolver = require('./Filters/DataLoaderResolver');
+const SecurityFilter = require('./Filters/SecurityFilter');
 const AuthFilter = require('./Filters/AuthFilter');
 const GraphQLFilter = require('./Filters/GraphQLFilter');
 const { parseArgs } = require('node:util');
@@ -25,15 +27,15 @@ const { values } = parseArgs({ options: cliOptions });
 
 const app = express();
 
-const useDataLoader = true;
-
 (async () => {
     const data = await Data.build();
 
-    const filters = new AuthFilter(
-      new GraphQLFilter(
-        new DataLoaderResolver(
-          new Loader(data)
+    const filters = new SecurityFilter(
+      new AuthFilter(
+        new GraphQLFilter(
+          new DataLoaderResolver(
+            new Loader(data)
+          )
         )
       )
     );
@@ -52,12 +54,16 @@ const useDataLoader = true;
         clearCacheMiddleware,
         authenticateTokenMiddleware,
         makeAddUserRolesMiddleware(data),
-        graphqlHTTP({
+        graphqlHTTP(async (request, response, { variables }) => ({
             schema: make_schema(catalogue),
+            validationRules: [
+                complexity(variables, 1000)
+            ],
             graphiql: process.env.NODE_ENV === 'development',
-        })
+        }))
     );
 
-    app.listen(parseInt(values.port || '4000'));
-    console.log('Running a GraphQL API server at http://localhost:4000/graphql');
+    const port = parseInt(values.port || '4000');
+    app.listen(port);
+    console.log(`Running a GraphQL API server at http://localhost:${port}/graphql`);
 })();

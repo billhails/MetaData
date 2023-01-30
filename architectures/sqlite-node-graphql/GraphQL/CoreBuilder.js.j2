@@ -300,6 +300,9 @@ function build(catalogue, resolver) {
                         type: catalogue.getType('cursor'),
                     },
                 },
+                extensions: {
+                    complexity: 2 // associations require 2 lookups
+                },
                 resolve: (...args) => resolver.{{ resolve.association_for_entity(entity, association) }}(...args)
             },
 {%-     endfor %}
@@ -432,6 +435,9 @@ function build(catalogue, resolver) {
                 type: catalogue.getType('cursor'),
             },
         },
+        extensions: {
+            complexity: 2
+        },
         resolve: (...args) => resolver.{{ resolve.owned_association_for_entity(entity, association) }}(...args)
     }));
 
@@ -466,7 +472,6 @@ function build(catalogue, resolver) {
     }));
 
 {%- endfor %}
-
 
 
 {%- for entity in schema.get_entities() %}

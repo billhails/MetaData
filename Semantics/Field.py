@@ -40,6 +40,9 @@ class Field(Semantics):
     def get_type(self):
         return self.attributes['type']
 
+    def is_xss_susceptible(self):
+        return self.get_type() in ["text", "title", "guid", "small_string", "name", "email"]
+
     def get_entity(self):
         return self.entity
 

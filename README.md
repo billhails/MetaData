@@ -148,7 +148,7 @@ Lots, but specifically
   * think about using the null object pattern for redacted and/or missing data
   * enumerations
   * more data types (date, money, boolean, e-mail &c.)
-  * demonstrate the use of middleware to handle linkedin-style friend requests
+  * consider a Semantics.Type class to encapsulate the types of fields
 * **`sqlite-node-graphql` architecture specific**
   * tests (generated) - in progress
   * auth - in progress
@@ -160,10 +160,11 @@ Lots, but specifically
   * OpenTracing or OpenTelemetry metrics
   * Security
     * review XSS vulnerabilities
-      * add `security="xss"` schema attribute to globally enable html escaping of text input.
+      * add `security="xss"` schema attribute to globally enable html escaping of text input - done
     * review SQL injection vulnerabilities
-    * add graphql-query-complexity analysis and rejection
+    * add graphql-query-complexity analysis and rejection - done
 * **demo-specific**
+  * demonstrate the use of middleware to handle linkedin-style friend requests
   * Redis for push notifications
   * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
   consider moving to containers for testing and deployment. Evaluate the pros and cons of
