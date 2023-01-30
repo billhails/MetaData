@@ -18,6 +18,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../Utils/logger');
+const xss = require('../Utils/xss');
 
 {% import 'macros/gql.j2h' as gql %}
 
@@ -86,12 +87,14 @@ class AuthServer {
                 return;
             }
 
-            const externalId = req.body.{{ id_label }};
+            let externalId = req.body.{{ id_label }};
 
             if (!externalId) {
                 res.status(400).json({error: 'missing {{ id_label }}'});
                 return;
             }
+
+
 
             const existingUser = await this.db.findUserByExternalId(externalId);
 
@@ -108,7 +111,13 @@ class AuthServer {
 {%-          set label = gql.field_label(field) %}
 {%-          if not field.is_auth_role('password') %}
             if (req.body.{{ label }}) {
-                user['{{ label }}'] = req.body.{{ label }};
+                user['{{ label }}'] =
+{%-      if field.is_xss_susceptible() -%}
+                    xss(req.body.{{ label }});
+{%-      else -%}
+                    req.body.{{ label }};
+{%-      endif %}
+                req.body.{{ label }};
             }
 {%-          endif %}
 {%-      endfor %}

@@ -139,35 +139,41 @@ package is a no-op that returns its argument unchanged and can be overridden.
 
 Lots, but specifically
 
-* **general**
-  * business logic
-    * custom filters and transforms (spec done, see [dev-notes](dev-notes.md))
-    * custom queries and mutations
-    * local template overrides - done
-  * think about how to share templates across architectures - later (see [dev-notes](dev-notes.md))
-  * think about using the null object pattern for redacted and/or missing data
-  * enumerations
-  * more data types (date, money, boolean, e-mail &c.)
-  * consider a Semantics.Type class to encapsulate the types of fields
-* **`sqlite-node-graphql` architecture specific**
-  * tests (generated) - in progress
-  * auth - in progress
-    * see [Auth](auth.md) for specific scenarios
-  * deferred data retrieval - done (but dataloader is sub-optimal)
-    * separate dataloader per request, or cache management - done
-  * pagination - done
-  * mutation - done
-  * OpenTracing or OpenTelemetry metrics
-  * Security
-    * review XSS vulnerabilities
-      * add `security="xss"` schema attribute to globally enable html escaping of text input - done
-    * review SQL injection vulnerabilities
-    * add graphql-query-complexity analysis and rejection - done
-* **demo-specific**
-  * demonstrate the use of middleware to handle linkedin-style friend requests
-  * Redis for push notifications
-  * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
-  consider moving to containers for testing and deployment. Evaluate the pros and cons of
-    * Docker
-    * Vagrant
-    * Kubernites?
+### general
+* support business logic
+  * custom filters and transforms (spec done, see [dev-notes](dev-notes.md))
+  * custom queries and mutations
+  * local template overrides - done
+* think about how to share templates across architectures - later (see [dev-notes](dev-notes.md))
+* think about using the null object pattern for redacted and/or missing data
+* enumerations
+* more data types (date, money, boolean, e-mail &c.)
+* consider a Semantics.Type class to encapsulate the types of fields
+* add another demo with a very different use case
+* add another architecture (PHP/MySQL/ReST?)
+
+### sqlite-node-graphql architecture specific
+* tests (generated) - in progress
+* auth - in progress
+  * see [Auth](auth.md) for specific scenarios
+* deferred data retrieval - done (but dataloader is sub-optimal)
+  * separate dataloader per request, or cache management - done
+* pagination - done
+* mutation - done
+* OpenTracing or OpenTelemetry metrics
+* Security
+  * review XSS vulnerabilities
+    * add `security="xss"` schema attribute to globally enable html escaping of text input - done
+  * review SQL injection vulnerabilities - "should" be ok, all db queries use parameters.
+  * add graphql-query-complexity analysis and rejection - done
+  * move to https with a local certificate
+  * consider merging the Security and Auth transforms
+* with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
+consider moving to containers for testing and deployment. Evaluate the pros and cons of
+  * Docker
+  * Vagrant
+  * Kubernites?
+
+### demo-specific
+* demonstrate the use of middleware to handle linkedin-style friend requests
+* Redis for push notifications

@@ -20,6 +20,7 @@
 {% import 'macros/resolver.j2h' as resolve %}
 
 const logger = require('../../Utils/logger');
+const xss = require('../../Utils/xss');
 const util = require('util');
 const Model = require('../../Model');
 
@@ -33,14 +34,7 @@ class SecurityFilter {
     }
 
     escape(s) {
-        let lookup = {
-            '&': "&amp;",
-            '"': "&quot;",
-            '\'': "&apos;",
-            '<': "&lt;",
-            '>': "&gt;"
-        };
-        return s.replace( /[&"'<>]/g, c => lookup[c] );
+        return xss(s);
     }
 
 {%- for entity in schema.get_entities() %}
@@ -128,15 +122,13 @@ class SecurityFilter {
     // resolve create entity
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
 
-{%-     if schema.is_xss_secure() %}
-{%-         for field in entity.get_fields() %}
-{%-             if field.is_xss_susceptible() %}
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_xss_susceptible() %}
         if (args.input.{{ field.get_name() }}) {
             args.input.{{ field.get_name() }} = this.escape(args.input.{{ field.get_name() }});
         }
-{%-             endif %}
-{%-         endfor %}
-{%-     endif %}
+{%-         endif %}
+{%-     endfor %}
 
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req, info);
     }
@@ -144,15 +136,13 @@ class SecurityFilter {
     // resolve update entity
     async {{ resolve.update_entity(entity) }}(source, args, req, info) {
 
-{%-     if schema.is_xss_secure() %}
-{%-         for field in entity.get_fields() %}
-{%-             if field.is_xss_susceptible() %}
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_xss_susceptible() %}
         if (args.input.{{ field.get_name() }}) {
             args.input.{{ field.get_name() }} = this.escape(args.input.{{ field.get_name() }});
         }
-{%-             endif %}
-{%-         endfor %}
-{%-     endif %}
+{%-         endif %}
+{%-     endfor %}
 
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req, info);
     }
