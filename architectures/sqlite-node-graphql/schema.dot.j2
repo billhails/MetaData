@@ -1,0 +1,23 @@
+digraph {{ schema.get_name() }} {
+    rankdir=LR
+    node [shape=record]
+{%- for entity in schema.get_entities() %}
+    struct_{{ entity.get_name() }} [label="<field_{{ entity.get_name() }}> {{ entity.get_name() }}
+    {%- for field in entity.get_fields() -%}
+        |{{ field.get_name() }}
+    {%- endfor -%}
+    {%- for reference in entity.get_references() -%}
+        |<reference_{{ reference.get_name() }}> {{ reference.get_name() }}
+    {%- endfor -%}
+    "]
+{%- endfor %}
+{%- for entity in schema.get_entities() %}
+    {%- for reference in entity.get_references() %}
+    struct_{{ entity.get_name() }}:reference_{{ reference.get_name() }} -> struct_{{ reference.get_referenced().get_name() }}:field_{{ reference.get_referenced().get_name() }}
+    {%- endfor %}
+{%- endfor %}
+{%- for association in schema.get_associations() %}
+    struct_{{ association.get_lhs().get_name() }}:field_{{ association.get_lhs().get_name() }} -> struct_{{ association.get_rhs().get_name() }}:field_{{ association.get_rhs().get_name() }}
+     {{- ' ' }} [dir="both",color="blue",label="{{ association.get_name() }}",fontcolor="blue"]
+{%- endfor %}
+}
