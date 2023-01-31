@@ -9,11 +9,20 @@ digraph {{ schema.get_name() }} {
     {%- for reference in entity.get_references() -%}
         |<reference_{{ reference.get_name() }}> {{ reference.get_name() }}
     {%- endfor -%}
+    {%- for union in entity.get_unions() -%}
+        |<union_{{ union.get_name() }}> {{ union.get_name() }}
+    {%- endfor -%}
     "]
 {%- endfor %}
 {%- for entity in schema.get_entities() %}
     {%- for reference in entity.get_references() %}
     struct_{{ entity.get_name() }}:reference_{{ reference.get_name() }} -> struct_{{ reference.get_referenced().get_name() }}:field_{{ reference.get_referenced().get_name() }}
+    {%- endfor %}
+
+    {%- for union in entity.get_unions() %}
+        {%- for reference in union.get_references() %}
+    struct_{{ entity.get_name() }}:union_{{ union.get_name() }} -> struct_{{ reference.get_referenced().get_name() }}:field_{{ reference.get_referenced().get_name() }} [color="green"]
+        {%- endfor %}
     {%- endfor %}
 {%- endfor %}
 {%- for association in schema.get_associations() %}
