@@ -1,4 +1,25 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -#}
 require('dotenv').config();
+// must happen before express, apparently
+const setupTracing = require('./OpenTelemetry/base');
+setupTracing('{{ schema.get_name() }}-graphql', true);
+
 const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 
@@ -11,7 +32,6 @@ const complexity = require('./GraphQL/Complexity');
 const Data = require('./DB/data');
 const Loader = require('./Filters/loader');
 const DataLoaderResolver = require('./Filters/DataLoaderResolver');
-const SecurityFilter = require('./Filters/SecurityFilter');
 const AuthFilter = require('./Filters/AuthFilter');
 const GraphQLFilter = require('./Filters/GraphQLFilter');
 const { parseArgs } = require('node:util');
@@ -30,15 +50,12 @@ const app = express();
 (async () => {
     const data = await Data.build();
 
-    const filters = new SecurityFilter(
-      new AuthFilter(
-        new GraphQLFilter(
-          new DataLoaderResolver(
-            new Loader(data)
-          )
-        )
-      )
-    );
+    const filters = [
+        AuthFilter,
+        GraphQLFilter,
+        DataLoaderResolver,
+        Loader
+    ].reduceRight((filters, filter) => new filter(filters), data);
 
     const clearCacheMiddleware = (req, res, next) => {
         filters.clearAll();

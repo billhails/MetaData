@@ -54,14 +54,14 @@ function idToCursor(id) {
 
 function cursorToId(cursor) {
     if (!base64Pattern.test(cursor)) {
-        logger.error("invalid cursor cannot be converted to id (regex match failed)", {cursor});
+        logger.error("invalid cursor cannot be converted to uuid (regex match failed)", {cursor});
         return null;
     }
 
     const hex = Buffer.from(cursor, 'base64').toString('hex');
 
     if (hex.length !== 32) {
-        logger.error("invalid cursor cannot be converted to id (wrong size)", {cursor});
+        logger.error("invalid cursor cannot be converted to uuid (wrong size)", {cursor});
         return null;
     }
 
@@ -73,13 +73,14 @@ function cursorToId(cursor) {
         hex.substring(20, 32)
     ].join('-');
 
-    if (uuidPattern.test(uuid)) {
+    if (!uuidPattern.test(uuid)) {
         // first char of the fourth group must match [89ab]
-        return uuid;
+        logger.error("invalid cursor cannot be converted to uuid (bad uuid version)", {cursor});
+        return null;
     }
 
-    logger.error("invalid cursor cannot be converted to id (bad uuid format)", {cursor});
-    return null;
+    return uuid;
+
 }
 
 function build(catalogue, resolver) {

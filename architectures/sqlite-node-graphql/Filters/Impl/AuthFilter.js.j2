@@ -22,6 +22,7 @@
 {% import 'macros/model.j2h' as model %}
 
 const logger = require('../../Utils/logger');
+const xss = require('../../Utils/xss');
 const util = require('util');
 const Model = require('../../Model');
 
@@ -183,6 +184,13 @@ class AuthFilter {
 {%-     if entity.has_auth_owner() %}
         args.input.{{ owner_label(entity) }} = req.user.sub;
 {%-     endif %}
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_xss_susceptible() %}
+        if (args.input.{{ field.get_name() }}) {
+            args.input.{{ field.get_name() }} = xss(args.input.{{ field.get_name() }});
+        }
+{%-         endif %}
+{%-     endfor %}
         return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req, info);
     }
 
@@ -197,6 +205,13 @@ class AuthFilter {
             }
         }
 {%-     endif %}
+{%-     for field in entity.get_fields() %}
+{%-         if field.is_xss_susceptible() %}
+        if (args.input.{{ field.get_name() }}) {
+            args.input.{{ field.get_name() }} = xss(args.input.{{ field.get_name() }});
+        }
+{%-         endif %}
+{%-     endfor %}
         return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req, info);
     }
 

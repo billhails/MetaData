@@ -1,6 +1,6 @@
 {#
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -14,12 +14,28 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+ -#}
 require('dotenv').config();
+
+// must happen before express, apparently
+const setupTracing = require('./OpenTelemetry/base');
+setupTracing('{{ schema.get_name() }}-auth');
+
 const express = require('express');
 const AuthServer = require('./Auth/server');
 const AuthDatabaseAccess = require('./Auth/dbaccess');
 const Data = require('./DB/data');
+const { parseArgs } = require('node:util');
+
+const cliOptions = {
+    port: {
+        type: 'string',
+        short: 'p',
+    }
+};
+
+const { values } = parseArgs({ options: cliOptions });
+const port = parseInt(values.port || '3000');
 
 const app = express();
 app.use(express.json());
@@ -30,5 +46,6 @@ app.use(express.json());
     app.post('/refresh', async (req, res) => server.refreshAccessToken(req, res));
     app.post('/logout', async (req, res) => server.deleteRefreshToken(req, res));
     app.post('/login', async (req, res) => server.login(req, res));
-    app.listen(3000);
+    app.listen(port);
+    console.log(`Running auth server at http://localhost:${port}/{signup,refresh,login,logout}`);
 })();
