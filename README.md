@@ -38,6 +38,12 @@ application.
 Note that the argument to `--architecture` is just the name of a directory under `./architectures`
 containing appropriate templates. The intention is to support more architectures in the future.
 
+The `--extra` argument specifies a bas directory in which there should be another `architectures`
+directory with equivalent architecture subdirectories, i.e. in this example
+`demo/architectures/sqlite-node-graphql`. That directory can supply override templates for the
+templates in the base architectures directory, allowing individual applications the ability
+to override core behaviour if needed.
+
 If you're intending to use authentication, as the demo does, you will also need to generate a `.env`
 file inside the architecture source, containing access and refresh token secrets. This file is
 ignored by git and since it is generated once in the source, the secrets won't change and
@@ -82,13 +88,16 @@ npm run test
 
 This is also useful because it will populate the database.
 
+If you'd like to see opentelemetry traces, install and run
+[Jaeger](https://www.jaegertracing.io/docs/1.41/getting-started/)
+
 ## Postman
 
 For convenience during manual testing, I've added a couple of Postman files under `demo/Postman`,
 specifically an environment
 and a collection. The environment just defines hostname, port, access tokens &c. The collection
 contains folders for Auth and GraphQL. The Auth folder contains queries for sign-up, login, logout
-and access token refresh. "Tests" associated with those auth requests will populate the environment
+and access token refresh. Tests associated with those auth requests will populate the environment
 with current access and refresh tokens &c. which the GraphQL requests then use.
 
 ## Structure of the Builder Application
@@ -105,8 +114,9 @@ processed repeatedly for each `entity` in the schema, and written to separate fi
 `%E` replaced by each entity name. Likewise '.j2' files with a `%A` in their name are processed for
 each
 association in the schema, with the `%A` replaced by the association name in each output file.
-Files with a `.j2h` suffix are considered macros and not copied to the output directory
-(though they can be imported). Files without a `.j2` suffix are copied to the output verbatim.
+Files with a `.j2h` suffix are considered macros for internal use by the templates and are not
+copied to the output directory.
+Files without a `.j2` or `.j2h` suffix are copied to the output verbatim.
 
 ### Semantics
 
@@ -160,14 +170,14 @@ Lots, but specifically
   * separate dataloader per request, or cache management - done
 * pagination - done
 * mutation - done
-* OpenTracing or OpenTelemetry metrics
+* OpenTracing or OpenTelemetry metrics - done
 * Security
   * review XSS vulnerabilities
     * add `security="xss"` schema attribute to globally enable html escaping of text input - done
-  * review SQL injection vulnerabilities - "should" be ok, all db queries use parameters.
+  * review SQL injection vulnerabilities - *should* be ok, all db queries use parameters.
   * add graphql-query-complexity analysis and rejection - done
   * move to https with a local certificate
-  * consider merging the Security and Auth transforms
+  * consider merging the Security and Auth transforms - done
 * with the proliferation of potential extra servers (Redis, Jaeger, other databases etc.)
 consider moving to containers for testing and deployment. Evaluate the pros and cons of
   * Docker
@@ -176,4 +186,4 @@ consider moving to containers for testing and deployment. Evaluate the pros and 
 
 ### demo-specific
 * demonstrate the use of middleware to handle linkedin-style friend requests
-* Redis for push notifications
+* Redis for push notifications?
