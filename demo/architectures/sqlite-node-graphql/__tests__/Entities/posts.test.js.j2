@@ -25,15 +25,15 @@ const { getGraphQLClient, gql } = require('../test-utils/graphql');
 const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
 jest.mock('../../Utils/logger');
 
-function randomPost() {
+function randomPost({title, body}) {
     return {
-        title: faker.lorem.sentence(),
-        body: faker.lorem.paragraph()
+        title: title || faker.lorem.sentence(),
+        body: body || faker.lorem.paragraph()
     }
 }
 
-function createPostMutation() {
-    const post = randomPost()
+function createPostMutation(params={}) {
+    const post = randomPost(params);
     return {
         mutation: gql`mutation AddPost($title: String!, $body: String!) {
             addPost(input: {title: $title, body: $body}) {
@@ -52,7 +52,7 @@ function createPostMutation() {
 }
 
 function updatePostMutation(id) {
-    const post = randomPost()
+    const post = randomPost({})
     return {
         mutation: gql`mutation UpdatePost($id: ID!, $title: String!, $body: String!) {
             updatePost(id: $id, input: {title: $title, body: $body}) {
@@ -178,8 +178,8 @@ async function ensureCategoriesExist(adminClient) {
     }
 }
 
-async function createPost(loggedInClient) {
-    const postMutation = createPostMutation()
+async function createPost(loggedInClient, params={}) {
+    const postMutation = createPostMutation(params);
     return loggedInClient.request(postMutation.mutation, postMutation.variables);
 }
 
@@ -293,5 +293,11 @@ describe("posts", () => {
         expect(assocResult.addPostsCategoryAssociation.status).toBe(true);
         const fetchPostResult = await fetchPost(loggedIn, postData.addPost.id);
         expect(fetchPostResult.post.categories.edges[0].node.id).toBe(categoryData.categories.edges[0].node.id);
+    });
+    it("defends against XSS attacks", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const postData = await createPost(loggedIn, {body: "<script>your XSS here</script>"});
+        expect(postData.addPost.body).toBe("&lt;script&gt;your XSS here&lt;/script&gt;");
     });
 });

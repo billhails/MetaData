@@ -159,7 +159,7 @@ Lots, but specifically
 * enumerations
 * more data types (date, money, boolean, e-mail &c.)
 * consider a Semantics.Type class to encapsulate the types of fields
-* add another demo with a very different use case
+* add another demo with a very different use case (retail?)
 * add another architecture (PHP/MySQL/ReST?)
 
 ### sqlite-node-graphql architecture specific
