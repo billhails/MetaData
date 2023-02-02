@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023 Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -30,32 +30,26 @@ class AuthDatabaseAccess {
 {%- set entity = schema.get_auth_owner_entity() %}
 
     async createUser(args) {
-        logger.debug('AuthDatabaseAccess.createUser', {args});
         return this.data.{{ data.create_entity(entity) }}(args);
     }
 
     async findUserByExternalId(id) {
-        logger.debug('AuthDatabaseAccess.findUserByExternalId', {id});
         return this.data.{{ data.get_entity_by_field(entity, entity.get_auth_id_field()) }}(id);
     }
 
     async findUserByInternalId(id) {
-        logger.debug('AuthDatabaseAccess.findUserByInternalId', {id});
         return this.data.{{ data.get_entity(entity) }}(id)
     }
 
     async refreshTokenExists(token) {
-        logger.debug('AuthDatabaseAccess.refreshTokenExists', {token});
         return this.data.checkRefreshTokenExists(token);
     }
 
     async saveRefreshToken(token, id) {
-        logger.debug('AuthDatabaseAccess.saveRefreshToken', {token, id});
         return this.data.saveRefreshToken(token, id);
     }
 
     async deleteRefreshToken(token) {
-        logger.debug('AuthDatabaseAccess.deleteRefreshToken', {token});
         return this.data.deleteRefreshToken(token);
     }
 

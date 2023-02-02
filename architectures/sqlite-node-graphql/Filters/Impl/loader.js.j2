@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@ class EntityLoader {
     }
 
     async load (args) {
-        this.debug('args', args);
         const entities = await this.page_get(args);
         entities.forEach(entity => this.loader().prime(entity.id, entity));
         return entities;
@@ -94,11 +93,8 @@ class ReferrerLoader extends AbstractLoader {
     }
 
     async loadBatch(keys) {
-        this.debug('started', {keys, batch_get: this.batch_get});
         const ids_and_args = keys.map(key => this.lookup[key]);
-        this.debug('got ids_and_args', ids_and_args);
         const referrers = await this.batch_get(ids_and_args);
-        this.debug('got referrers', referrers);
         referrers.forEach(referrer => this.entity_loader().prime(referrer.id, referrer));
         return ids_and_args.map(({id}) => { // maps [lhs_id, lhs_id, ... ] to [[rhs_entity, rhs_entity, ...], [rhs_entity, ...], ...]
             const id_referrers = {};
@@ -117,13 +113,9 @@ class ReferrerLoader extends AbstractLoader {
 class ReferrerCountLoader extends AbstractLoader {
 
     async loadBatch(keys) {
-        this.debug('started', {keys});
         const ids_and_args = keys.map(key => this.lookup[key]);
-        this.debug('got ids_and_args', ids_and_args);
         const referrerCounts = await this.batch_get(ids_and_args);
-        this.debug('got raw referrer counts', referrerCounts);
         const processedCounts = referrerCounts.reduce((acc, count) => ({...acc, [count.id]: count.count}), {});
-        this.debug(`got referrer counts`, processedCounts);
         return ids_and_args.map(({id}) => ({ count: processedCounts[id] || 0}));
     }
 }
@@ -136,10 +128,8 @@ class SelfReferentialAssociationLoader extends AbstractLoader {
     }
 
     async loadBatch(keys) {
-        this.debug('started', {keys, batch_get: this.batch_get});
         const ids_and_args = keys.map(key => this.lookup[key])
         const associations = await this.batch_get(ids_and_args);
-        this.debug(`got associations`, associations);
         return ids_and_args.map(({id}) => {
             const associates = {};
             associations.forEach(association => {
@@ -163,11 +153,8 @@ class AssociationLoader extends AbstractLoader {
     }
 
     async loadBatch(keys) {
-        this.debug('started', {keys, batch_get: this.batch_get});
         const ids_and_args = keys.map(key => this.lookup[key]);
-        this.debug('ids and args', ids_and_args);
         const associations = await this.batch_get(ids_and_args);
-        this.debug(`got associations ${util.inspect({associations})}`);
         const result = ids_and_args.map(({id}) => {
             const associates = {};
             associations.forEach(association => {
@@ -177,31 +164,23 @@ class AssociationLoader extends AbstractLoader {
             });
             return Object.keys(associates);
         });
-        this.debug('returning', result);
         return result;
     }
 }
 
 class AssociationCountLoader extends AbstractLoader {
     async loadBatch(keys) {
-        this.debug('started', {keys});
         const ids_and_args = keys.map(key => this.lookup[key]);
-        this.debug('ids and args', ids_and_args);
         const associationCounts = await this.batch_get(ids_and_args);
-        this.debug('got raw association counts', associationCounts);
         const processedCounts = associationCounts.reduce((acc, count) => ({...acc, [count.id]: count.count}), {});
-        this.debug('got association counts', processedCounts);
         return ids_and_args.map(({id}) => processedCounts[id] || 0);
     }
 }
 
 class SelfReferentialAssociationCountLoader extends AbstractLoader {
     async loadBatch(keys) {
-        this.debug('started', {keys});
         const ids_and_args = keys.map(key => this.lookup[key]);
-        this.debug('ids and args', ids_and_args);
         const associationCounts = await this.batch_get(ids_and_args);
-        this.debug('got raw association counts', associationCounts);
         const processedCounts = {};
         associationCounts.forEach(count => {
             if (!(count.id in processedCounts)) {
@@ -209,7 +188,6 @@ class SelfReferentialAssociationCountLoader extends AbstractLoader {
             }
             processedCounts[count.id] += count.count;
         });
-        this.debug('got association counts', processedCounts);
         return ids_and_args.map(({id}) => processedCounts[id] || 0);
     }
 }
@@ -221,7 +199,6 @@ class Loader {
 {%- for entity in schema.get_entities() %}
 
         this.{{ loader.entity(entity) }}Object = new DataLoader(async ids => {
-            logger.debug(`loader.{{ loader.entity(entity) }} got ids ${util.inspect(ids)}`);
             return this.data.{{ data.batch_get_entity(entity) }}(ids);
         });
 

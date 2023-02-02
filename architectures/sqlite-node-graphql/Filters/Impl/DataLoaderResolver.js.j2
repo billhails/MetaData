@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,6 @@ class DataLoaderResolver {
 
     async {{ resolve.association_for_entity(entity, association) }}(entity, args) {
         const associations = await this.loaders.{{ loader.association_for_entity(entity, association) }}(entity.id, args);
-        logger.debug(`DataLoaderResolver.{{ resolve.association_for_entity(entity, association) }} got associations from {{ loader.association_for_entity(entity, association) }} ${util.inspect(associations)}`);
         return Promise.all(associations.map(id => this.loaders.{{ loader.other_entity(entity, association) }}(id)));
     }
 
@@ -94,7 +93,6 @@ class DataLoaderResolver {
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(_, { input }) {
-        logger.debug('DataLoaderResolver.{{ resolve.create_entity(entity) }}', {input});
         return this.loaders.data.{{ data.create_entity(entity) }}(input);
     }
 

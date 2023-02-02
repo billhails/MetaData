@@ -44,7 +44,13 @@ module.exports = (serviceName, traceGraphQL=false) => {
       // Express instrumentation expects HTTP layer to be instrumented
       HttpInstrumentation,
       ExpressInstrumentation,
-      ...(traceGraphQL ? [new GraphQLInstrumentation({}), new DataloaderInstrumentation()] : [])
+      ...(traceGraphQL ? [
+        new GraphQLInstrumentation({
+            mergeItems: true,
+            ignoreTrivialResolveSpans: true
+        }),
+        new DataloaderInstrumentation()
+        ] : [])
     ],
   });
 

@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -280,7 +280,6 @@ class Data {
      * @returns {Model.{{ model.name(entity) }}}
      */
     async {{ data.create_entity(entity) }}(args) {
-        logger.debug('data.{{ data.create_entity(entity) }}', {args});
         const model = new Model.{{ model.name(entity) }}(args);
 {%-     for union in entity.get_unions() %}
         await this.{{ data.validate_union(entity, union) }}(model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }});

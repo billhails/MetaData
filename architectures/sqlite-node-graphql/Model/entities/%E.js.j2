@@ -1,6 +1,6 @@
 {#
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ const util = require('util');
 
 class {{ model.name(entity) }} {
     constructor(args) {
-        logger.debug('new Model.{{ model.name(entity) }}', {args});
         const now = (new Date()).toISOString();
         this.id = args.id || uuidv4();
         this.dateCreated = args.dateCreated || now;

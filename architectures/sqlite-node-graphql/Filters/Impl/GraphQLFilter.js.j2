@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -54,7 +54,6 @@ class GraphQLFilter {
     }
 
     makeConnection(rows, count) {
-        logger.debug('GraphQLFilter.makeConnection got rows', {rows});
         const startCursor = rows.length ? rows[0].id : null;
         const endCursor = rows.length ? rows[rows.length - 1].id : null;
         const hasPreviousPage = false;
@@ -113,7 +112,6 @@ class GraphQLFilter {
 
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
         const parsedInfo = parseResolveInfo(info);
-        logger.debug(`GraphQLFilter.{{ resolve.referrer_for_entity(entity, referrer) }} got info`, {parsedInfo});
         let totalCount = 0;
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, info);
@@ -134,11 +132,9 @@ class GraphQLFilter {
 
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
         const parsedInfo = parseResolveInfo(info);
-        logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got info`, {parsedInfo});
         let totalCount = 0;
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(association.get_other(entity)) }}?.totalCount) {
             const countResult = await this.resolver.{{ resolve.count_association_for_entity(entity, association) }}(entity, args);
-            logger.debug(`GraphQLFilter.{{ resolve.association_for_entity(entity, association) }} got totalCount ${countResult}`);
             totalCount = countResult || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0)

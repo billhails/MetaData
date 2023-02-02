@@ -1,6 +1,6 @@
 {#-
  #  MetaData - API Generator.
- #  Copyright (C) 2022  Bill Hails
+ #  Copyright (C) 2022-2023  Bill Hails
  #
  #  This program is free software: you can redistribute it and/or modify
  #  it under the terms of the GNU General Public License as published by
@@ -37,15 +37,12 @@ class AuthServer {
      * authenticateUserByExternalId
      */
     async authenticateUserByExternalId(req, res) {
-        logger.debug('authenticateUserByExternalId');
         const id = req.body.{{ id_label }};
 
         if (!id) {
             res.sendStatus(400);
             return false;
         }
-
-        logger.debug('authenticateUserByExternalId got id', {id});
 
         const user = await this.db.findUserByExternalId(id);
 
@@ -104,7 +101,6 @@ class AuthServer {
             const existingUser = await this.db.findUserByExternalId(externalId);
 
             if (existingUser) {
-                logger.debug('found existing user during signUp', { existingUser });
                 return this.login(req, res);
             }
 
@@ -132,7 +128,6 @@ class AuthServer {
                 id: model.{{ id_label }},
                 sub: model.id
             });
-            logger.debug('tokens generated', tokens);
             res.status(201).json(tokens);
         } catch (error) {
             logger.error('caught', error);
@@ -172,7 +167,6 @@ class AuthServer {
      * login
      */
     async login(req, res) {
-        logger.debug('login');
         const user = await this.authenticateUserByExternalId(req, res);
 
         if (!user) {
@@ -187,7 +181,6 @@ class AuthServer {
      * generateTokens
      */
     async generateTokens(user) {
-        logger.debug('generateTokens', user);
         const accessToken = this.generateAccessToken(user);
         const refreshToken = this.generateRefreshToken(user);
         await this.db.saveRefreshToken(refreshToken, user.sub);
@@ -198,7 +191,6 @@ class AuthServer {
      * generateAccessToken
      */
     generateAccessToken(user) {
-        logger.debug('generateAccessToken', user);
         return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '{{ schema.access_token_expiry() }}'});
     }
 
@@ -206,7 +198,6 @@ class AuthServer {
      * generateRefreshToken
      */
     generateRefreshToken(user) {
-        logger.debug('generateRefreshToken', user);
         return jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
     }
 {%- endif %}
