@@ -5,7 +5,7 @@ and their relationships) and generates a complete backend application, consistin
 and a GraphQL interface to that database. The code generation system is written in Python, and
 in the first instance the generated database is SQLite and the generated GraphQL stack is node js.
 
-I'd wanted to rename this project "Marmite" because firstly code-generation is a very polarising
+> I'd wanted to rename this project "Marmite" because firstly code-generation is a very polarising
 subject, people tend to either love it or hate it, and secondly the templates in particular
 are very information-rich. However I'd probably run into issues using a likely proprietary name
 so MetaData will have to do.
