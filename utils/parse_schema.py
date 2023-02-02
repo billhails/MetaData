@@ -33,11 +33,11 @@ def parse_schema(node):
         case 'entity':
             return Entity(node.attrib, [parse_schema(n) for n in node])
         case 'description':
-            return Description(node.text)
+            return Description(node.attrib, [parse_schema(n) for n in node], node.text)
         case 'field':
-            return Field(node.attrib)
+            return Field(node.attrib, [parse_schema(n) for n in node])
         case 'reference':
-            return Reference(node.attrib)
+            return Reference(node.attrib, [parse_schema(n) for n in node])
         case 'union':
             return Union(node.attrib, [parse_schema(n) for n in node])
         case 'association':

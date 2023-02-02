@@ -38,7 +38,7 @@ application.
 Note that the argument to `--architecture` is just the name of a directory under `./architectures`
 containing appropriate templates. The intention is to support more architectures in the future.
 
-The `--extra` argument specifies a bas directory in which there should be another `architectures`
+The `--extra` argument specifies a base directory in which there should be another `architectures`
 directory with equivalent architecture subdirectories, i.e. in this example
 `demo/architectures/sqlite-node-graphql`. That directory can supply override templates for the
 templates in the base architectures directory, allowing individual applications the ability
@@ -88,8 +88,11 @@ npm run test
 
 This is also useful because it will populate the database.
 
+### Telemetry
+
 If you'd like to see opentelemetry traces, install and run
-[Jaeger](https://www.jaegertracing.io/docs/1.41/getting-started/)
+[Jaeger](https://www.jaegertracing.io/docs/1.41/getting-started/).
+The application will export telemetry to Jaeger if available.
 
 ## Postman
 
@@ -160,14 +163,14 @@ Lots, but specifically
 * more data types (date, money, boolean, e-mail &c.)
 * consider a Semantics.Type class to encapsulate the types of fields
 * add another demo with a very different use case (retail?)
-* add another architecture (PHP/MySQL/ReST?)
+* add another architecture (php-mysql-rest?)
 
 ### sqlite-node-graphql architecture specific
 * tests (generated) - in progress
 * auth - in progress
   * see [Auth](auth.md) for specific scenarios
-* deferred data retrieval - done (but dataloader is sub-optimal)
-  * separate dataloader per request, or cache management - done
+* deferred data retrieval with dataloader - done
+  * dataloader cache management - done
 * pagination - done
 * mutation - done
 * OpenTracing or OpenTelemetry metrics - done

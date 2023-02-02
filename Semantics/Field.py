@@ -15,11 +15,16 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-from Semantics import Semantics
+from Semantics import Semantics, SemanticException
 
 class Field(Semantics):
     entity = None
     type = "Field"
+
+    def __init__(self, attributes, components):
+        if len(components):
+            raise SemanticException('field can not contain components')
+        super().__init__(attributes)
 
     def build(self, entity):
         self.entity = entity

@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-from Semantics import Semantics
+from Semantics import Semantics, SemanticException
 
 
 class Reference(Semantics):
@@ -23,6 +23,11 @@ class Reference(Semantics):
     entity_to = None
     union = None
     type = "Reference"
+
+    def __init__(self, attributes, components):
+        if len(components):
+            raise SemanticException('reference can not contain components')
+        super().__init__(attributes)
 
     def build(self, entity, union=None):
         self.entity_from = entity

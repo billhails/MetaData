@@ -15,13 +15,17 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-from Semantics import Semantics
+from Semantics import Semantics, SemanticException
 
 
 class Description(Semantics):
     type = "Description"
 
-    def __init__(self, text):
+    def __init__(self, attrib, components, text):
+        if len(attrib):
+            raise SemanticException('description does not support attributes')
+        if len(components):
+            raise SemanticException('description can not contain components')
         super().__init__({})
         self.text = text
 
