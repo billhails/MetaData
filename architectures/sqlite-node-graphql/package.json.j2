@@ -1,4 +1,4 @@
-{#
+{#-
  #  MetaData - API Generator.
  #  Copyright (C) 2022  Bill Hails
  #
@@ -14,7 +14,8 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}{
+-#}
+ {
   "name": "{{ schema.get_name() }}",
   "version": "1.0.0",
   "description": "{{ warning }}",
@@ -35,6 +36,7 @@
   "dependencies": {
     "@opentelemetry/api": "^1.4.0",
     "@opentelemetry/exporter-jaeger": "^1.9.1",
+    "@opentelemetry/instrumentation-dataloader": "^0.3.0",
     "@opentelemetry/instrumentation-express": "^0.32.0",
     "@opentelemetry/instrumentation-graphql": "^0.33.0",
     "@opentelemetry/instrumentation-http": "^0.35.1",

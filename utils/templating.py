@@ -30,6 +30,9 @@ def camel_case(string):
     parts = string.split('_', 1)
     return parts[0].casefold() if len(parts) == 1 else ''.join([parts[0].casefold(), mixed_case(parts[1])])
 
+def uc_first(string):
+    return string[0].upper() + string[1:]
+
 def map_macro(list, macro):
     return map(macro, list)
 
@@ -63,9 +66,10 @@ class TemplateProcessor:
         self.environment.filters["mixed_case"] = mixed_case
         self.environment.filters["camel_case"] = camel_case
         self.environment.filters["map_macro"] = map_macro
+        self.environment.filters["uc_first"] = uc_first
 
     def _process_template(self, template, target, data):
-        data['warning'] = "Automatically generated from {} - DO NOT EDIT".format(template)
+        data['warning'] = "Automatically generated from architectures/{}/{} - DO NOT EDIT".format(self.architecture, template)
         data['output'] = self.output_root
         data['architecture'] = self.architecture
         print(template, '->', target)

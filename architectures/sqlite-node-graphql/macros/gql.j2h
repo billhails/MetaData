@@ -86,7 +86,9 @@
 {% macro delete_association(association) %}Delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro delete_association_label(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro entity_connection(entity) %}{{ entity.get_name() | camel_case }}Connection{% endmacro %}
-{% macro entity_edge(entity) %}{{ entity.get_name() | camel_case }}Edge{% endmacro %}
+{% macro entity_edge(entity) %}{{ entity.get_name() | singular | camel_case }}Edge{% endmacro %}
+{% macro list_of(name) %}listOf{{ name | uc_first }}{% endmacro %}
+{% macro non_null(name) %}nonNull{{ name | uc_first }}{% endmacro %}
 
 {% macro owner_entity() %}me{% endmacro %}
 {% macro owned_entity_label(referrer) %}my{{ referrer.get_referrer_name() | mixed_case }}{% endmacro %}

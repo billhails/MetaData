@@ -63,9 +63,7 @@
     </entity>
 
     <!-- associations are many-to-many relationships -->
-    <association name="friends" lhs="users" rhs="users" auth-access="owner" auth-path="lhs,rhs">
-        <field name="accepted" type="boolean" default="n"/>
-    </association>
+    <association name="friends" lhs="users" rhs="users" auth-access="owner" auth-path="lhs,rhs"/>
 
     <association name="posts_categories" lhs="posts" rhs="categories" auth-access="owner" auth-visibility="visible" auth-path="lhs.owner"/>
 

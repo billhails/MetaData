@@ -11,6 +11,7 @@ const { SpanAttributes } = require("@opentelemetry/api/build/src/trace/attribute
 const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express');
 const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
 const { GraphQLInstrumentation } = require('@opentelemetry/instrumentation-graphql');
+const { DataloaderInstrumentation } = require("@opentelemetry/instrumentation-dataloader");
 
 function filterSampler(filterFn, parent) {
   return {
@@ -43,7 +44,7 @@ module.exports = (serviceName, traceGraphQL=false) => {
       // Express instrumentation expects HTTP layer to be instrumented
       HttpInstrumentation,
       ExpressInstrumentation,
-      ...(traceGraphQL ? [new GraphQLInstrumentation({})] : [])
+      ...(traceGraphQL ? [new GraphQLInstrumentation({}), new DataloaderInstrumentation()] : [])
     ],
   });
 
