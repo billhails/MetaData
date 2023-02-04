@@ -25,6 +25,9 @@ digraph {{ schema.get_name() }} {
     {%- for field in entity.get_fields() -%}
         |{{ field.get_name() }}
     {%- endfor -%}
+    {%- for enum in entity.get_enums() -%}
+        |{{ enum.get_name() }}
+    {%- endfor -%}
     {%- for reference in entity.get_references() -%}
         |<reference_{{ reference.get_name() }}> {{ reference.get_name() }}
     {%- endfor -%}

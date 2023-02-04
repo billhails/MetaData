@@ -36,6 +36,7 @@
 {% macro graphql_type(type) %}GraphQLString{% endmacro %}
 {% macro catalogue_type(type) %}string{% endmacro %}
 
+{% macro schema_enum_type(enum) %}{{ enum.get_name() | mixed_case }}Enum{% endmacro %}
 {% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}Enum{% endmacro %}
 {% macro union_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
 {% macro entity_type(entity) %}{{ entity.get_name() | mixed_case | singular }}{% endmacro %}

@@ -22,10 +22,11 @@ from Semantics.Field import Field
 from Semantics.Reference import Reference
 from Semantics.Union import Union
 from Semantics.ID import ID
+from Semantics.Enum import Enum
 
 class Entity(Container):
     type = "Entity"
-    allowed_components = ['Description', 'Field', 'Reference', 'Union']
+    allowed_components = ['Description', 'Field', 'Reference', 'Union', 'Enum']
 
     def __init__(self, attributes, components):
         super().__init__(attributes, components)
@@ -34,6 +35,7 @@ class Entity(Container):
         self.fields = {}
         self.references = {}
         self.unions = {}
+        self.enums = {}
         self.lhs_associations = {}
         self.rhs_associations = {}
         self.all_associations = {}
@@ -52,6 +54,7 @@ class Entity(Container):
         self.fields = {x.attributes['name']: x for x in self.components if isinstance(x, Field)}
         self.references = {x.attributes['name']: x for x in self.components if isinstance(x, Reference)}
         self.unions = {x.attributes['name']: x for x in self.components if isinstance(x, Union)}
+        self.enums = {x.attributes['name']: x for x in self.components if isinstance(x, Enum)}
         self.description = [x.text for x in self.components if isinstance(x, Description)][0]
         for field in self.fields:
             self.fields[field].build(self)
@@ -59,6 +62,8 @@ class Entity(Container):
             self.references[reference].build(self)
         for union in self.unions:
             self.unions[union].build(self)
+        for enum in self.enums:
+            self.enums[enum].build(self)
 
     def validate(self):
         super().validate()
@@ -160,6 +165,9 @@ class Entity(Container):
 
     def get_referrers(self):
         return self.referrers.values()
+
+    def get_enums(self):
+        return self.enums.values()
 
     def get_schema(self):
         return self.schema

@@ -42,7 +42,7 @@ The `--extra` argument specifies a base directory in which there should be anoth
 directory with equivalent architecture subdirectories, i.e. in this example
 `demo/architectures/sqlite-node-graphql`. That directory can supply override templates for the
 templates in the base architectures directory, allowing individual applications the ability
-to override core behaviour if needed.
+to customize core behaviour if needed.
 
 If you're intending to use authentication, as the demo does, you will also need to generate a `.env`
 file inside the architecture source, containing access and refresh token secrets. This file is
@@ -140,7 +140,8 @@ as follows:
 
 The `Auth`, `Transform`, `DataLoaderResolver` and `Data` classes in the diagram are empty and
 merely extend their respective implementation classes, the intention being that developers can
-provide override templates for those empty classes in which they can can then override or add methods.
+provide override templates for those empty classes in which they can can then override or add
+methods.
 
 Likewise the `Builder` and `Core Builder` packages both export a function `build`, that takes
 a `Catalogue` object (pluss the downstream middleware), adds GraphQL types, queries and mutations
@@ -185,7 +186,7 @@ Lots, but specifically
 consider moving to containers for testing and deployment. Evaluate the pros and cons of
   * Docker
   * Vagrant
-  * Kubernites?
+  * Kubernites
 
 ### demo-specific
 * demonstrate the use of middleware to handle linkedin-style friend requests

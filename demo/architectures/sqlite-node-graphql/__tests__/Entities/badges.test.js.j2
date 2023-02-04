@@ -1,0 +1,203 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+// {{ warning }}
+{#- example test included by using the --extra override #}
+
+const { faker } = require('../test-utils/fakery');
+const { signup, deconstruct } = require('../test-utils/auth');
+const { grantAdminRole } = require('../test-utils/db');
+const { getGraphQLClient, gql } = require('../test-utils/graphql');
+const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
+jest.mock('../../Utils/logger');
+
+function randomBadge(awardedTo, badge=false) {
+    return {
+        badge: badge || faker.helpers.arrayElement(['hero', 'star']),
+        awardedTo
+    }
+}
+
+function createBadgeMutation(awardedTo, badgeEnum=false) {
+    const badge = randomBadge(awardedTo, badgeEnum);
+    return {
+        mutation: gql`mutation AddBadge($badge: BadgeEnum!, $awardedTo: ID!) {
+            addBadge(input: {badge: $badge, awardedTo: $awardedTo}) {
+                id
+                badge
+                awardedTo {
+                    id
+                }
+                awardedBy {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            badge: badge.badge,
+            awardedTo: badge.awardedTo
+        }
+    }
+}
+
+async function createBadge(loggedInClient, awardedTo, badge=false) {
+    const badgeMutation = createBadgeMutation(awardedTo, badge);
+    return loggedInClient.request(badgeMutation.mutation, badgeMutation.variables);
+}
+
+function updateBadgeMutation(id, badge) {
+    return {
+        mutation: gql`mutation UpdateBadge($id: ID!, $badge: BadgeEnum!) {
+            updateBadge(id: $id, input: {badge: $badge}) {
+                id
+                badge
+                awardedTo {
+                    id
+                }
+                awardedBy {
+                  id
+                }
+            }
+        }`,
+        variables: {
+            badge,
+            id
+        }
+    }
+}
+
+async function updateBadge(client, id, badge) {
+    const mutation = updateBadgeMutation(id, badge);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+function deleteBadgeMutation(id) {
+    return {
+        mutation: gql`mutation DeleteBadge($id: ID!) {
+            deleteBadge(id: $id) {
+                status
+            }
+        }`,
+        variables: {
+            id
+        }
+    }
+}
+
+function deleteBadge(client, id) {
+    const mutation = deleteBadgeMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+describe("badges", () => {
+    it("cannot be created by a logged-out user", async () => {
+        expect.assertions(1);
+        const loggedOut = getGraphQLClient();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedOut, awardedTo);
+        expect(data).toStrictEqual({addBadge: null});
+    });
+    it("can be created by a logged-in user", async () => {
+        expect.assertions(2);
+        const { loggedIn, id } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        expect(data.addBadge).not.toBeNull();
+        expect(data.addBadge?.awardedBy?.id).toBe(id);
+    });
+    it("can be created by admin", async () => {
+        expect.assertions(2);
+        const { loggedIn: admin, id } = await getAdminUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(admin, awardedTo);
+        expect(data.addBadge).not.toBeNull();
+        expect(data.addBadge?.awardedBy?.id).toBe(id);
+    });
+    it("can be modified by the owner", async () => {
+        expect.assertions(1);
+        const { loggedIn, id } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo, 'star');
+        const update = updateBadgeMutation(data.addBadge.id, 'hero');
+        const updatedData = await loggedIn.request(update.mutation, update.variables);
+        expect(updatedData.updateBadge.badge).toBe('hero');
+    });
+    it("can be modified by admin", async () => {
+        expect.assertions(2);
+        const { loggedIn, id } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo, 'star');
+        const { loggedIn: admin } = await getAdminUser();
+        const update = updateBadgeMutation(data.addBadge.id, 'hero');
+        const updatedData = await admin.request(update.mutation, update.variables);
+        expect(updatedData.updateBadge.badge).toBe('hero');
+        expect(updatedData.updateBadge.awardedBy.id).toBe(id);
+    });
+    it("can not be modified by a logged-out user", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const loggedOut = getGraphQLClient();
+        const updatedData = await updateBadge(loggedOut, data.addBadge.id, 'star');
+        expect(updatedData.updateBadge).toBeNull();
+    });
+    it("can not be modified by a different user", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const { loggedIn: otherUser } = await getLoggedInUser();
+        const updatedData = await updateBadge(otherUser, data.addBadge.id, 'star');
+        expect(updatedData.updateBadge).toBeNull();
+    });
+    it("can be deleted by the owner", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const deletedData = await deleteBadge(loggedIn, data.addBadge.id);
+        expect(deletedData).toStrictEqual({deleteBadge: { status: true }});
+    });
+    it("can be deleted by admin", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const { loggedIn: admin } = await getAdminUser();
+        const deletedData = await deleteBadge(admin, data.addBadge.id);
+        expect(deletedData).toStrictEqual({deleteBadge: { status: true }});
+    });
+    it("can not be deleted by a logged-out user", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const loggedOut = getGraphQLClient();
+        const deletedData = await deleteBadge(loggedOut, data.addBadge.id);
+        expect(deletedData).toStrictEqual({deleteBadge: { status: false }})
+    });
+    it("can not be deleted by a different user", async () => {
+        expect.assertions(1);
+        const { loggedIn } = await getLoggedInUser();
+        const { id: awardedTo } = await getLoggedInUser();
+        const data = await createBadge(loggedIn, awardedTo);
+        const { loggedIn: otherUser } = await getLoggedInUser();
+        const deletedData = await deleteBadge(otherUser, data.addBadge.id);
+        expect(deletedData).toStrictEqual({deleteBadge: { status: false }});
+    });
+});

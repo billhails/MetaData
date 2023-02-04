@@ -31,13 +31,16 @@ class {{ model.name(entity) }} {
         this.id = args.id || uuidv4();
         this.dateCreated = args.dateCreated || now;
         this.dateLastUpdated = args.dateLastUpdated || now;
-{% for field in entity.get_fields() %}
+{%- for field in entity.get_fields() %}
         this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
-{% endfor %}
-{% for reference in entity.get_references() %}
+{%- endfor %}
+{%- for enum in entity.get_enums() %}
+        this.{{ gql.field_label(enum) }} = args.{{ gql.field_label(enum) }};
+{%- endfor %}
+{%- for reference in entity.get_references() %}
         this.{{ gql.field_label(reference) }} = args.{{ gql.field_label(reference) }};
-{% endfor %}
-{% for union in entity.get_unions() %}
+{%- endfor %}
+{%- for union in entity.get_unions() %}
         if (args.{{ gql.field_label(union) }}) {
             if (typeof args.{{ database.name(union) }} == "string") {
                 this.{{ gql.field_label(union) }} = args.{{ gql.field_label(union) }};
@@ -47,7 +50,7 @@ class {{ model.name(entity) }} {
                 this.{{ gql.field_type(union) }} = args.{{ gql.field_type(union) }}.type;
             }
         }
-{% endfor %}
+{%- endfor %}
     }
 
     toJSON() {

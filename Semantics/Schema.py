@@ -19,16 +19,18 @@ from Semantics import SemanticException
 from Semantics.Association import Association
 from Semantics.Container import Container
 from Semantics.Entity import Entity
+from Semantics.Enum import Enum
 
 
 class Schema(Container):
-    entities = {}
-    associations = []
     type = "Schema"
-    allowed_components = ['Entity', 'Association']
+    allowed_components = ['Entity', 'Association', 'Enum']
 
     def __init__(self, attributes, components):
         super().__init__(attributes, components)
+        self.entities = {}
+        self.associations = []
+        self.enums = {}
 
     def optional_attributes(self):
         return super().optional_attributes() + [
@@ -40,10 +42,13 @@ class Schema(Container):
     def build(self):
         self.entities = {x.attributes['name']: x for x in self.components if isinstance(x, Entity)}
         self.associations = [x for x in self.components if isinstance(x, Association)]
+        self.enums = {x.attributes['name']: x for x in self.components if isinstance(x, Enum)}
         for entity in self.entities:
             self.entities[entity].build(self)
         for association in self.associations:
             association.build(self)
+        for enum in self.enums:
+            self.enums[enum].build(self)
 
     def validate(self):
         super().validate()
@@ -84,11 +89,19 @@ class Schema(Container):
             return self.entities[name]
         raise SemanticException(f"entity {name} not found in schema")
 
+    def find_enum(self, name):
+        if name in self.enums:
+            return self.enums[name]
+        raise SemanticException(f"enumeration {name} not found in schema")
+
     def get_entities(self):
         return self.entities.values()
 
     def get_associations(self):
         return self.associations
+
+    def get_enums(self):
+        return self.enums.values()
 
     def is_auth_enabled(self):
         return self.attribute_value('auth', 'enabled')

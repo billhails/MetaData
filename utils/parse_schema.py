@@ -23,6 +23,8 @@ from Semantics.Field import Field
 from Semantics.Reference import Reference
 from Semantics.Schema import Schema
 from Semantics.Union import Union
+from Semantics.Enum import Enum
+from Semantics.Option import Option
 from Semantics import SemanticException
 
 
@@ -42,6 +44,10 @@ def parse_schema(node):
             return Union(node.attrib, [parse_schema(n) for n in node])
         case 'association':
             return Association(node.attrib, [parse_schema(n) for n in node])
+        case 'enum':
+            return Enum(node.attrib, [parse_schema(n) for n in node])
+        case 'option':
+            return Option(node.attrib, [parse_schema(n) for n in node])
         case _:
             raise "Error unrecognised node type {}".format(node.tag)
 

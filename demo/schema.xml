@@ -62,6 +62,19 @@
         <field name="label" type="title" unique="y"/>
     </entity>
 
+    <enum name="badge">
+        <option name="star"/>
+        <option name="hero"/>
+    </enum>
+
+    <entity name="badges" auth-access="owner">
+        <description>Awards given to users by users</description>
+        <!-- enum name must match -->
+        <enum name="badge"/>
+        <reference name="awarded_to" references="users" inverse="badges_for_me"/>
+        <reference name="awarded_by" references="users" inverse="badges_from_me" auth-role="owner"/>
+    </entity>
+
     <!-- associations are many-to-many relationships -->
     <association name="friends" lhs="users" rhs="users" auth-access="owner" auth-path="lhs,rhs"/>
 

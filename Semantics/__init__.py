@@ -17,12 +17,13 @@
 #
 class Semantics:
     type = "*undefined*"
-    name = None
 
     def __init__(self, attributes):
         self.attributes = attributes
         if 'name' in attributes:
             self.name = attributes['name']
+        else:
+            self.name = None
 
     def __str__(self):
         return self.str(0)

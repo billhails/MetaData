@@ -68,6 +68,10 @@ class Data {
 {{- ',' }}
 {{database.name(entity) }}.{{ database.name(field) }} AS {{ gql.field_label(field) }}
 {%-     endfor %}
+{%-     for enum in entity.get_enums() %}
+{{- ',' }}
+{{database.name(entity) }}.{{ database.name(enum) }} AS {{ gql.field_label(enum) }}
+{%-     endfor %}
 {%-     for reference in entity.get_references() %}
 {{- ',' }}
 {{database.name(entity) }}.{{ database.name(reference) }} AS {{ gql.field_label(reference) }}
@@ -290,16 +294,18 @@ class Data {
           date_created,
           date_last_updated
 {%-         for field in entity.get_fields() %}, {{ database.name(field) }}{% endfor %}
+{%-         for enum in entity.get_enums() %}, {{ database.name(enum) }}{% endfor %}
 {%-         for reference in entity.get_references() %}, {{ database.name(reference) }}{% endfor %}
 {%-         for union in entity.get_unions() %}, {{ database.name(union) }}, {{ database.type_name(union) }}{% endfor %}
         )
-        VALUES (?, ?, ?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
+        VALUES (?, ?, ?{{ ', ?' * ((entity.get_fields()|length) + (entity.get_enums()|length) + (entity.get_references()|length) + 2*(entity.get_unions()|length)) }})
         `;
         const params = [
            model.id,
            model.dateCreated,
            model.dateLastUpdated
 {%-         for field in entity.get_fields() %}, model.{{ gql.field_label(field) }}{% endfor %}
+{%-         for enum in entity.get_enums() %}, model.{{ gql.field_label(enum) }}{% endfor %}
 {%-         for reference in entity.get_references() %}, model.{{ gql.field_label(reference) }}{% endfor %}
 {%-         for union in entity.get_unions() %}, model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }}{% endfor %}
         ]
@@ -335,8 +341,16 @@ class Data {
             params.push(model.{{ gql.field_label(field) }});
         }
 {%-     endfor %}
+{%-     for enum in entity.get_enums() %}
+
+        if ('{{ gql.field_label(enum) }}' in args) {
+            fields.push("{{ database.name(enum) }} = ?");
+            params.push(model.{{ gql.field_label(enum) }});
+        }
+{%-     endfor %}
 {%-     for reference in entity.get_references() %}
 {%-        if not reference.is_auth_role('owner') %}{# can not change owner #}
+
         if ('{{ gql.field_label(reference) }}' in args) {
             fields.push("{{ database.name(reference) }} = ?");
             params.push(model.{{ gql.field_label(reference) }});

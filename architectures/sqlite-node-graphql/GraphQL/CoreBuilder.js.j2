@@ -154,6 +154,24 @@ function build(catalogue, resolver) {
 
     catalogue.addType('nonNullPageInfo', () => new GraphQLNonNull(catalogue.getType('pageInfo')));
 
+{%-     for enum in schema.get_enums() %}
+
+    // add gql.schema_enum_type(enum)
+    catalogue.addType('{{ gql.schema_enum_type(enum) }}', () => new GraphQLEnumType({
+        name: '{{ gql.schema_enum_type(enum) }}',
+        values: {
+{%-         for option in enum.get_options() %}
+            {{ gql.field_label(option) }}: { value: '{{ database.name(option) }}' },
+{%-         endfor %}
+        }
+    }));
+
+    // add gql.non_null(gql.schema_enum_type(enum))
+    catalogue.addType(
+        '{{ gql.non_null(gql.schema_enum_type(enum)) }}',
+        () => new GraphQLNonNull(catalogue.getType('{{ gql.schema_enum_type(enum) }}'))
+    );
+{%- endfor %}
 
 {%- for entity in schema.get_entities() %}
 
@@ -258,6 +276,12 @@ function build(catalogue, resolver) {
             },
 {%-         endif %}
 {%-     endfor %}
+{%-     for enum in entity.get_enums() %}
+            {{ gql.field_label(enum) }}: {
+                // get gql.non_null(gql.schema_enum_type(enum))
+                type: catalogue.getType('{{ gql.non_null(gql.schema_enum_type(enum)) }}')
+            },
+{%-     endfor %}
 {%-     for reference in entity.get_references() %}
             {{ gql.field_label(reference) }}: {
                 type: catalogue.getType('{{ gql.non_null(gql.entity_type(reference.get_referenced())) }}'),
@@ -342,6 +366,12 @@ function build(catalogue, resolver) {
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(field.get_type())) }}')
             },
 {%-         endfor %}
+{%-         for enum in entity.get_enums() %}
+            {{ gql.field_label(enum) }}: {
+                // get gql.non_null(gql.schema_enum_type(enum))
+                type: catalogue.getType('{{ gql.non_null(gql.schema_enum_type(enum)) }}')
+            },
+{%-         endfor %}
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
             {{ gql.field_label(reference) }}: {
@@ -372,6 +402,12 @@ function build(catalogue, resolver) {
                 type: catalogue.getType('{{ gql.catalogue_type(field.get_type()) }}')
             },
 {%-             endif %}
+{%-         endfor %}
+{%-         for enum in entity.get_enums() %}
+            {{ gql.field_label(enum) }}: {
+                // get gql.schema_enum_type(enum)
+                type: catalogue.getType('{{ gql.schema_enum_type(enum) }}')
+            },
 {%-         endfor %}
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
