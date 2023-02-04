@@ -1,6 +1,9 @@
 
 const logger = require('../Utils/logger');
 
+/**
+ * DI-style memo-ising catalogue for GraphQL types.
+ */
 class Catalogue {
     types = {};
     memoizedTypes = {};

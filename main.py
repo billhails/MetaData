@@ -15,6 +15,8 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+
+# this is the main command-line script that runs the code generation
 import argparse
 from utils.templating import TemplateProcessor
 from utils.parse_schema import get_semantics
@@ -34,21 +36,17 @@ arg_parser.add_argument("-e", "--extra", help="extra root directory to search fo
 
 args = arg_parser.parse_args()
 
+if not args.architecture:
+    raise Exception("--architecture is required (--help for help)")
+
 if args.dotenv:
-    if not args.architecture:
-        raise Exception("--architecture is required (--help for help)")
-
     generate_dotenv(args.architecture)
-
 else:
     if not args.schema:
         raise Exception("--schema is required (--help for help)")
 
     if not args.output:
         raise Exception("--output is required (--help for help)")
-
-    if not args.architecture:
-        raise Exception("--architecture is required (--help for help)")
 
     semantics = get_semantics(args.schema)
 

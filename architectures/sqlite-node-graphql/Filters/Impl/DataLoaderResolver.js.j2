@@ -26,6 +26,10 @@
 const logger = require('../../Utils/logger');
 const util = require('util');
 
+/**
+ * This class merely invokes the appropriate downstream dataloader for each request
+ * Consider merging with `loader`
+ */
 class DataLoaderResolver {
     constructor(loaders) {
         this.loaders = loaders;

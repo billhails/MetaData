@@ -19,6 +19,10 @@ from Semantics.Container import Container
 from Semantics.Field import Field
 
 class Association(Container):
+    """
+    This class represents an <association> element (many-to-many), its attributes and content
+    """
+
     type = "Association"
     lhs = None
     rhs = None

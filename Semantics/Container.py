@@ -17,8 +17,11 @@
 #
 from Semantics import Semantics, SemanticException
 
-
 class Container(Semantics):
+    """
+    This abstract class represents any element that is allowed to contain other elements
+    """
+
     allowed_components = []
 
     def __init__(self, attributes, components):

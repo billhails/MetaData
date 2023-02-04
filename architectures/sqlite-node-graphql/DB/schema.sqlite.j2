@@ -17,6 +17,8 @@
  #}
 -- {{ warning }}
 
+-- The SQLite database schema
+
 {%- macro sqlite_type(type, name) %}
 {%- if type == "string" %}TEXT
 {%- elif type == "title" %}TEXT

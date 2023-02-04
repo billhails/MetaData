@@ -18,6 +18,10 @@
 from Semantics import Semantics, SemanticException
 
 class Option(Semantics):
+    """
+    This class represents an <option> element within a declarative <enum> element
+    """
+
     type = "Option"
 
     def __init__(self, attributes, components):

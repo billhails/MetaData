@@ -19,6 +19,10 @@ from Semantics import Semantics, SemanticException
 
 
 class Reference(Semantics):
+    """
+    This class represents a <reference> element (foreign key) within an <entity> element
+    """
+
     entity_from = None
     entity_to = None
     union = None

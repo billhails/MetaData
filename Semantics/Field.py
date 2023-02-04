@@ -18,6 +18,10 @@
 from Semantics import Semantics, SemanticException
 
 class Field(Semantics):
+    """
+    This class represents a <field> element within an <entity> element
+    """
+
     entity = None
     type = "Field"
 

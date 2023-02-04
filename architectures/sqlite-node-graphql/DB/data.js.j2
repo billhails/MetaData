@@ -27,6 +27,9 @@ const logger = require('../Utils/logger');
 {%- import 'macros/database.j2h' as database %}
 {%- import 'macros/model.j2h' as model %}
 
+/**
+ * The data-access layer that interacts directly with the SQLite database
+ */
 class Data {
 
     static instance = null;

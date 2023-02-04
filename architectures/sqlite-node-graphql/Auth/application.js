@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../Utils/logger');
 
+/**
+ * auth code for use by the API
+ */
+
 function authenticateTokenMiddleware(req, res, next) {
     const header = req.headers['authorization'];
     if (header) {

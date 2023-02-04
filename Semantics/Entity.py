@@ -25,6 +25,10 @@ from Semantics.ID import ID
 from Semantics.Enum import Enum
 
 class Entity(Container):
+    """
+    This class represents <entity> elements and their contents
+    """
+
     type = "Entity"
     allowed_components = ['Description', 'Field', 'Reference', 'Union', 'Enum']
 

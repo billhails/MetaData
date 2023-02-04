@@ -1,5 +1,7 @@
 const winston = require('winston');
 
+// our logger
+
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
   format: winston.format.json(),

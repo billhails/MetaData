@@ -1,3 +1,5 @@
+// escape XSS attack attempts
+
 module.exports = function (s) {
     let lookup = {
         '&': "&amp;",

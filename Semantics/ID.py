@@ -19,5 +19,8 @@ from Semantics import Semantics, SemanticException
 
 
 class ID(Semantics):
+    """
+    This class represents an ID (guid) and is used internally
+    """
     pass
 

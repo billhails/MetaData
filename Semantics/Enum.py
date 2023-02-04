@@ -20,6 +20,12 @@ from Semantics.Container import Container
 from Semantics.Option import Option
 
 class Enum(Container):
+    """
+    This class represents the <enum> element, both in its declarative form contained by the <schema>
+    where it contains <option> elements, and in its referential form contained by an <entity> where it
+    is an empty element whose name refers to a declarative enum.
+    """
+
     type = "Enum"
     allowed_components = ['Option']
 

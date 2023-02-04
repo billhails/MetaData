@@ -19,6 +19,10 @@ from Semantics import Semantics, SemanticException
 
 
 class Description(Semantics):
+    """
+    This class represents the <description> element of an <entity> element
+    """
+
     type = "Description"
 
     def __init__(self, attrib, components, text):

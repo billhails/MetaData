@@ -2,6 +2,7 @@
 const { GraphQLObjectType, GraphQLSchema, printSchema } = require('graphql');
 const logger = require('../Utils/logger');
 
+// Turns the catalogue into a GraphQL schema
 
 const make_schema = (catalogue) => {
 

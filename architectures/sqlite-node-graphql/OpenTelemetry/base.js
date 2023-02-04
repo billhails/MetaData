@@ -13,6 +13,8 @@ const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
 const { GraphQLInstrumentation } = require('@opentelemetry/instrumentation-graphql');
 const { DataloaderInstrumentation } = require("@opentelemetry/instrumentation-dataloader");
 
+// add open telemetry to the auth and graphql applications
+
 function filterSampler(filterFn, parent) {
   return {
     shouldSample(ctx, tid, spanName, spanKind, attr, links) {

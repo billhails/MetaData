@@ -29,6 +29,10 @@ from Semantics import SemanticException
 
 
 def parse_schema(node):
+    """
+    Given an already-parsed element tree of nodes, this function
+    recursively builds a tree of semantics.
+    """
     match node.tag:
         case 'schema':
             return Schema(node.attrib, [parse_schema(n) for n in node])
@@ -53,6 +57,9 @@ def parse_schema(node):
 
 
 def get_semantics(schema):
+    """
+    Parses the XML text in `schema` to an element tree, then builds semantics from it, validates and returns them
+    """
     tree = eT.parse(schema)
     root = tree.getroot()
     if root.get('auth') == 'enabled':

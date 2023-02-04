@@ -23,6 +23,10 @@ from Semantics.Enum import Enum
 
 
 class Schema(Container):
+    """
+    This class represents the top-level <schema> element.
+    """
+
     type = "Schema"
     allowed_components = ['Entity', 'Association', 'Enum']
 

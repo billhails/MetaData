@@ -15,7 +15,13 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+
 class Semantics:
+    """
+    This is the base class for the semantics class hierarchy, it represents
+    any abstract xml tag and collects common methods.
+    """
+
     type = "*undefined*"
 
     def __init__(self, attributes):

@@ -24,19 +24,34 @@ import shutil
 inflection = inflect.engine()
 
 def mixed_case(string):
+    """
+    transforms snake_case to MixedCase
+    """
     return ''.join([s.capitalize() for s in string.split('_')])
 
 def camel_case(string):
+    """
+    transforms snake_case to camelCase
+    """
     parts = string.split('_', 1)
     return parts[0].casefold() if len(parts) == 1 else ''.join([parts[0].casefold(), mixed_case(parts[1])])
 
 def uc_first(string):
+    """
+    upper-cases only the first letter, leaving the rest unchanged
+    """
     return string[0].upper() + string[1:]
 
 def map_macro(list, macro):
+    """
+    maps a Jinja macro over a list of arguments
+    """
     return map(macro, list)
 
 class MetaDataLoader(BaseLoader):
+    """
+    overrides the base Jinja loader to control how templates are located.
+    """
     def __init__(self, input_roots):
         self.input_roots = input_roots
 
@@ -52,6 +67,9 @@ class MetaDataLoader(BaseLoader):
 
 
 class TemplateProcessor:
+    """
+    Runs the code generation
+    """
     def __init__(self, architecture, semantics, output_root, extra):
         self.architecture = architecture
         self.input_roots = [os.path.join('architectures', architecture)]

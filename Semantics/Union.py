@@ -19,6 +19,10 @@ from Semantics.Container import Container
 
 
 class Union(Container):
+    """
+    This class represents a <union> element (discriminated union of references)
+    contained by an <entity> and containing <reference> elements
+    """
     type = "Union"
     allowed_components = ['Reference']
 

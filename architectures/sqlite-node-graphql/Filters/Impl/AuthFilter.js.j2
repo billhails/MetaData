@@ -40,6 +40,9 @@ const Model = require('../../Model');
 
 {% macro owner_label(entity) %}{{ gql.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
 
+/**
+ * This class is an imperfect decorator of a downstream filter/transform, which adds auth and security checks.
+ */
 class AuthFilter {
     constructor(resolver) {
         this.resolver = resolver;
