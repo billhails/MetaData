@@ -160,7 +160,7 @@ Lots, but specifically
   * local template overrides - done
 * think about how to share templates across architectures - later (see [dev-notes](dev-notes.md))
 * think about using the null object pattern for redacted and/or missing data
-* enumerations
+* enumerations - done
 * more data types (date, money, boolean, e-mail &c.)
 * consider a Semantics.Type class to encapsulate the types of fields
 * add another demo with a very different use case (retail?)
