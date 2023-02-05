@@ -18,8 +18,10 @@
 // {{ warning }}
 {%- if schema.is_auth_enabled() %}
 
+require('dotenv').config();
+
 const axios = require('axios');
-const authPort = 3000;
+const authPort = process.env.AUTH_PORT;
 const authRoot = `http://localhost:${authPort}`;
 const jwt = require('jsonwebtoken');
 

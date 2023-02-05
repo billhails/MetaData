@@ -17,6 +17,11 @@
  -#}
  // {{ warning }}
 require('dotenv').config();
+
+/*
+ * This script runs the graphql server
+ */
+
 // must happen before express, apparently
 const setupTracing = require('./OpenTelemetry/base');
 setupTracing('{{ schema.get_name() }}-graphql', true);
@@ -75,13 +80,13 @@ const app = express();
         graphqlHTTP(async (request, response, { variables }) => ({
             schema: make_schema(catalogue),
             validationRules: [
-                complexity(variables, 1000)
+                complexity(variables, parseInt(process.env.MAX_COMPLEXITY, 10))
             ],
             graphiql: process.env.NODE_ENV === 'development',
         }))
     );
 
-    const port = parseInt(values.port || '4000');
+    const port = parseInt(values.port || process.env.API_PORT);
     app.listen(port);
     console.log(`Running a GraphQL API server at http://localhost:${port}/graphql`);
 })();

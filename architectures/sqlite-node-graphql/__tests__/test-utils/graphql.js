@@ -1,8 +1,9 @@
+require('dotenv').config()
 const { GraphQLClient, gql } = require('graphql-request');
 
 function getGraphQLClient(token) {
     return new GraphQLClient(
-        'http://localhost:4000/graphql',
+        `http://localhost:${process.env.API_PORT}/graphql`,
         token ? {
             headers: {
                 authorization: `Bearer ${token}`

@@ -44,8 +44,9 @@ directory with equivalent architecture subdirectories, i.e. in this example
 templates in the base architectures directory, allowing individual applications the ability
 to customize core behaviour if needed.
 
-If you're intending to use authentication, as the demo does, you will also need to generate a `.env`
-file inside the architecture source, containing access and refresh token secrets. This file is
+You will also need to generate a `.env`
+file inside the architecture source, containing access and refresh token secrets, along
+with other global constants. This file is
 ignored by git and since it is generated once in the source, the secrets won't change and
 invalidate all your access and refresh tokens every time you run the build. You can conveniently
 generate this file with:

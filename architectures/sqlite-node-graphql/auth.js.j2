@@ -18,6 +18,10 @@
  // {{ warning }}
 require('dotenv').config();
 
+/*
+ * This script runs the auth server
+ */
+
 // must happen before express, apparently
 const setupTracing = require('./OpenTelemetry/base');
 setupTracing('{{ schema.get_name() }}-auth');
@@ -36,7 +40,7 @@ const cliOptions = {
 };
 
 const { values } = parseArgs({ options: cliOptions });
-const port = parseInt(values.port || '3000');
+const port = parseInt(values.port || process.env.AUTH_PORT);
 
 const app = express();
 app.use(express.json());
