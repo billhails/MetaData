@@ -46,6 +46,7 @@
             <reference name="post" references="posts"/>
             <reference name="comment" references="comments" inverse="replies"/>
         </union>
+        <field name="private" type="boolean" default="false" auth-role="redact"/>
     </entity>
 
     <entity name="likes" auth-access="owner">

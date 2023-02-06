@@ -14,16 +14,16 @@
  #
  #  You should have received a copy of the GNU General Public License
  #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- #}
+-#}
 // {{ warning }}
 
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../../Utils/logger');
 const util = require('util');
 
-{% import 'macros/gql.j2h' as gql %}
-{% import 'macros/database.j2h' as database %}
-{% import 'macros/model.j2h' as model %}
+{%- import 'macros/gql.j2h' as gql %}
+{%- import 'macros/database.j2h' as database %}
+{%- import 'macros/model.j2h' as model %}
 
 class {{ model.name(entity) }} {
     constructor(args) {
@@ -32,7 +32,15 @@ class {{ model.name(entity) }} {
         this.dateCreated = args.dateCreated || now;
         this.dateLastUpdated = args.dateLastUpdated || now;
 {%- for field in entity.get_fields() %}
+{%-     if field.has_default() %}
+        if ('{{ gql.field_label(field) }}' in args) {
+            this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
+        } else {
+            this.{{ gql.field_label(field) }} = {{ model.convert_default(field) }};
+        }
+{%-     else %}
         this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
+{%-     endif %}
 {%- endfor %}
 {%- for enum in entity.get_enums() %}
         this.{{ gql.field_label(enum) }} = args.{{ gql.field_label(enum) }};
@@ -47,7 +55,7 @@ class {{ model.name(entity) }} {
                 this.{{ gql.field_type(union) }} = args.{{ gql.field_type(union) }};
             } else {
                 this.{{ gql.field_label(union) }} = args.{{ gql.field_label(union) }}.id;
-                this.{{ gql.field_type(union) }} = args.{{ gql.field_type(union) }}.type;
+                this.{{ gql.field_type(union) }} = args.{{ gql.field_label(union) }}.type;
             }
         }
 {%- endfor %}

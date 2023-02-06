@@ -18,90 +18,11 @@
 // {{ warning }}
 {#- example test included by using the --extra override #}
 
-const { faker } = require('../test-utils/fakery');
-const { signup, deconstruct } = require('../test-utils/auth');
-const { grantAdminRole } = require('../test-utils/db');
-const { getGraphQLClient, gql } = require('../test-utils/graphql');
-const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
 jest.mock('../../Utils/logger');
 
-function randomBadge(awardedTo, badge=false) {
-    return {
-        badge: badge || faker.helpers.arrayElement(['hero', 'star']),
-        awardedTo
-    }
-}
-
-function createBadgeMutation(awardedTo, badgeEnum=false) {
-    const badge = randomBadge(awardedTo, badgeEnum);
-    return {
-        mutation: gql`mutation AddBadge($badge: BadgeEnum!, $awardedTo: ID!) {
-            addBadge(input: {badge: $badge, awardedTo: $awardedTo}) {
-                id
-                badge
-                awardedTo {
-                    id
-                }
-                awardedBy {
-                    id
-                }
-            }
-        }`,
-        variables: {
-            badge: badge.badge,
-            awardedTo: badge.awardedTo
-        }
-    }
-}
-
-async function createBadge(loggedInClient, awardedTo, badge=false) {
-    const badgeMutation = createBadgeMutation(awardedTo, badge);
-    return loggedInClient.request(badgeMutation.mutation, badgeMutation.variables);
-}
-
-function updateBadgeMutation(id, badge) {
-    return {
-        mutation: gql`mutation UpdateBadge($id: ID!, $badge: BadgeEnum!) {
-            updateBadge(id: $id, input: {badge: $badge}) {
-                id
-                badge
-                awardedTo {
-                    id
-                }
-                awardedBy {
-                  id
-                }
-            }
-        }`,
-        variables: {
-            badge,
-            id
-        }
-    }
-}
-
-async function updateBadge(client, id, badge) {
-    const mutation = updateBadgeMutation(id, badge);
-    return client.request(mutation.mutation, mutation.variables);
-}
-
-function deleteBadgeMutation(id) {
-    return {
-        mutation: gql`mutation DeleteBadge($id: ID!) {
-            deleteBadge(id: $id) {
-                status
-            }
-        }`,
-        variables: {
-            id
-        }
-    }
-}
-
-function deleteBadge(client, id) {
-    const mutation = deleteBadgeMutation(id);
-    return client.request(mutation.mutation, mutation.variables);
-}
+const { getGraphQLClient } = require('../test-utils/graphql');
+const { getLoggedInUser, getAdminUser } = require('../test-utils/users');
+const { createBadge, updateBadge, deleteBadge } = require('../test-utils/badges');
 
 describe("badges", () => {
     it("cannot be created by a logged-out user", async () => {
@@ -132,8 +53,7 @@ describe("badges", () => {
         const { loggedIn, id } = await getLoggedInUser();
         const { id: awardedTo } = await getLoggedInUser();
         const data = await createBadge(loggedIn, awardedTo, 'star');
-        const update = updateBadgeMutation(data.addBadge.id, 'hero');
-        const updatedData = await loggedIn.request(update.mutation, update.variables);
+        const updatedData = await updateBadge(loggedIn, data.addBadge.id, 'hero');
         expect(updatedData.updateBadge.badge).toBe('hero');
     });
     it("can be modified by admin", async () => {
@@ -142,8 +62,7 @@ describe("badges", () => {
         const { id: awardedTo } = await getLoggedInUser();
         const data = await createBadge(loggedIn, awardedTo, 'star');
         const { loggedIn: admin } = await getAdminUser();
-        const update = updateBadgeMutation(data.addBadge.id, 'hero');
-        const updatedData = await admin.request(update.mutation, update.variables);
+        const updatedData = await updateBadge(admin, data.addBadge.id, 'hero');
         expect(updatedData.updateBadge.badge).toBe('hero');
         expect(updatedData.updateBadge.awardedBy.id).toBe(id);
     });

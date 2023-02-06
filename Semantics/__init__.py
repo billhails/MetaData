@@ -121,6 +121,9 @@ class Semantics:
         print(message)
         return ''
 
+    def throw(self, error):
+        raise SemanticException(error)
+
 class SemanticException(Exception):
     pass
 

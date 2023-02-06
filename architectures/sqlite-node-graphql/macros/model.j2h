@@ -20,3 +20,12 @@
 
 {% macro name(thing) %}{{ thing.get_name() | mixed_case }}{% endmacro %}
 {% macro association(thing) %}{{ thing.get_name() | mixed_case }}Association{% endmacro %}
+{% macro convert_default(field) -%}
+{%-     if field.get_type() == 'boolean' -%}
+    {{ field.get_default() }}
+{%-     elif field.get_type() == 'int' -%}
+    {{ field.get_default }}
+{%-     else -%}
+    "{{ field.get_default() }}"
+{%-     endif -%}
+{%- endmacro %}

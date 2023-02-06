@@ -1,0 +1,126 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+// {{ warning }}
+
+const { faker } = require('../test-utils/fakery');
+const { gql } = require('../test-utils/graphql');
+
+function createCommentMutation(aboutId, aboutType, isPrivate) {
+    return {
+        mutation: gql`mutation AddComment($body: String!, $about: ID!, $aboutType: CommentsAboutEnum!, $private: Boolean) {
+            addComment(input: {body: $body, private: $private, about: {id: $about, type: $aboutType} }) {
+                id,
+                body,
+                private,
+                owner {
+                    id
+                }
+                about {
+                  __typename
+                  ... on Post {
+                    id
+                    title
+                  }
+                  ... on User {
+                    id
+                    displayName
+                  }
+                  ... on Comment {
+                    id
+                    body
+                  }
+                }
+            }
+        }`,
+        variables: {
+            body: faker.lorem.sentence(),
+            about: aboutId,
+            aboutType,
+            'private': isPrivate
+        }
+    };
+}
+
+async function createComment(client, aboutId, aboutType, isPrivate=false) {
+    const commentMutation = createCommentMutation(aboutId, aboutType, isPrivate);
+    return client.request(commentMutation.mutation, commentMutation.variables);
+}
+
+function updateCommentMutation(id, newBody) {
+    return {
+        mutation: gql`mutation UpdateComment($body: String!, $id: ID!) {
+            updateComment(id: $id, input: {body: $body}) {
+                id,
+                body,
+                private,
+                owner {
+                    id
+                }
+                about {
+                  __typename
+                  ... on Post {
+                    id
+                    title
+                  }
+                  ... on User {
+                    id
+                    displayName
+                  }
+                  ... on Comment {
+                    id
+                    body
+                  }
+                }
+            }
+        }`,
+        variables: {
+            body: newBody,
+            id
+        }
+    };
+}
+
+async function updateComment(client, id, newBody) {
+    const commentMutation = updateCommentMutation(id, newBody);
+    return client.request(commentMutation.mutation, commentMutation.variables);
+}
+
+function deleteCommentMutation(id) {
+    return {
+        mutation: gql`mutation DeleteComment($id: ID!) {
+            deleteComment(id: $id) {
+                status
+            }
+        }`,
+        variables: {
+            id
+        }
+    };
+}
+
+
+async function deleteComment(client, id) {
+    const mutation = deleteCommentMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+module.exports = {
+    createComment,
+    updateComment,
+    deleteComment
+};

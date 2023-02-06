@@ -17,6 +17,15 @@
  #}
 {# declares keys for values declared in the schema and used in the data layer #}
 
+{# basic types #}
+{% macro boolean() %}boolean{% endmacro %}
+{% macro int() %}int{% endmacro %}
+{% macro id() %}id{% endmacro %}
+{% macro string() %}string{% endmacro %}
+{% macro status() %}status{% endmacro %}
+{% macro cursor() %}cursor{% endmacro %}
+{% macro page_info() %}pageInfo{% endmacro %}
+
 {% macro field_label(field) %}{{ field.get_name() | camel_case }}{% endmacro %}
 {% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}
 {% macro referrer_label(referrer) %}{{ referrer.get_referrer_name() | camel_case }}{% endmacro %}
@@ -33,8 +42,8 @@
 {% macro this_column(entity, association) %}{{ association.get_this_column(entity) | camel_case }}{% endmacro %}
 {% macro other_column(entity, association) %}{{ association.get_other_column(entity) | camel_case }}{% endmacro %}
 
-{% macro graphql_type(type) %}GraphQLString{% endmacro %}
-{% macro catalogue_type(type) %}string{% endmacro %}
+{% macro graphql_type(type) %}{% if type == "boolean" %}GraphQLBoolean{% else %}GraphQLString{% endif %}{% endmacro %}
+{% macro catalogue_type(type) %}{% if type == "boolean" %}boolean{% else %}string{% endif %}{% endmacro %}
 
 {% macro schema_enum_type(enum) %}{{ enum.get_name() | mixed_case }}Enum{% endmacro %}
 {% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}Enum{% endmacro %}
@@ -46,7 +55,7 @@
 {% macro add_entity(entity) %}Add{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 {% macro add_entity_label(entity) %}add{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
 
-{% macro add_union(entity, union) %}Add{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
+{% macro add_union(entity, union) %}Add{{ entity.get_name() | singular | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
 
 {% macro add_association_label(association) %}add{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro add_association_label_lhs(association, field) -%}

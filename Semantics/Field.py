@@ -41,13 +41,23 @@ class Field(Semantics):
     def optional_attributes(self):
         return super().optional_attributes() + [
             {'name': 'unique', 'values': ['n', 'y'], 'default': 'n'},
-            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role'], 'default': 'none'},
+            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role', 'redact'], 'default': 'none'},
             {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'},
             {'name': 'default'}
         ]
 
+    def validate(self):
+        super().validate()
+        if self.get_type() == 'boolean':
+            if self.has_default():
+                if not self.get_default() in ['true', 'false']:
+                    raise SemanticException(f'invalid default for boolean field {self.get_full_name()}, must be "true" or "false"')
+
     def get_type(self):
         return self.attributes['type']
+
+    def get_full_name(self):
+        return self.entity.get_name() + '.' + self.get_name()
 
     def is_xss_susceptible(self):
         return self.get_schema().is_xss_secure() and self.get_type() in ["text", "title", "guid", "small_string", "name", "email"]

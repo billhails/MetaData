@@ -1,0 +1,206 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+// {{ warning }}
+
+const { faker } = require('../test-utils/fakery');
+const { gql } = require('../test-utils/graphql');
+
+function randomPost({title, body}) {
+    return {
+        title: title || faker.lorem.sentence(),
+        body: body || faker.lorem.paragraph()
+    }
+}
+
+function createPostMutation(params={}) {
+    const post = randomPost(params);
+    return {
+        mutation: gql`mutation AddPost($title: String!, $body: String!) {
+            addPost(input: {title: $title, body: $body}) {
+                id,
+                body,
+                owner {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            title: post.title,
+            body: post.body
+        }
+    }
+}
+
+function updatePostMutation(id) {
+    const post = randomPost({})
+    return {
+        mutation: gql`mutation UpdatePost($id: ID!, $title: String!, $body: String!) {
+            updatePost(id: $id, input: {title: $title, body: $body}) {
+                id
+                body
+                owner {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            title: post.title,
+            body: post.body,
+            id
+        }
+    }
+}
+
+async function updatePost(client, id) {
+    const mutation = updatePostMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+function deletePostMutation(id) {
+    return {
+        mutation: gql`mutation DeletePost($id: ID!) {
+            deletePost(id: $id) {
+                status
+            }
+        }`,
+        variables: {
+            id
+        }
+    }
+}
+
+function deletePost(client, id) {
+    const mutation = deletePostMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+function categoriesQuery() {
+    return {
+        query: gql`query CountCategories {
+            categories {
+                totalCount
+                edges {
+                    node {
+                        id
+                        label
+                    }
+                }
+            }
+        }
+        `,
+        variables: {}
+    }
+}
+
+function addCategoryMutation(label) {
+    return {
+        mutation: gql`mutation AddCategory($label: String!) {
+            addCategory(input: {label: $label}) {
+                id
+            }
+        }
+        `,
+        variables: {
+            label
+        }
+    };
+}
+
+function createCategoryPostMutation(categoryId, postId) {
+    return {
+        mutation: gql`mutation CreateCategoryPost($categoryId: ID!, $postId: ID!) {
+            addPostsCategoryAssociation(postsLhsId: $postId, categoriesRhsId: $categoryId) {
+                status
+            }
+        }
+        `,
+
+        variables: {
+            categoryId,
+            postId
+        }
+    };
+}
+
+function postQuery(id) {
+    return {
+        query: gql`query GetPost($id: ID!) {
+            post(id: $id) {
+                title
+                categories {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+        `,
+        variables: {
+            id
+        }
+    }
+}
+
+async function ensureCategoriesExist(adminClient) {
+    const counter = categoriesQuery();
+    const data = await adminClient.request(counter.query, counter.variables);
+    if (data.categories.totalCount === 0) {
+        const results = await Promise.all(['Art', 'Science', 'Philosophy'].map(async (label) => {
+            const createCategory = addCategoryMutation(label);
+            const data = await adminClient.request(createCategory.mutation, createCategory.variables);
+            console.log(data);
+        }));
+        return adminClient.request(counter.query, counter.variables);
+    } else {
+        return data;
+    }
+}
+
+async function createPost(loggedInClient, params={}) {
+    const postMutation = createPostMutation(params);
+    return loggedInClient.request(postMutation.mutation, postMutation.variables);
+}
+
+async function createCategoryPost(loggedInClient, categoryId, postId) {
+    const mutation = createCategoryPostMutation(categoryId, postId);
+    return loggedInClient.request(mutation.mutation, mutation.variables);
+}
+
+async function fetchPost(client, postId) {
+    const query = postQuery(postId);
+    return client.request(query.query, query.variables);
+}
+
+module.exports = {
+    randomPost,
+    createPostMutation,
+    updatePostMutation,
+    updatePost,
+    deletePostMutation,
+    deletePost,
+    categoriesQuery,
+    addCategoryMutation,
+    createCategoryPostMutation,
+    postQuery,
+    ensureCategoriesExist,
+    createPost,
+    createCategoryPost,
+    fetchPost
+};

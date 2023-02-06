@@ -307,7 +307,9 @@ class Data {
            model.id,
            model.dateCreated,
            model.dateLastUpdated
-{%-         for field in entity.get_fields() %}, model.{{ gql.field_label(field) }}{% endfor %}
+{%-         for field in entity.get_fields() -%}
+           , model.{{ gql.field_label(field) }}
+{%-         endfor %}
 {%-         for enum in entity.get_enums() %}, model.{{ gql.field_label(enum) }}{% endfor %}
 {%-         for reference in entity.get_references() %}, model.{{ gql.field_label(reference) }}{% endfor %}
 {%-         for union in entity.get_unions() %}, model.{{ gql.field_label(union) }}, model.{{ gql.field_type(union) }}{% endfor %}

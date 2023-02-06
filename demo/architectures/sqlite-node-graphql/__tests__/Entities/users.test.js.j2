@@ -18,58 +18,10 @@
 // {{ warning }}
 {#- example test included by using the --extra override #}
 
-// jest.mock('../../Utils/logger');
+jest.mock('../../Utils/logger');
 
-const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
+const { createUser, getLoggedInUser, getAdminUser, userQuery, rolesQuery, getRoles, findUser } = require('../test-utils/users');
 const { getGraphQLClient, gql } = require('../test-utils/graphql');
-
-function userQuery(id) {
-    return {
-        query: gql`query getUser($id: ID!) {
-            user(id: $id) {
-                displayName
-                email
-                roles {
-                    totalCount
-                    edges {
-                        node {
-                            id
-                            label
-                        }
-                    }
-                }
-            }
-        }`,
-        variables: { id }
-    };
-}
-
-function rolesQuery() {
-    return {
-        query: gql`query A {
-            roles {
-                totalCount
-                edges {
-                    node {
-                        id
-                        label
-                    }
-                }
-            }
-        }`,
-        variables: {}
-    };
-}
-
-async function getRoles(client) {
-    const request = rolesQuery();
-    return client.request(request.query, request.variables);
-}
-
-async function findUser(adminClient, id) {
-    const findUserQuery = userQuery(id);
-    return adminClient.request(findUserQuery.query, findUserQuery.variables);
-}
 
 describe('users', () => {
     describe('normal users', () => {

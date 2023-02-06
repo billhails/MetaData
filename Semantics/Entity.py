@@ -74,6 +74,7 @@ class Entity(Container):
         self.validate_auth_fields('owner', ['external-id', 'password'])
         self.validate_auth_fields('token', ['token'])
         self.validate_auth_references('token', ['owner'])
+        self.validate_components()
 
     def has_auth_role(self):
         return self.has_attribute_not('auth-role', 'none')
@@ -109,6 +110,10 @@ class Entity(Container):
                         f'entity {self.get_name()} declared as auth-role={entity_role} but contains no component with '
                         f'auth-role={component_role}'
                     )
+
+    def validate_components(self):
+        for component in self.components:
+            component.validate()
 
     def has_only_auth_components(self):
         for field in self.get_fields():

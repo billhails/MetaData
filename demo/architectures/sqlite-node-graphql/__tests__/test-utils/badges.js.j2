@@ -1,0 +1,109 @@
+{#-
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+// {{ warning }}
+
+const { faker } = require('../test-utils/fakery');
+const { gql } = require('../test-utils/graphql');
+
+function randomBadge(awardedTo, badge=false) {
+    return {
+        badge: badge || faker.helpers.arrayElement(['hero', 'star']),
+        awardedTo
+    }
+}
+
+function createBadgeMutation(awardedTo, badgeEnum=false) {
+    const badge = randomBadge(awardedTo, badgeEnum);
+    return {
+        mutation: gql`mutation AddBadge($badge: BadgeEnum!, $awardedTo: ID!) {
+            addBadge(input: {badge: $badge, awardedTo: $awardedTo}) {
+                id
+                badge
+                awardedTo {
+                    id
+                }
+                awardedBy {
+                    id
+                }
+            }
+        }`,
+        variables: {
+            badge: badge.badge,
+            awardedTo: badge.awardedTo
+        }
+    }
+}
+
+async function createBadge(loggedInClient, awardedTo, badge=false) {
+    const badgeMutation = createBadgeMutation(awardedTo, badge);
+    return loggedInClient.request(badgeMutation.mutation, badgeMutation.variables);
+}
+
+function updateBadgeMutation(id, badge) {
+    return {
+        mutation: gql`mutation UpdateBadge($id: ID!, $badge: BadgeEnum!) {
+            updateBadge(id: $id, input: {badge: $badge}) {
+                id
+                badge
+                awardedTo {
+                    id
+                }
+                awardedBy {
+                  id
+                }
+            }
+        }`,
+        variables: {
+            badge,
+            id
+        }
+    }
+}
+
+async function updateBadge(client, id, badge) {
+    const mutation = updateBadgeMutation(id, badge);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+function deleteBadgeMutation(id) {
+    return {
+        mutation: gql`mutation DeleteBadge($id: ID!) {
+            deleteBadge(id: $id) {
+                status
+            }
+        }`,
+        variables: {
+            id
+        }
+    }
+}
+
+function deleteBadge(client, id) {
+    const mutation = deleteBadgeMutation(id);
+    return client.request(mutation.mutation, mutation.variables);
+}
+
+module.exports = {
+    randomBadge,
+    createBadgeMutation,
+    createBadge,
+    updateBadgeMutation,
+    updateBadge,
+    deleteBadgeMutation,
+    deleteBadge
+};

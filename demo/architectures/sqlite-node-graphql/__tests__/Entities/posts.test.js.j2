@@ -18,180 +18,20 @@
 // {{ warning }}
 {#- example test included by using the --extra override #}
 
-const { faker } = require('../test-utils/fakery');
-const { signup, deconstruct } = require('../test-utils/auth');
-const { grantAdminRole } = require('../test-utils/db');
-const { getGraphQLClient, gql } = require('../test-utils/graphql');
-const { createUser, getLoggedInUser, getAdminUser } = require('../test-utils/users');
 jest.mock('../../Utils/logger');
 
-function randomPost({title, body}) {
-    return {
-        title: title || faker.lorem.sentence(),
-        body: body || faker.lorem.paragraph()
-    }
-}
+const { getGraphQLClient } = require('../test-utils/graphql');
+const { getLoggedInUser, getAdminUser } = require('../test-utils/users');
+const {
+    updatePostMutation,
+    updatePost,
+    deletePost,
+    ensureCategoriesExist,
+    createPost,
+    createCategoryPost,
+    fetchPost
+} = require('../test-utils/posts');
 
-function createPostMutation(params={}) {
-    const post = randomPost(params);
-    return {
-        mutation: gql`mutation AddPost($title: String!, $body: String!) {
-            addPost(input: {title: $title, body: $body}) {
-                id,
-                body,
-                owner {
-                    id
-                }
-            }
-        }`,
-        variables: {
-            title: post.title,
-            body: post.body
-        }
-    }
-}
-
-function updatePostMutation(id) {
-    const post = randomPost({})
-    return {
-        mutation: gql`mutation UpdatePost($id: ID!, $title: String!, $body: String!) {
-            updatePost(id: $id, input: {title: $title, body: $body}) {
-                id
-                body
-                owner {
-                    id
-                }
-            }
-        }`,
-        variables: {
-            title: post.title,
-            body: post.body,
-            id
-        }
-    }
-}
-
-async function updatePost(client, id) {
-    const mutation = updatePostMutation(id);
-    return client.request(mutation.mutation, mutation.variables);
-}
-
-function deletePostMutation(id) {
-    return {
-        mutation: gql`mutation DeletePost($id: ID!) {
-            deletePost(id: $id) {
-                status
-            }
-        }`,
-        variables: {
-            id
-        }
-    }
-}
-
-function deletePost(client, id) {
-    const mutation = deletePostMutation(id);
-    return client.request(mutation.mutation, mutation.variables);
-}
-
-function categoriesQuery() {
-    return {
-        query: gql`query CountCategories {
-            categories {
-                totalCount
-                edges {
-                    node {
-                        id
-                        label
-                    }
-                }
-            }
-        }
-        `,
-        variables: {}
-    }
-}
-
-function addCategoryMutation(label) {
-    return {
-        mutation: gql`mutation AddCategory($label: String!) {
-            addCategory(input: {label: $label}) {
-                id
-            }
-        }
-        `,
-        variables: {
-            label
-        }
-    };
-}
-
-function createCategoryPostMutation(categoryId, postId) {
-    return {
-        mutation: gql`mutation CreateCategoryPost($categoryId: ID!, $postId: ID!) {
-            addPostsCategoryAssociation(postsLhsId: $postId, categoriesRhsId: $categoryId) {
-                status
-            }
-        }
-        `,
-
-        variables: {
-            categoryId,
-            postId
-        }
-    };
-}
-
-function postQuery(id) {
-    return {
-        query: gql`query GetPost($id: ID!) {
-            post(id: $id) {
-                title
-                categories {
-                    edges {
-                        node {
-                            id
-                        }
-                    }
-                }
-            }
-        }
-        `,
-        variables: {
-            id
-        }
-    }
-}
-
-async function ensureCategoriesExist(adminClient) {
-    const counter = categoriesQuery();
-    const data = await adminClient.request(counter.query, counter.variables);
-    if (data.categories.totalCount === 0) {
-        const results = await Promise.all(['Art', 'Science', 'Philosophy'].map(async (label) => {
-            const createCategory = addCategoryMutation(label);
-            const data = await adminClient.request(createCategory.mutation, createCategory.variables);
-            console.log(data);
-        }));
-        return adminClient.request(counter.query, counter.variables);
-    } else {
-        return data;
-    }
-}
-
-async function createPost(loggedInClient, params={}) {
-    const postMutation = createPostMutation(params);
-    return loggedInClient.request(postMutation.mutation, postMutation.variables);
-}
-
-async function createCategoryPost(loggedInClient, categoryId, postId) {
-    const mutation = createCategoryPostMutation(categoryId, postId);
-    return loggedInClient.request(mutation.mutation, mutation.variables);
-}
-
-async function fetchPost(client, postId) {
-    const query = postQuery(postId);
-    return client.request(query.query, query.variables);
-}
 
 describe("posts", () => {
     it("cannot be created by a logged-out user", async () => {
@@ -252,16 +92,14 @@ describe("posts", () => {
     it("can be deleted by the owner", async () => {
         expect.assertions(1);
         const { loggedIn } = await getLoggedInUser();
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
+        const data = await createPost(loggedIn);
         const deletedData = await deletePost(loggedIn, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: true }})
     });
     it("can be deleted by admin", async () => {
         expect.assertions(1);
         const { loggedIn } = await getLoggedInUser();
-        const post = createPostMutation();
-        const data = await loggedIn.request(post.mutation, post.variables);
+        const data = await createPost(loggedIn);
         const { loggedIn: admin } = await getAdminUser();
         const deletedData = await deletePost(admin, data.addPost.id);
         expect(deletedData).toStrictEqual({deletePost: { status: true }})

@@ -56,14 +56,14 @@ function idToCursor(id) {
 
 function cursorToId(cursor) {
     if (!base64Pattern.test(cursor)) {
-        logger.error("invalid cursor cannot be converted to uuid (regex match failed)", {cursor});
+        logger.error('invalid cursor cannot be converted to uuid (regex match failed)', {cursor});
         return null;
     }
 
     const hex = Buffer.from(cursor, 'base64').toString('hex');
 
     if (hex.length !== 32) {
-        logger.error("invalid cursor cannot be converted to uuid (wrong size)", {cursor});
+        logger.error('invalid cursor cannot be converted to uuid (wrong size)', {cursor});
         return null;
     }
 
@@ -77,7 +77,7 @@ function cursorToId(cursor) {
 
     if (!uuidPattern.test(uuid)) {
         // first char of the fourth group must match [89ab]
-        logger.error("invalid cursor cannot be converted to uuid (bad uuid version)", {cursor});
+        logger.error('invalid cursor cannot be converted to uuid (bad uuid version)', {cursor});
         return null;
     }
 
@@ -86,32 +86,34 @@ function cursorToId(cursor) {
 }
 
 function build(catalogue, resolver) {
-    catalogue.addType('boolean', () => GraphQLBoolean);
+    catalogue.addType('{{ gql.boolean() }}', () => GraphQLBoolean);
 
-    catalogue.addType('nonNullBoolean', () => new GraphQLNonNull(catalogue.getType('boolean')));
+    catalogue.addType('{{ gql.non_null(gql.boolean()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.boolean() }}')));
 
-    catalogue.addType('int', () => GraphQLInt);
+    catalogue.addType('{{ gql.int() }}', () => GraphQLInt);
 
-    catalogue.addType('nonNullInt', () => new GraphQLNonNull(catalogue.getType('int')));
+    catalogue.addType('{{ gql.non_null(gql.int()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.int() }}')));
 
-    catalogue.addType('id', () => GraphQLID);
+    catalogue.addType('{{ gql.id() }}', () => GraphQLID);
 
-    catalogue.addType('nonNullId', () => new GraphQLNonNull(catalogue.getType('id')));
+    catalogue.addType('{{ gql.non_null(gql.id()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.id() }}')));
 
-    catalogue.addType('string', () => GraphQLString);
+    catalogue.addType('{{ gql.string() }}', () => GraphQLString);
 
-    catalogue.addType('nonNullString', () => new GraphQLNonNull(catalogue.getType('string')));
+    catalogue.addType('{{ gql.non_null(gql.string()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.string() }}')));
 
-    catalogue.addType('status', () => new GraphQLObjectType ({
+    catalogue.addType('{{ gql.status() }}', () => new GraphQLObjectType ({
         name: 'Status',
         fields: {
             status: {
-                type: catalogue.getType('nonNullBoolean')
+                type: catalogue.getType('{{ gql.non_null(gql.boolean()) }}')
             }
         },
     }));
 
-    catalogue.addType('cursor', () => new GraphQLScalarType({
+    catalogue.addType('{{ gql.non_null(gql.status()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.status() }}')));
+
+    catalogue.addType('{{ gql.cursor() }}', () => new GraphQLScalarType({
         name: 'Cursor',
         description: 'Cursor type.',
         serialize(id) {
@@ -121,7 +123,7 @@ function build(catalogue, resolver) {
             return cursorToId(cursor);
         },
         parseLiteral(ast) {
-            if (ast.kind === "StringValue") {
+            if (ast.kind === 'StringValue') {
                 return cursorToId(ast.value);
             }
             logger.error('invalid type for cursor', {kind: ast.kind});
@@ -129,38 +131,39 @@ function build(catalogue, resolver) {
         },
     }));
 
-    catalogue.addType('nonNullCursor', () => new GraphQLNonNull(catalogue.getType('cursor')));
+    catalogue.addType('{{ gql.non_null(gql.cursor()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.cursor() }}')));
 
-    catalogue.addType('pageInfo', () => new GraphQLObjectType({
+    catalogue.addType('{{ gql.page_info() }}', () => new GraphQLObjectType({
         name: 'PageInfo',
         description: 'Information about this page of results.',
         fields: {
             startCursor: {
-                type: catalogue.getType('cursor'),
+                type: catalogue.getType('{{ gql.cursor() }}'),
                 description: 'The first cursor on this page.'
             },
             endCursor: {
-                type: catalogue.getType('cursor'),
+                type: catalogue.getType('{{ gql.cursor() }}'),
                 description: 'The last cursor on this page.'
             },
             hasPreviousPage: {
-                type: catalogue.getType('nonNullBoolean'),
+                type: catalogue.getType('{{ gql.non_null(gql.boolean()) }}'),
                 description: 'True if there is a previous page.'
             },
             hasNextPage: {
-                type: catalogue.getType('nonNullBoolean'),
+                type: catalogue.getType('{{ gql.non_null(gql.boolean()) }}'),
                 description: 'True if there is a next page.'
             }
         }
     }));
 
-    catalogue.addType('nonNullPageInfo', () => new GraphQLNonNull(catalogue.getType('pageInfo')));
+    catalogue.addType('{{ gql.non_null(gql.page_info()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.page_info() }}')));
 
 {%-     for enum in schema.get_enums() %}
 
     // add gql.schema_enum_type(enum)
     catalogue.addType('{{ gql.schema_enum_type(enum) }}', () => new GraphQLEnumType({
         name: '{{ gql.schema_enum_type(enum) }}',
+        description: 'types of {{ enum.get_name() }}',
         values: {
 {%-         for option in enum.get_options() %}
             {{ gql.field_label(option) }}: { value: '{{ database.name(option) }}' },
@@ -177,16 +180,17 @@ function build(catalogue, resolver) {
 
 {%- for entity in schema.get_entities() %}
 
+    // gql.entity_edge(entity)
     catalogue.addType('{{ gql.entity_edge(entity) }}', () => new GraphQLObjectType({
         name: '{{ gql.entity_edge(entity) }}',
         description: 'A single paginated {{ entity.get_name() | singular }}.',
         fields: () => ({
             cursor: {
-                type: catalogue.getType('nonNullCursor'),
+                type: catalogue.getType('{{ gql.non_null(gql.cursor()) }}'),
                 description: 'The cursor for this {{ entity.get_name() | singular }}.'
             },
             node: {
-{%     if entity.auth_visibility() == "visible" %}
+{%     if entity.auth_visibility() == 'visible' %}
                 type: catalogue.getType('{{ gql.non_null(gql.entity_type(entity)) }}'),
 {%     else %}
                 type: catalogue.getType('{{ gql.entity_type(entity) }}'),
@@ -196,34 +200,40 @@ function build(catalogue, resolver) {
         })
     }));
 
+    // gql.list_of(gql.entity_edge(entity))
     catalogue.addType('{{ gql.list_of(gql.entity_edge(entity)) }}', () => new GraphQLList(catalogue.getType('{{ gql.entity_edge(entity) }}')));
 
+    // gql.non_null(gql.list_of(gql.entity_edge(entity)))
     catalogue.addType('{{ gql.non_null(gql.list_of(gql.entity_edge(entity))) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.list_of(gql.entity_edge(entity)) }}')));
 
+    // gql.entity_connection(entity)
     catalogue.addType('{{ gql.entity_connection(entity) }}', () => new GraphQLObjectType({
         name: '{{ gql.entity_connection(entity) }}',
         description: 'Relay-conformant pagination for {{ entity.get_name() }}.',
         fields: () => ({
             totalCount: {
-                type: catalogue.getType('nonNullInt'),
+                type: catalogue.getType('{{ gql.non_null(gql.int()) }}'),
                 description: 'Total number of {{ gql.entity_edge(entity) }} that could be returned by the query.',
             },
             edges: {
                 type: catalogue.getType('{{ gql.non_null(gql.list_of(gql.entity_edge(entity))) }}')
             },
             pageInfo: {
-                type: catalogue.getType('nonNullPageInfo'),
+                type: catalogue.getType('{{ gql.non_null(gql.page_info()) }}'),
                 description: 'Information about this page of results.'
             }
         })
     }));
 
+    // gql.non_null(gql.entity_connection(entity))
     catalogue.addType('{{ gql.non_null(gql.entity_connection(entity)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.entity_connection(entity) }}')));
 
 {%-     for union in entity.get_unions() %}
 
+    // gql.union_enum_type(entity, union)
     catalogue.addType('{{ gql.union_enum_type(entity, union) }}', () => new GraphQLEnumType({
         name: '{{ gql.union_enum_type(entity, union) }}',
+        description: 'possible types referred to by a {{ database.name(entity) }}.{{ database.name(union) }}',
         values: {
 {%-         for reference in union.get_references() %}
             {{ gql.field_label(reference) }}: { value: '{{ database.name(reference) }}' },
@@ -231,10 +241,15 @@ function build(catalogue, resolver) {
         }
     }));
 
+    // gql.non_null(gql.union_enum_type(entity, union))
     catalogue.addType('{{ gql.non_null(gql.union_enum_type(entity, union)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.union_enum_type(entity, union) }}')))
 
+    // gql.union_type(entity, union)
     catalogue.addType('{{ gql.union_type(entity, union) }}', () => new GraphQLUnionType({
         name: '{{ gql.union_type(entity, union) }}',
+        description: 'a discriminated union of references from {{ database.name(entity) }} to {% for reference in union.get_references() -%}
+            {%- if loop.last %} or {% elif loop.first %} {% else %}, {%endif %}{{ database.name(reference.get_referenced()) }}
+            {%- endfor %}',
         types: () => ([
 {%-         for reference in union.get_references() %}catalogue.getType('{{ gql.entity_type(reference.get_referenced()) }}'), {% endfor -%}
         ]),
@@ -247,24 +262,26 @@ function build(catalogue, resolver) {
         }
     }));
 
+    // gql.non_null(gql.union_type(entity, union))
     catalogue.addType('{{ gql.non_null(gql.union_type(entity, union)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.union_type(entity, union) }}')));
 
 {%-     endfor %}
 
+    // gql.entity_type(entity)
     catalogue.addType('{{ gql.entity_type(entity) }}', () => new GraphQLObjectType ({
         name: '{{ gql.entity_type(entity) }}',
         description: '{{ entity.get_description() }}',
         fields: () => ({
             id: {
-                type: catalogue.getType('nonNullId'),
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}'),
                 description: 'The {{ database.name(entity) | singular }} id.',
             },
             dateCreated: {
-                type: catalogue.getType('nonNullString'),
+                type: catalogue.getType('{{ gql.non_null(gql.string()) }}'),
                 description: 'The datetime the {{ database.name(entity) | singular }} was originally created.',
             },
             dateLastUpdated: {
-                type: catalogue.getType('nonNullString'),
+                type: catalogue.getType('{{ gql.non_null(gql.string()) }}'),
                 description: 'The datetime the {{ database.name(entity) | singular }} was last updated.',
             },
 {%-     for field in entity.get_fields() %}
@@ -303,11 +320,11 @@ function build(catalogue, resolver) {
                 args: {
                     first: {
                         description: 'limit',
-                        type: catalogue.getType('int'),
+                        type: catalogue.getType('{{ gql.int() }}'),
                     },
                     after: {
                         description: 'cursor',
-                        type: catalogue.getType('cursor'),
+                        type: catalogue.getType('{{ gql.cursor() }}'),
                     },
                 },
                 resolve: (...args) => resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(...args)
@@ -320,11 +337,11 @@ function build(catalogue, resolver) {
                 args: {
                     first: {
                         description: 'limit',
-                        type: catalogue.getType('int'),
+                        type: catalogue.getType('{{ gql.int() }}'),
                     },
                     after: {
                         description: 'cursor',
-                        type: catalogue.getType('cursor'),
+                        type: catalogue.getType('{{ gql.cursor() }}'),
                     },
                 },
                 extensions: {
@@ -336,16 +353,18 @@ function build(catalogue, resolver) {
         })
     }));
 
+    // gql.non_null(gql.entity_type(entity))
     catalogue.addType('{{ gql.non_null(gql.entity_type(entity)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.entity_type(entity) }}')));
 
 {%-     for union in entity.get_unions() %}
 
+    // gql.add_union(entity, union)
     catalogue.addType('{{ gql.add_union(entity, union) }}', () => new GraphQLInputObjectType({
         name: '{{ gql.add_union(entity, union) }}',
-        description: 'input object to create {{ database.name(entity) | singular }} {{ database.name(union) | singular }} unions.',
+        description: 'input object to declare the specific {{ database.name(entity) | singular }}.{{ database.name(union) }} type.',
         fields: () => ({
             id: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             type: {
                 type: catalogue.getType('{{ gql.non_null(gql.union_enum_type(entity, union)) }}')
@@ -353,19 +372,25 @@ function build(catalogue, resolver) {
         })
     }));
 
+    // gql.non_null(gql.add_union(entity, union))
     catalogue.addType('{{ gql.non_null(gql.add_union(entity, union)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.add_union(entity, union) }}')));
 
 {%-     endfor %}
 
 {%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}{# no add or delete on auth-controlled entities #}
 
+    // gql.add_entity(entity)
     catalogue.addType('{{ gql.add_entity(entity) }}', () => new GraphQLInputObjectType({
         name: '{{ gql.add_entity(entity) }}',
         description: 'input object to create a new {{ database.name(entity) | singular }}',
         fields: () => ({
 {%-         for field in entity.get_fields() %}
             {{ gql.field_label(field) }}: {
+{%-             if field.has_default() %}
+                type: catalogue.getType('{{ gql.catalogue_type(field.get_type()) }}')
+{%-             else %}
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(field.get_type())) }}')
+{%-             endif %}
             },
 {%-         endfor %}
 {%-         for enum in entity.get_enums() %}
@@ -377,7 +402,7 @@ function build(catalogue, resolver) {
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
             {{ gql.field_label(reference) }}: {
-              type: catalogue.getType('nonNullId')
+              type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
 {%-             endif %}
 {%-         endfor %}
@@ -389,11 +414,13 @@ function build(catalogue, resolver) {
         }),
     }));
 
+    // gql.non_null(gql.add_entity(entity))
     catalogue.addType('{{ gql.non_null(gql.add_entity(entity)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.add_entity(entity) }}')));
 {%-     endif %}
 
 {%-     if not ((entity.is_auth_role('token') or entity.is_auth_role('owner')) and entity.has_only_auth_components()) %}
 
+    // gql.update_entity(entity)
     catalogue.addType('{{ gql.update_entity(entity) }}', () => new GraphQLInputObjectType({
         name: '{{ gql.update_entity(entity) }}',
         description: 'input object to update an existing {{ database.name(entity) | singular }}',
@@ -414,7 +441,7 @@ function build(catalogue, resolver) {
 {%-         for reference in entity.get_references() %}
 {%-             if not reference.is_auth_role('owner') %}
             {{ gql.field_label(reference) }}: {
-              type: catalogue.getType('id')
+              type: catalogue.getType('{{ gql.id() }}')
             },
 {%-             endif %}
 {%-         endfor %}
@@ -426,6 +453,7 @@ function build(catalogue, resolver) {
         }),
     }));
 
+    // gql.non_null(gql.update_entity(entity))
     catalogue.addType('{{ gql.non_null(gql.update_entity(entity)) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.update_entity(entity) }}')));
 {%-     endif %}
 
@@ -436,6 +464,7 @@ function build(catalogue, resolver) {
 
 {%-    if entity.is_auth_role('owner') %}
 
+    // gql.owner_entity()
     catalogue.addQuery('{{ gql.owner_entity() }}', () => ({
         type: catalogue.getType('{{ gql.entity_type(entity) }}'),
         resolve: (...args) => resolver.{{ resolve.owner() }}(...args),
@@ -443,16 +472,17 @@ function build(catalogue, resolver) {
 
 {%-        for referrer in entity.get_referrers() %}
 
+    // gql.owned_entity_label(referrer)
     catalogue.addQuery('{{ gql.owned_entity_label(referrer) }}', () => ({
         type: catalogue.getType('{{ gql.entity_connection(referrer.get_entity()) }}'),
         args: {
             first: {
                 description: 'limit',
-                type: catalogue.getType('int'),
+                type: catalogue.getType('{{ gql.int() }}'),
             },
             after: {
                 description: 'cursor',
-                type: catalogue.getType('cursor'),
+                type: catalogue.getType('{{ gql.cursor() }}'),
             },
         },
         resolve: (...args) => resolver.{{ resolve.owned_entities(referrer) }}(...args)
@@ -462,16 +492,17 @@ function build(catalogue, resolver) {
 
 {%-        for association in entity.get_associations() %}
 
+    // gql.owned_association_other_label(entity, association)
     catalogue.addQuery('{{ gql.owned_association_other_label(entity, association) }}', () => ({
         type: catalogue.getType('{{ gql.entity_connection(association.get_other(entity)) }}'),
         args: {
             first: {
                 description: 'limit',
-                type: catalogue.getType('int'),
+                type: catalogue.getType('{{ gql.int() }}'),
             },
             after: {
                 description: 'cursor',
-                type: catalogue.getType('cursor'),
+                type: catalogue.getType('{{ gql.cursor() }}'),
             },
         },
         extensions: {
@@ -484,27 +515,29 @@ function build(catalogue, resolver) {
 
 {%-    endif %}
 
+    // gql.singular_entity_label(entity)
     catalogue.addQuery('{{ gql.singular_entity_label(entity) }}', () => ({
         type: catalogue.getType('{{ gql.entity_type(entity) }}'),
         args: {
             id: {
                 description: '{{ database.name(entity) | singular }} id',
-                type: catalogue.getType('nonNullId'),
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}'),
             }
         },
         resolve: (...args) => resolver.{{ resolve.entity(entity) }}(...args),
     }));
 
+    // gql.plural_entity_label(entity)
     catalogue.addQuery('{{ gql.plural_entity_label(entity) }}', () => ({
         type: catalogue.getType('{{ gql.entity_connection(entity) }}'),
         args: {
             first: {
                 description: 'limit',
-                type: catalogue.getType('int'),
+                type: catalogue.getType('{{ gql.int() }}'),
             },
             after: {
                 description: 'cursor',
-                type: catalogue.getType('cursor'),
+                type: catalogue.getType('{{ gql.cursor() }}'),
             },
         },
         resolve: (...args) => resolver.{{ resolve.entities(entity) }}(...args),
@@ -516,6 +549,7 @@ function build(catalogue, resolver) {
 {%- for entity in schema.get_entities() %}
 {%-   if not (entity.is_auth_role('token') or entity.is_auth_role('owner')) %}
 
+    // gql.add_entity_label(entity)
     catalogue.addMutation('{{ gql.add_entity_label(entity) }}', () => ({
         type: catalogue.getType('{{ gql.entity_type(entity) }}'),
         args: {
@@ -529,11 +563,12 @@ function build(catalogue, resolver) {
 
 {%-     if not ((entity.is_auth_role('token') or entity.is_auth_role('owner')) and entity.has_only_auth_components()) %}
 
+    // gql.update_entity_label(entity)
     catalogue.addMutation('{{ gql.update_entity_label(entity) }}', () => ({
         type: catalogue.getType('{{ gql.entity_type(entity) }}'),
         args: {
             id: {
-                 type: catalogue.getType('nonNullId')
+                 type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             input: {
                 type: catalogue.getType('{{ gql.non_null(gql.update_entity(entity)) }}')
@@ -545,11 +580,12 @@ function build(catalogue, resolver) {
 
 {%-     if not (entity.is_auth_role('owner') or entity.is_auth_role('token')) %}
 
+    // gql.delete_entity_label(entity)
     catalogue.addMutation('{{ gql.delete_entity_label(entity) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             id: {
-                 type: catalogue.getType('nonNullId')
+                 type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
         },
         resolve: (...args) => resolver.{{ resolve.delete_entity(entity) }}(...args)
@@ -559,38 +595,39 @@ function build(catalogue, resolver) {
 
 {%- for association in schema.get_associations() %}
 
+    // gql.add_association_label(association)
     catalogue.addMutation('{{ gql.add_association_label(association) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             {{ gql.association_lhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             {{ gql.association_rhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
         },
         resolve: (...args) => resolver.{{ resolve.create_association(association) }}(...args)
     }));
 {%-     for lhs in association.get_lhs().get_unique_fields() %}
 
-// add association [1] {{lhs.get_name()}}.{{association.get_name()}}.id
+    // add association [1] gql.add_association_label_lhs(association, lhs) {{lhs.get_name()}}.{{association.get_name()}}.id
     catalogue.addMutation('{{ gql.add_association_label_lhs(association, lhs) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.status() }}'),
         args: {
             {{ gql.association_lhs_field_label(association, lhs) }}: {
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(lhs.get_type())) }}')
             },
             {{ gql.association_rhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
         },
         resolve: (...args) => resolver.{{ resolve.create_association_lhs(association, lhs) }}(...args)
     }));
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
-// add association [2] {{lhs.get_name()}}.{{association.get_name()}}.{{rhs.get_name()}}
+   // add association [2] gql.add_association_label_lhs_rhs(association, lhs, rhs) {{lhs.get_name()}}.{{association.get_name()}}.{{rhs.get_name()}}
    catalogue.addMutation('{{ gql.add_association_label_lhs_rhs(association, lhs, rhs) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             {{ gql.association_lhs_field_label(association, lhs) }}: {
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(lhs.get_type())) }}')
@@ -602,12 +639,12 @@ function build(catalogue, resolver) {
         resolve: (...args) => resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(...args)
     }));
 
-// add association [3] id.{{association.get_name()}}.{{rhs.get_name()}}
+    // add association [3] gql.add_association_label_rhs(association, rhs) id.{{association.get_name()}}.{{rhs.get_name()}}
     catalogue.addMutation('{{ gql.add_association_label_rhs(association, rhs) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             {{ gql.association_lhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             {{ gql.association_rhs_field_label(association, rhs) }}: {
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(rhs.get_type())) }}')
@@ -619,12 +656,12 @@ function build(catalogue, resolver) {
 {%-     else %}
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
-// add association [4] id.{{association.get_name()}}.{{rhs.get_name()}}
+    // add association [4] gql.add_association_label_rhs(association, rhs) id.{{association.get_name()}}.{{rhs.get_name()}}
     catalogue.addMutation('{{ gql.add_association_label_rhs(association, rhs) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             {{ gql.association_lhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             {{ gql.association_rhs_field_label(association, rhs) }}: {
                 type: catalogue.getType('{{ gql.non_null(gql.catalogue_type(rhs.get_type())) }}')
@@ -635,14 +672,15 @@ function build(catalogue, resolver) {
 {%-         endfor %}
 {%-     endfor %}
 
+    // gql.delete_association_label(association)
     catalogue.addMutation('{{ gql.delete_association_label(association) }}', () => ({
-        type: catalogue.getType('status'),
+        type: catalogue.getType('{{ gql.non_null(gql.status()) }}'),
         args: {
             {{ gql.association_lhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
             {{ gql.association_rhs_label(association) }}: {
-                type: catalogue.getType('nonNullId')
+                type: catalogue.getType('{{ gql.non_null(gql.id()) }}')
             },
         },
         resolve: (...args) => resolver.{{ resolve.delete_association(association) }}(...args)

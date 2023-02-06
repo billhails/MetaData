@@ -30,7 +30,7 @@
 {%- elif type == "token" %}TEXT
 {%- elif type == "guid" %}TEXT CHECK(LENGTH(`{{ name }}` == 36))
 {%- elif type == "date" %}TEXT
-{%- elif type == "boolean" %}TEXT
+{%- elif type == "boolean" %}INTEGER CHECK(`{{ name }}` IN (0, 1))
 {%- else %}???
 {%- endif %}
 {%- endmacro %}
@@ -50,7 +50,7 @@ TEXT NOT NULL DEFAULT "{{ enum.get_first_option().get_name() }}" CHECK(`{{ datab
 {%- elif type == "token" %}"{{ value }}"
 {%- elif type == "guid" %}"{{ value }}"
 {%- elif type == "date" %}"{{ value }}"
-{%- elif type == "boolean" %}"{{ value }}"
+{%- elif type == "boolean" %}{% if value == "true" %}1{% else %}0{% endif %}
 {%- else %}???
 {%- endif %}
 {%- endmacro %}

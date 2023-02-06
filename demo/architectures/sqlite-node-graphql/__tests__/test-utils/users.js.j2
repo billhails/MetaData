@@ -19,7 +19,7 @@
 
 const { randomUser } = require('./fakery');
 const { signup, deconstruct } = require('./auth');
-const { getGraphQLClient } = require('./graphql');
+const { getGraphQLClient, gql } = require('./graphql');
 const { grantAdminRole } = require('./db');
 
 async function createUser() {
@@ -40,8 +40,61 @@ async function getAdminUser() {
     return user;
 }
 
+function userQuery(id) {
+    return {
+        query: gql`query getUser($id: ID!) {
+            user(id: $id) {
+                displayName
+                email
+                roles {
+                    totalCount
+                    edges {
+                        node {
+                            id
+                            label
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: { id }
+    };
+}
+
+function rolesQuery() {
+    return {
+        query: gql`query A {
+            roles {
+                totalCount
+                edges {
+                    node {
+                        id
+                        label
+                    }
+                }
+            }
+        }`,
+        variables: {}
+    };
+}
+
+async function getRoles(client) {
+    const request = rolesQuery();
+    return client.request(request.query, request.variables);
+}
+
+async function findUser(adminClient, id) {
+    const findUserQuery = userQuery(id);
+    return adminClient.request(findUserQuery.query, findUserQuery.variables);
+}
+
+
 module.exports = {
     createUser,
     getLoggedInUser,
-    getAdminUser
+    getAdminUser,
+    userQuery,
+    rolesQuery,
+    getRoles,
+    findUser
 };
