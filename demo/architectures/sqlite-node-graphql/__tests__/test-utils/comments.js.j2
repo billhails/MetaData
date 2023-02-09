@@ -113,14 +113,118 @@ function deleteCommentMutation(id) {
     };
 }
 
-
 async function deleteComment(client, id) {
     const mutation = deleteCommentMutation(id);
     return client.request(mutation.mutation, mutation.variables);
 }
 
+function repliesToCommentQuery(commentId) {
+    return {
+        query: gql`query replies($commentId: ID!) {
+            comment(id: $commentId) {
+                replies {
+                    edges {
+                        node {
+                            id
+                            private
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: {
+            commentId
+        }
+    };
+}
+
+async function repliesToComment(client, commentId) {
+    const query = repliesToCommentQuery(commentId);
+    return client.request(query.query, query.variables);
+}
+
+function commentsOnPostQuery(postId) {
+    return {
+        query: gql`query postComments($postId: ID!) {
+            post(id: $postId) {
+                comments {
+                    edges {
+                        node {
+                            id
+                            private
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: {
+            postId
+        }
+    };
+}
+
+async function commentsOnPost(client, postId) {
+    const query = commentsOnPostQuery(postId);
+    return client.request(query.query, query.variables);
+}
+
+function messagesForUserQuery(userId) {
+    return {
+        query: gql`query messagesForUser($userId: ID!) {
+            user(id: $userId) {
+                messages {
+                    edges {
+                        node {
+                            id,
+                            private
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: {
+            userId
+        }
+    };
+}
+
+async function messagesForUser(client, userId) {
+    const query = messagesForUserQuery(userId);
+    return client.request(query.query, query.variables);
+}
+
+function commentsByUserQuery(userId) {
+    return {
+        query: gql`query commentsByUser($userId: ID!) {
+            user(id: $userId) {
+                comments {
+                    edges {
+                        node {
+                            id,
+                            private
+                        }
+                    }
+                }
+            }
+        }`,
+        variables: {
+            userId
+        }
+    };
+}
+
+async function commentsByUser(client, userId) {
+    const query = commentsByUserQuery(userId);
+    return client.request(query.query, query.variables);
+}
+
+
 module.exports = {
     createComment,
     updateComment,
-    deleteComment
+    deleteComment,
+    repliesToComment,
+    commentsOnPost,
+    messagesForUser,
+    commentsByUser,
 };

@@ -41,7 +41,7 @@ class Field(Semantics):
     def optional_attributes(self):
         return super().optional_attributes() + [
             {'name': 'unique', 'values': ['n', 'y'], 'default': 'n'},
-            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role', 'redact'], 'default': 'none'},
+            {'name': 'auth-role', 'values': ['none', 'external-id', 'password', 'token', 'role', 'private'], 'default': 'none'},
             {'name': 'auth-visibility', 'values': ['visible', 'redacted', 'hidden'], 'default': 'visible'},
             {'name': 'default'}
         ]
@@ -52,9 +52,15 @@ class Field(Semantics):
             if self.has_default():
                 if not self.get_default() in ['true', 'false']:
                     raise SemanticException(f'invalid default for boolean field {self.get_full_name()}, must be "true" or "false"')
+        if self.is_auth_role('private'):
+            if not self.is_type('boolean'):
+                raise SemanticException('only boolean fields can have auth-role="private"')
 
     def get_type(self):
         return self.attributes['type']
+
+    def is_type(self, field_type):
+        return self.get_type() == field_type
 
     def get_full_name(self):
         return self.entity.get_name() + '.' + self.get_name()

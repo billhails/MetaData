@@ -88,7 +88,6 @@ async function findUser(adminClient, id) {
     return adminClient.request(findUserQuery.query, findUserQuery.variables);
 }
 
-
 module.exports = {
     createUser,
     getLoggedInUser,

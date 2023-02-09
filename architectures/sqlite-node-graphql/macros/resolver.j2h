@@ -36,11 +36,7 @@
 {% macro create_association_lhs(association, lhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByLhs{{ lhs.get_name() | mixed_case }}{% endmacro %}
 {% macro create_association_rhs(association, rhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByRhs{{ rhs.get_name() | mixed_case }}{% endmacro %}
 {% macro create_association_lhs_rhs(association, lhs, rhs) %}create{{ association.get_name() | mixed_case | singular }}AssociationByLhs{{ lhs.get_name() | mixed_case }}AndRhs{{ rhs.get_name() | mixed_case }}{% endmacro %}
-
 {% macro delete_association(association) %}delete{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
-{% macro redact_field_for_entity(entity, field) %}redact{{ field.get_name() | mixed_case }}For{{ entity.get_name() | mixed_case }}{% endmacro %}
-{% macro process_entity(entity) %}process{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
-{% macro process_entities(entity) %}process{{ entity.get_name() | mixed_case }}{% endmacro %}
 
 {% macro owner() %}resolveMe{% endmacro %}
 {% macro owned_entities(referrer) %}resolveMy{{ referrer.get_referrer_name() | mixed_case }}{% endmacro %}

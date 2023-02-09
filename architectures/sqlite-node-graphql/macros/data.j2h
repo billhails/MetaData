@@ -25,7 +25,8 @@
 {% macro batch_count_association(entity, association) %}batchCount{{ association.get_name() | mixed_case }}{% if association.is_self_referential() %}Associations{% else %}{% if association.is_lhs(entity) %}Lhs{% else %}Rhs{% endif %}{% endif %}{% endmacro %}
 {% macro get_entity(entity) %}get{{ entity.get_name() | singular | mixed_case }}ById{% endmacro %}
 {% macro get_entity_by_field(entity, field) %}get{{ entity.get_name() | singular | mixed_case }}By{{ field.get_name() | mixed_case }}{% endmacro %}
-{% macro validate_union(entity, union) %}validateUnion{{ entity.get_name() | mixed_case}}{{ union.get_name() | mixed_case }}{% endmacro %}
+{% macro validate_union(entity, union) %}validateUnion{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}{% endmacro %}
+{% macro validate_privacy(entity) %}validatePrivacyFor{{ entity.get_name() | mixed_case }}{% endmacro %}
 {% macro create_entity(entity) %}create{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro update_entity(entity) %}update{{ entity.get_name() | singular | mixed_case }}{% endmacro %}
 {% macro delete_entity(entity) %}delete{{ entity.get_name() | singular | mixed_case }}ById{% endmacro %}

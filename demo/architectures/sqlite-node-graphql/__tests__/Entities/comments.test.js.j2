@@ -22,7 +22,15 @@ jest.mock('../../Utils/logger');
 
 const { getGraphQLClient } = require('../test-utils/graphql');
 const { getLoggedInUser, getAdminUser } = require('../test-utils/users');
-const { createComment, updateComment, deleteComment } = require('../test-utils/comments');
+const {
+    createComment,
+    updateComment,
+    deleteComment,
+    repliesToComment,
+    commentsOnPost,
+    messagesForUser,
+    commentsByUser
+} = require('../test-utils/comments');
 const { createPost } = require('../test-utils/posts');
 const util = require('util');
 
@@ -34,115 +42,194 @@ async function createCommentAboutUser() {
 }
 
 describe("comments", () => {
-    it("cannot be created by a logged-out user", async () => {
-        expect.assertions(1);
-        const loggedOut = getGraphQLClient();
-        const { id: otherUser } = await getLoggedInUser();
-        const data = await createComment(loggedOut, otherUser, 'user');
-        expect(data).toStrictEqual({addComment: null});
+    describe("public", () => {
+        it("cannot be created by a logged-out user", async () => {
+            expect.assertions(1);
+            const loggedOut = getGraphQLClient();
+            const { id: otherUser } = await getLoggedInUser();
+            const data = await createComment(loggedOut, otherUser, 'user');
+            expect(data).toStrictEqual({addComment: null});
+        });
+        it("can be created by a logged-in user", async () => {
+            expect.assertions(2);
+            const { data, ownerId } = await createCommentAboutUser();
+            expect(data.addComment).not.toBeNull();
+            expect(data.addComment?.owner?.id).toBe(ownerId);
+        });
+        it("can be created by admin", async () => {
+            expect.assertions(2);
+            const { loggedIn: admin, id } = await getAdminUser();
+            const { id: otherUser } = await getLoggedInUser();
+            const data = await createComment(admin, otherUser, 'user');
+            expect(data.addComment).not.toBeNull();
+            expect(data.addComment?.owner?.id).toBe(id);
+        });
+        it("can be modified by the owner", async () => {
+            expect.assertions(1);
+            const { loggedIn, data } = await createCommentAboutUser();
+            const updatedData = await updateComment(loggedIn, data.addComment.id, 'replacement');
+            expect(updatedData.updateComment.body).toBe('replacement');
+        });
+        it("can be modified by admin", async () => {
+            expect.assertions(2);
+            const { loggedIn, data, ownerId } = await createCommentAboutUser();
+            const { loggedIn: admin } = await getAdminUser();
+            const updatedData = await updateComment(admin, data.addComment.id, 'admin replacement');
+            expect(updatedData.updateComment.body).toBe('admin replacement');
+            expect(updatedData.updateComment.owner.id).toBe(ownerId);
+        });
+        it("can not be modified by a logged-out user", async () => {
+            expect.assertions(1);
+            const { data } = await createCommentAboutUser();
+            const loggedOut = getGraphQLClient();
+            const updatedData = await updateComment(loggedOut, data.addComment.id, 'logged-out update');
+            expect(updatedData.updateComment).toBeNull();
+        });
+        it("can not be modified by a different user", async () => {
+            expect.assertions(1);
+            const { data } = await createCommentAboutUser();
+            const { loggedIn: otherUser } = await getLoggedInUser();
+            const updatedData = await updateComment(otherUser, data.addComment.id, 'other update');
+            expect(updatedData.updateComment).toBeNull();
+        });
+        it("can be deleted by the owner", async () => {
+            expect.assertions(1);
+            const { loggedIn, data } = await createCommentAboutUser();
+            const deletedData = await deleteComment(loggedIn, data.addComment.id);
+            expect(deletedData).toStrictEqual({deleteComment: { status: true }});
+        });
+        it("can be deleted by admin", async () => {
+            expect.assertions(1);
+            const { data } = await createCommentAboutUser();
+            const { loggedIn: admin } = await getAdminUser();
+            const deletedData = await deleteComment(admin, data.addComment.id);
+            expect(deletedData).toStrictEqual({deleteComment: { status: true }});
+        });
+        it("can not be deleted by a logged-out user", async () => {
+            expect.assertions(1);
+            const { data } = await createCommentAboutUser();
+            const loggedOut = getGraphQLClient();
+            const deletedData = await deleteComment(loggedOut, data.addComment.id);
+            expect(deletedData).toStrictEqual({deleteComment: { status: false }})
+        });
+        it("can not be deleted by a different user", async () => {
+            expect.assertions(1);
+            const { data } = await createCommentAboutUser();
+            const { loggedIn: otherUser } = await getLoggedInUser();
+            const deletedData = await deleteComment(otherUser, data.addComment.id);
+            expect(deletedData).toStrictEqual({deleteComment: { status: false }});
+        });
+        it("can be about a user", async () => {
+            expect.assertions(2);
+            const { data, about } = await createCommentAboutUser();
+            expect(data?.addComment?.about?.__typename).toBe('User');
+            expect(data?.addComment?.about?.id).toBe(about);
+        });
+        it("can be about a post", async () => {
+            expect.assertions(2);
+            const { loggedIn, id } = await getLoggedInUser();
+            const post = await createPost(loggedIn);
+            const data = await createComment(loggedIn, post.addPost.id, 'post');
+            expect(data?.addComment?.about?.__typename).toBe('Post');
+            expect(data?.addComment?.about?.id).toBe(post.addPost.id);
+        });
+        it("can be about another comment", async () => {
+            expect.assertions(2);
+            const { data, loggedIn } = await createCommentAboutUser();
+            const reply = await createComment(loggedIn, data.addComment.id, 'comment');
+            expect(reply.addComment?.about?.__typename).toBe('Comment');
+            expect(reply?.addComment?.about?.id).toBe(data.addComment.id);
+        });
+        it("can be marked as public", async () => {
+            expect.assertions(1);
+            const { loggedIn, id } = await getLoggedInUser();
+            const { id: about } = await getLoggedInUser();
+            const data = await createComment(loggedIn, about, 'user', false);
+            expect(data.addComment?.private).toBe(false);
+        });
     });
-    it("can be created by a logged-in user", async () => {
-        expect.assertions(2);
-        const { data, ownerId } = await createCommentAboutUser();
-        expect(data.addComment).not.toBeNull();
-        expect(data.addComment?.owner?.id).toBe(ownerId);
-    });
-    it("can be created by admin", async () => {
-        expect.assertions(2);
-        const { loggedIn: admin, id } = await getAdminUser();
-        const { id: otherUser } = await getLoggedInUser();
-        const data = await createComment(admin, otherUser, 'user');
-        expect(data.addComment).not.toBeNull();
-        expect(data.addComment?.owner?.id).toBe(id);
-    });
-    it("can be modified by the owner", async () => {
-        expect.assertions(1);
-        const { loggedIn, data } = await createCommentAboutUser();
-        const updatedData = await updateComment(loggedIn, data.addComment.id, 'replacement');
-        expect(updatedData.updateComment.body).toBe('replacement');
-    });
-    it("can be modified by admin", async () => {
-        expect.assertions(2);
-        const { loggedIn, data, ownerId } = await createCommentAboutUser();
-        const { loggedIn: admin } = await getAdminUser();
-        const updatedData = await updateComment(admin, data.addComment.id, 'admin replacement');
-        expect(updatedData.updateComment.body).toBe('admin replacement');
-        expect(updatedData.updateComment.owner.id).toBe(ownerId);
-    });
-    it("can not be modified by a logged-out user", async () => {
-        expect.assertions(1);
-        const { data } = await createCommentAboutUser();
-        const loggedOut = getGraphQLClient();
-        const updatedData = await updateComment(loggedOut, data.addComment.id, 'logged-out update');
-        expect(updatedData.updateComment).toBeNull();
-    });
-    it("can not be modified by a different user", async () => {
-        expect.assertions(1);
-        const { data } = await createCommentAboutUser();
-        const { loggedIn: otherUser } = await getLoggedInUser();
-        const updatedData = await updateComment(otherUser, data.addComment.id, 'other update');
-        expect(updatedData.updateComment).toBeNull();
-    });
-    it("can be deleted by the owner", async () => {
-        expect.assertions(1);
-        const { loggedIn, data } = await createCommentAboutUser();
-        const deletedData = await deleteComment(loggedIn, data.addComment.id);
-        expect(deletedData).toStrictEqual({deleteComment: { status: true }});
-    });
-    it("can be deleted by admin", async () => {
-        expect.assertions(1);
-        const { data } = await createCommentAboutUser();
-        const { loggedIn: admin } = await getAdminUser();
-        const deletedData = await deleteComment(admin, data.addComment.id);
-        expect(deletedData).toStrictEqual({deleteComment: { status: true }});
-    });
-    it("can not be deleted by a logged-out user", async () => {
-        expect.assertions(1);
-        const { data } = await createCommentAboutUser();
-        const loggedOut = getGraphQLClient();
-        const deletedData = await deleteComment(loggedOut, data.addComment.id);
-        expect(deletedData).toStrictEqual({deleteComment: { status: false }})
-    });
-    it("can not be deleted by a different user", async () => {
-        expect.assertions(1);
-        const { data } = await createCommentAboutUser();
-        const { loggedIn: otherUser } = await getLoggedInUser();
-        const deletedData = await deleteComment(otherUser, data.addComment.id);
-        expect(deletedData).toStrictEqual({deleteComment: { status: false }});
-    });
-    it("can be about a user", async () => {
-        expect.assertions(2);
-        const { data, about } = await createCommentAboutUser();
-        expect(data?.addComment?.about?.__typename).toBe('User');
-        expect(data?.addComment?.about?.id).toBe(about);
-    });
-    it("can be about a post", async () => {
-        expect.assertions(2);
-        const { loggedIn, id } = await getLoggedInUser();
-        const post = await createPost(loggedIn);
-        const data = await createComment(loggedIn, post.addPost.id, 'post');
-        expect(data?.addComment?.about?.__typename).toBe('Post');
-        expect(data?.addComment?.about?.id).toBe(post.addPost.id);
-    });
-    it("can be about another comment", async () => {
-        expect.assertions(2);
-        const { data, loggedIn } = await createCommentAboutUser();
-        const reply = await createComment(loggedIn, data.addComment.id, 'comment');
-        expect(reply.addComment?.about?.__typename).toBe('Comment');
-        expect(reply?.addComment?.about?.id).toBe(data.addComment.id);
-    });
-    it("can be marked as public", async () => {
-        expect.assertions(1);
-        const { loggedIn, id } = await getLoggedInUser();
-        const { id: about } = await getLoggedInUser();
-        const data = await createComment(loggedIn, about, 'user', false);
-        expect(data.addComment?.private).toBe(false);
-    });
-    it("can be marked as private", async () => {
-        expect.assertions(1);
-        const { loggedIn, id } = await getLoggedInUser();
-        const { id: about } = await getLoggedInUser();
-        const data = await createComment(loggedIn, about, 'user', true);
-        expect(data.addComment?.private).toBe(true);
+    describe("private", () => {
+        it("can be marked as private", async () => {
+            expect.assertions(1);
+            const { loggedIn, id } = await getLoggedInUser();
+            const { id: about } = await getLoggedInUser();
+            const data = await createComment(loggedIn, about, 'user', true);
+            expect(data.addComment?.private).toBe(true);
+        });
+        it("are visible to their owner", async () => {
+            expect.assertions(1);
+            const { loggedIn, id } = await getLoggedInUser();
+            const { id: about } = await getLoggedInUser();
+            const commentData = await createComment(loggedIn, about, 'user', true);
+            const commentsData = await commentsByUser(loggedIn, id);
+            expect(commentData.addComment.id).toBe(commentsData.user.comments.edges[0].node.id);
+        });
+        it ("are visible to their recipient", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id } = await getLoggedInUser();
+            const { loggedIn: recipient, id: about } = await getLoggedInUser();
+            const commentData = await createComment(sender, about, 'user', true);
+            const messagesData = await messagesForUser(recipient, about);
+            expect(commentData.addComment.id).toBe(messagesData.user.messages.edges[0].node.id);
+        });
+        it ("are visible to their sender on the recipient", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id } = await getLoggedInUser();
+            const { loggedIn: recipient, id: about } = await getLoggedInUser();
+            const commentData = await createComment(sender, about, 'user', true);
+            const messagesData = await messagesForUser(sender, about);
+            expect(commentData.addComment.id).toBe(messagesData.user.messages.edges[0].node.id);
+        });
+        it ("are visible to the recipient on the sender", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', true);
+            const commentsData = await commentsByUser(recipient, senderId);
+            expect(commentData.addComment.id).toBe(commentsData.user.comments.edges[0].node.id);
+        });
+        it ("are not visible to a third party", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const { loggedIn: thirdParty, id: thirdPartyId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', true);
+            const commentsData = await commentsByUser(thirdParty, senderId);
+            expect(commentsData.user.comments.edges[0].node).toBe(null);
+        });
+        it ("are visible to the owner of a referenced entity", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', true);
+            const replyData = await createComment(recipient, commentData.addComment.id, 'comment', true);
+            const repliesData = await repliesToComment(sender, commentData.addComment.id);
+            expect(replyData.addComment.id).toBe(repliesData.comment.replies.edges[0].node.id);
+        });
+        it ("are visible to the sender on a referenced entity", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', true);
+            const replyData = await createComment(recipient, commentData.addComment.id, 'comment', true);
+            const repliesData = await repliesToComment(recipient, commentData.addComment.id);
+            expect(replyData.addComment.id).toBe(repliesData.comment.replies.edges[0].node.id);
+        });
+        it ("are forced to be private if they refer to a private entity", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', true);
+            const replyData = await createComment(recipient, commentData.addComment.id, 'comment', false);
+            expect(replyData.addComment.private).toBe(true);
+        });
+        it ("are allowed to be public if they do not refer to a private entity", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', false);
+            const replyData = await createComment(recipient, commentData.addComment.id, 'comment', false);
+            expect(replyData.addComment.private).toBe(false);
+        });
     });
 });

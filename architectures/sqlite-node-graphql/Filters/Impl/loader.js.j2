@@ -116,7 +116,6 @@ class ReferrerLoader extends AbstractLoader {
 }
 
 class ReferrerCountLoader extends AbstractLoader {
-
     async loadBatch(keys) {
         const ids_and_args = keys.map(key => this.lookup[key]);
         const referrerCounts = await this.batch_get(ids_and_args);
@@ -198,29 +197,29 @@ class SelfReferentialAssociationCountLoader extends AbstractLoader {
 }
 
 class Loader {
-    constructor(data) {
-        this.data = data;
+    constructor(db) {
+        this.db = db;
 
 {%- for entity in schema.get_entities() %}
 
         this.{{ loader.entity(entity) }}Object = new DataLoader(async ids => {
-            return this.data.{{ data.batch_get_entity(entity) }}(ids);
+            return this.db.{{ data.batch_get_entity(entity) }}(ids);
         });
 
         this.{{ loader.entities(entity) }}Object = new EntityLoader({
             loader: () => this.{{ loader.entity(entity) }}Object,
-            page_get: async args => this.data.{{ data.page_get_entity(entity) }}(args),
+            page_get: async args => this.db.{{ data.page_get_entity(entity) }}(args),
             name: '{{ loader.entities(entity) }}'
         });
 
         this.{{ loader.count_entities(entity) }}Object = new EntityCountLoader({
-            page_get: async args => this.data.{{ data.count_entities(entity) }}(args)
+            page_get: async args => this.db.{{ data.count_entities(entity) }}(args)
         });
 
 {%-     for referrer in entity.get_referrers() %}
 
         this.{{ loader.referrer(referrer) }}Object = new ReferrerLoader({
-            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_referrer(referrer) }}(ids_and_args),
+            batch_get: async (ids_and_args) => this.db.{{ data.batch_get_referrer(referrer) }}(ids_and_args),
             entity_loader: () => this.{{ loader.entity(referrer.get_entity()) }}Object,
             referrer_column: '{{ referrer.get_column_name() }}',
             name: '{{ loader.referrer(referrer) }}'
@@ -228,7 +227,7 @@ class Loader {
 
         this.{{ loader.count_referrer(referrer) }}Object = new ReferrerCountLoader({
             name: '{{ loader.count_referrer(referrer) }}',
-            batch_get: async (ids_and_args) => this.data.{{ data.batch_count_referrer(referrer) }}(ids_and_args)
+            batch_get: async (ids_and_args) => this.db.{{ data.batch_count_referrer(referrer) }}(ids_and_args)
         });
 {%-     endfor %}
 
@@ -237,7 +236,7 @@ class Loader {
 {%-         if association.is_self_referential() %}
 
         this.{{ loader.association_for_entity(entity, association) }}Object = new SelfReferentialAssociationLoader({
-            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
+            batch_get: async (ids_and_args) => this.db.{{ data.batch_get_association(entity, association) }}(ids_and_args),
             lhs_column: '{{ gql.lhs(association) }}',
             rhs_column: '{{ gql.rhs(association) }}',
             name: '{{ loader.association_for_entity(entity, association) }}'
@@ -245,13 +244,13 @@ class Loader {
 
         this.{{ loader.count_association_for_entity(entity, association) }}Object = new SelfReferentialAssociationCountLoader({
             name: '{{ loader.count_association_for_entity(entity, association) }}',
-            batch_get: async (ids_and_args) => this.data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
+            batch_get: async (ids_and_args) => this.db.{{ data.batch_count_association(entity, association) }}(ids_and_args)
         });
 
 {%-         else %}
 
         this.{{ loader.association_for_entity(entity, association) }}Object = new AssociationLoader({
-            batch_get: async (ids_and_args) => this.data.{{ data.batch_get_association(entity, association) }}(ids_and_args),
+            batch_get: async (ids_and_args) => this.db.{{ data.batch_get_association(entity, association) }}(ids_and_args),
             this_column: '{{ gql.this_column(entity, association) }}',
             other_column: '{{ gql.other_column(entity, association) }}',
             name: '{{ loader.association_for_entity(entity, association) }}'
@@ -259,7 +258,7 @@ class Loader {
 
         this.{{ loader.count_association_for_entity(entity, association) }}Object = new AssociationCountLoader({
             name: '{{ loader.count_association_for_entity(entity, association) }}',
-            batch_get: async ids_and_args => this.data.{{ data.batch_count_association(entity, association) }}(ids_and_args)
+            batch_get: async ids_and_args => this.db.{{ data.batch_count_association(entity, association) }}(ids_and_args)
         });
 {%-         endif %}
 {%-     endfor %}
@@ -283,25 +282,25 @@ class Loader {
 
 {%- for entity in schema.get_entities() %}
 
-    {{ loader.entity(entity) }}(id) {
+    {{ loader.entity(entity) }}(id, context) {
         return this.{{ loader.entity(entity) }}Object.load(id);
     }
 
-    {{ loader.entities(entity) }}(args) {
+    {{ loader.entities(entity) }}(args, context) {
         return this.{{ loader.entities(entity) }}Object.load(args);
     }
 
-    {{ loader.count_entities(entity) }}(args) {
+    {{ loader.count_entities(entity) }}(args, context) {
         return this.{{ loader.count_entities(entity) }}Object.load(args);
     }
 
 {%-     for referrer in entity.get_referrers() %}
 
-    {{ loader.referrer(referrer) }}(id, args) {
+    {{ loader.referrer(referrer) }}(id, args, context) {
         return this.{{ loader.referrer(referrer) }}Object.load(id, args);
     }
 
-    {{ loader.count_referrer(referrer) }}(id, args) {
+    {{ loader.count_referrer(referrer) }}(id, args, context) {
         return this.{{ loader.count_referrer(referrer) }}Object.load(id, args);
     }
 
@@ -309,11 +308,11 @@ class Loader {
 
 {%-     for association in entity.get_associations() %}
 
-    {{ loader.association_for_entity(entity, association) }}(id, args) {
+    {{ loader.association_for_entity(entity, association) }}(id, args, context) {
         return this.{{ loader.association_for_entity(entity, association) }}Object.load(id, args);
     }
 
-    {{ loader.count_association_for_entity(entity, association) }}(id, args) {
+    {{ loader.count_association_for_entity(entity, association) }}(id, args, context) {
         return this.{{ loader.count_association_for_entity(entity, association) }}Object.load(id, args);
     }
 

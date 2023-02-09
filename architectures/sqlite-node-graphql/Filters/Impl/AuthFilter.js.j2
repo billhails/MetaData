@@ -17,9 +17,10 @@
 -#}
 // {{ warning }}
 
-{% import 'macros/resolver.j2h' as resolve %}
-{% import 'macros/gql.j2h' as gql %}
-{% import 'macros/model.j2h' as model %}
+{%- import 'macros/resolver.j2h' as resolve %}
+{%- import 'macros/gql.j2h' as gql %}
+{%- import 'macros/model.j2h' as model %}
+{%- import 'macros/database.j2h' as database %}
 
 const logger = require('../../Utils/logger');
 const xss = require('../../Utils/xss');
@@ -37,19 +38,43 @@ const Model = require('../../Model');
 {%- endif %}
 {%- endmacro %}
 
-
-{% macro owner_label(entity) %}{{ gql.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
-
+{%- macro owner_label(entity) %}{{ gql.field_label(entity.get_auth_owner_reference()) }}{% endmacro %}
+{%- macro redact_field_for_entity(entity, field) %}redact{{ field.get_name() | mixed_case }}For{{ entity.get_name() | mixed_case }}{% endmacro %}
+{%- macro process_entity(entity) %}process{{ entity.get_name() | mixed_case | singular }}{% endmacro %}
+{%- macro process_entities(entity) %}process{{ entity.get_name() | mixed_case }}{% endmacro %}
+{%- macro cache_key(entity) %}{{ entity.get_name() }}{% endmacro %}
 /**
  * This class is an imperfect decorator of a downstream filter/transform, which adds auth and security checks.
  */
 class AuthFilter {
     constructor(resolver) {
         this.resolver = resolver;
+        this.cache = {};
     }
 
     clearAll() {
         this.resolver.clearAll();
+        this.cache = {};
+    }
+
+    addToCache(entityType, model) {
+        if (!(entityType in this.cache)) {
+            this.cache[entityType] = {};
+        }
+        this.cache[entityType][model.id] = model;
+    }
+
+    findInCache(entityType, id) {
+        if (!(entityType in this.cache)) {
+            logger.error(`failed to find entity type "${entityType}" in AuthFilter cache`);
+            return null;
+        }
+        if (!(id in this.cache[entityType])) {
+            logger.error(`failed to find ${entityType} "${id}" in AuthFilter cache`);
+            return null;
+        }
+        logger.debug(`found ${entityType} "${id}" in AuthFilter cache`);
+        return this.cache[entityType][id];
     }
 
     mapConnection(connection, transform) {
@@ -66,7 +91,7 @@ class AuthFilter {
 {%-         if field.is_auth_visibility('redacted') %}
 
     // redact field for entity
-    {{ resolve.redact_field_for_entity(entity, field) }}(model, req) {
+    {{ redact_field_for_entity(entity, field) }}(model, req) {
         if (!req.user || (req.user.sub != model.{{ owner_label(entity) }} && !this.isAdmin(req))) {
             model.{{ gql.field_label(field) }} = null;
         }
@@ -76,43 +101,93 @@ class AuthFilter {
 {%-     endfor %}
 
     // post-process entity
-    {{ resolve.process_entity(entity) }}(model, req) {
+    {{ process_entity(entity) }}(model, req) {
         if (!model) {
             return null;
         }
+        this.addToCache('{{ cache_key(entity) }}', model);
 {%-     if entity.is_auth_visibility("hidden") %}
         if (!req.user || (req.user.sub != model.{{ owner_label(entity) }} && !this.isAdmin(req))) {
             return null;
         }
 {%-     endif %}
+{%-     if entity.has_privacy_field() %}
+        if (model.{{ gql.field_label(entity.get_privacy_field()) }}) {
+            if (!req.user) { // logged-out users can't see private entities
+                return null;
+            }
+            if (!this.isAdmin(req)) {
+                let allowed = false;
+{%-         for reference in entity.get_references() %}
+{%-             if reference.get_referenced().is_auth_role('owner') %}
+                if (!allowed) { // A
+                    if (req.user.sub == model.{{ gql.field_label(reference) }}) {
+                        allowed = true;
+                    }
+                }
+{%-             elif reference.get_referenced().has_auth_owner() %}
+                if (!allowed) { // B
+                    const ref = this.findInCache('{{ cache_key(reference.get_referenced()) }}', model.{{ gql.field_label(reference) }});
+                    if (ref && req.user.sub == ref.{{ owner_label(reference.get_referenced() )}}) {
+                        allowed = true;
+                    }
+                }
+{%-             endif %}
+{%-         endfor %}
+{%-         for union in entity.get_unions() %}
+{%-             for reference in union.get_references() %}
+{%-                 if reference.get_referenced().is_auth_role('owner') %}
+                if (!allowed && model.{{gql.field_type(union)}} == "{{ database.name(reference) }}") { // C
+                    if (req.user.sub == model.{{ gql.field_label(union) }}) {
+                        allowed = true;
+                    }
+                }
+{%-                 elif reference.get_referenced().has_auth_owner() %}
+                if (!allowed && model.{{gql.field_type(union)}} == "{{ database.name(reference) }}") { // D
+                    const ref = this.findInCache('{{ cache_key(reference.get_referenced()) }}', model.{{ gql.field_label(union) }});
+                    if (ref && req.user.sub == ref.{{ owner_label(reference.get_referenced() )}}) {
+                        allowed = true;
+                    }
+                }
+{%-                 endif %}
+{%-             endfor %}
+{%-         endfor %}
+                if (!allowed) {
+                    return null;
+                }
+            }
+        }
+{%-     endif %}
 {%-     for field in entity.get_fields() %}
 {%-         if field.is_auth_visibility('redacted') %}
-        this.{{ resolve.redact_field_for_entity(entity, field) }}(model, req);
+        this.{{ redact_field_for_entity(entity, field) }}(model, req);
 {%-         endif %}
 {%-     endfor %}
         return model;
     }
 
     // post-process entities connection
-    {{ resolve.process_entities(entity) }}(connection, req) {
+    {{ process_entities(entity) }}(connection, req) {
         if (!connection) {
             return null;
         }
-        this.mapConnection(connection, model => this.{{ resolve.process_entity(entity)}}(model, req));
+        this.mapConnection(connection, model => this.{{ process_entity(entity)}}(model, req));
         return connection;
     }
 
 {%-    if entity.is_auth_role('owner') %}
 
+    // resolve owner
     async {{ resolve.owner() }}(source, args, req, info) {
-        {{ auth_check('req', entity, 'null') }}
+        {{- auth_check('req', entity, 'null') }}
         return this.{{ resolve.entity(entity) }}(source, { id: req.user.sub }, req, info);
     }
 
 {%-        for referrer in entity.get_referrers() %}
 
+    // resolve owned entities
     async {{ resolve.owned_entities(referrer) }}(source, args, req, info) {
-        {{ auth_check('req', referrer.get_entity(), 'null') }}
+        {{- auth_check('req', referrer.get_entity(), 'null') }}
         return this.{{ resolve.referrer_for_entity(entity, referrer) }}({ id: req.user.sub }, args, req, info)
     }
 
@@ -120,8 +195,9 @@ class AuthFilter {
 
 {%-        for association in entity.get_associations() %}
 
+    // resolve owned association for entity
     async {{ resolve.owned_association_for_entity(entity, association) }}(source, args, req, info) {
-        {{ auth_check('req', association.get_other(entity), 'null') }}
+        {{- auth_check('req', association.get_other(entity), 'null') }}
         return this.{{ resolve.association_for_entity(entity, association) }}({ id: req.user.sub }, args, req, info);
     }
 
@@ -131,19 +207,19 @@ class AuthFilter {
 
     // resolve entity
     async {{ resolve.entity(entity) }}(source, args, req, info) {
-        return this.{{ resolve.process_entity(entity) }}(await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info), req);
+        return this.{{ process_entity(entity) }}(await this.resolver.{{ resolve.entity(entity) }}(source, args, req, info), req);
     }
 
     // resolve entities
     async {{ resolve.entities(entity) }}(source, args, req, info) {
-        return this.{{ resolve.process_entities(entity) }}(await this.resolver.{{ resolve.entities(entity) }}(source, args, req, info), req);
+        return this.{{ process_entities(entity) }}(await this.resolver.{{ resolve.entities(entity) }}(source, args, req, info), req);
     }
 
 {%-     for reference in entity.get_references() %}
 
     // resolve reference for entity
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info) {
-        return this.{{ resolve.process_entity(reference.get_referenced()) }}(await this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info), req);
+        return this.{{ process_entity(reference.get_referenced()) }}(await this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
@@ -155,7 +231,7 @@ class AuthFilter {
         const model = await this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req, info);
 {%-         for reference in union.get_references() %}
         if (model instanceof Model.{{ model.name(reference.get_referenced()) }}) {
-            return this.{{ resolve.process_entity(reference.get_referenced()) }}(model, req);
+            return this.{{ process_entity(reference.get_referenced()) }}(model, req);
         }
 {%-         endfor %}
         return null;
@@ -167,7 +243,7 @@ class AuthFilter {
 
     // resolve referrer for entity
     async {{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info) {
-        return this.{{ resolve.process_entities(referrer.get_entity()) }}(await this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info), req);
+        return this.{{ process_entities(referrer.get_entity()) }}(await this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
@@ -176,7 +252,7 @@ class AuthFilter {
 
     // resolve association for entity
     async {{ resolve.association_for_entity(entity, association) }}(entity, args, req, info) {
-        return this.{{ resolve.process_entities(association.get_other(entity)) }}(await this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req, info), req);
+        return this.{{ process_entities(association.get_other(entity)) }}(await this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req, info), req);
     }
 
 {%-     endfor %}
@@ -244,6 +320,7 @@ class AuthFilter {
 
 {%-     for lhs in association.get_lhs().get_unique_fields() %}
 
+    // resolve create association lhs
     async {{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info) {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info);
@@ -251,11 +328,13 @@ class AuthFilter {
 
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
+    // resolve create association lhs rhs
     async {{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info) {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info);
     }
 
+    // resolve create association rhs
     async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info);
@@ -265,6 +344,7 @@ class AuthFilter {
 {%-     else %}
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
+    // resolve create association rhs
     async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
         {{- auth_check('req', association, '{ status: false }') }}
         return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info);

@@ -22,9 +22,7 @@
 
 const logger = require('../../Utils/logger');
 const util = require('util');
-const {
-	parseResolveInfo
-} = require('graphql-parse-resolve-info');
+const { parseResolveInfo } = require('graphql-parse-resolve-info');
 
 /**
  * convert graphql requests to dataloader requests and translate the raw data responses to GraphQL structures
@@ -36,21 +34,6 @@ class GraphQLFilter {
 
     clearAll() {
         this.resolver.clearAll();
-    }
-
-    idToCursor(id) {
-        return Buffer.from(id.replaceAll('-', ''), 'hex').toString('base64');
-    }
-
-    cursorToId(cursor) {
-        const hex = Buffer.from(cursor, 'base64').toString('hex');
-        return [
-            hex.substring(0, 8),
-            hex.substring(8, 12),
-            hex.substring(12, 16),
-            hex.substring(16, 20),
-            hex.substring(20, 32)
-        ].join('-');
     }
 
     makeConnection(rows, count) {
@@ -73,21 +56,21 @@ class GraphQLFilter {
 {%- for entity in schema.get_entities() %}
 
     async {{ resolve.entity(entity) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.entity(entity) }}(source, args);
+        return this.resolver.{{ resolve.entity(entity) }}(source, args, req, info);
     }
 
     async {{ resolve.entities(entity) }}(source, args, req, info) {
         const parsedInfo = parseResolveInfo(info);
         let totalCount = 0;
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(entity) }}?.totalCount) {
-            const countResult = await this.resolver.{{ resolve.count_entities(entity) }}(source, args, info);
+            const countResult = await this.resolver.{{ resolve.count_entities(entity) }}(source, args, req, info);
             totalCount = countResult.count || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0);
             }
         }
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(entity) }}?.edges) {
-            return this.resolver.{{ resolve.entities(entity) }}(source, args).then(page => this.makeConnection(page, totalCount));
+            return this.resolver.{{ resolve.entities(entity) }}(source, args, req, info).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount);
     }
@@ -95,7 +78,7 @@ class GraphQLFilter {
 {%-     for reference in entity.get_references() %}
 
     async {{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args);
+        return this.resolver.{{ resolve.reference_for_entity(entity, reference) }}(entity, args, req, info);
     }
 
 {%-     endfor %}
@@ -103,7 +86,7 @@ class GraphQLFilter {
 {%-     for union in entity.get_unions() %}
 
     async {{ resolve.union_for_entity(entity, union) }}(entity, args, req, info) {
-        return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args);
+        return this.resolver.{{ resolve.union_for_entity(entity, union) }}(entity, args, req, info);
     }
 
 {%-     endfor %}
@@ -114,14 +97,14 @@ class GraphQLFilter {
         const parsedInfo = parseResolveInfo(info);
         let totalCount = 0;
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.totalCount) {
-            const countResult = await this.resolver.{{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, info);
+            const countResult = await this.resolver.{{ resolve.count_referrers_for_entity(entity, referrer) }}(entity, args, req, info);
             totalCount = countResult.count || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0);
             }
         }
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(referrer.get_entity()) }}?.edges) {
-            return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args).then(page => this.makeConnection(page, totalCount));
+            return this.resolver.{{ resolve.referrer_for_entity(entity, referrer) }}(entity, args, req, info).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount)
     }
@@ -134,14 +117,14 @@ class GraphQLFilter {
         const parsedInfo = parseResolveInfo(info);
         let totalCount = 0;
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(association.get_other(entity)) }}?.totalCount) {
-            const countResult = await this.resolver.{{ resolve.count_association_for_entity(entity, association) }}(entity, args);
+            const countResult = await this.resolver.{{ resolve.count_association_for_entity(entity, association) }}(entity, args, req, info);
             totalCount = countResult || 0;
             if (totalCount == 0) {
                 return this.makeConnection([], 0)
             }
         }
         if (parsedInfo.fieldsByTypeName?.{{ gql.entity_connection(association.get_other(entity)) }}?.edges) {
-            return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args).then(page => this.makeConnection(page, totalCount));
+            return this.resolver.{{ resolve.association_for_entity(entity, association) }}(entity, args, req, info).then(page => this.makeConnection(page, totalCount));
         }
         return this.makeConnection([], totalCount);
     }
@@ -149,16 +132,15 @@ class GraphQLFilter {
 {%-     endfor %}
 
     async {{ resolve.create_entity(entity) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_entity(entity) }}(source, args);
+        return this.resolver.{{ resolve.create_entity(entity) }}(source, args, req, info);
     }
 
-
     async {{ resolve.update_entity(entity) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.update_entity(entity) }}(source, args);
+        return this.resolver.{{ resolve.update_entity(entity) }}(source, args, req, info);
     }
 
     async {{ resolve.delete_entity(entity) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.delete_entity(entity) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.delete_entity(entity) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%- endfor %}
@@ -166,23 +148,23 @@ class GraphQLFilter {
 {%- for association in schema.get_associations() %}
 
     async {{ resolve.create_association(association) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_association(association) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.create_association(association) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%-     for lhs in association.get_lhs().get_unique_fields() %}
 
     async {{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_association_lhs(association, lhs) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.create_association_lhs(association, lhs) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
     async {{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.create_association_lhs_rhs(association, lhs, rhs) }}(source, args, req, info).then(status => ({status}));
     }
 
     async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%-         endfor %}
@@ -190,14 +172,14 @@ class GraphQLFilter {
 {%-         for rhs in association.get_rhs().get_unique_fields() %}
 
     async {{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.create_association_rhs(association, rhs) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%-         endfor %}
 {%-     endfor %}
 
     async {{ resolve.delete_association(association) }}(source, args, req, info) {
-        return this.resolver.{{ resolve.delete_association(association) }}(source, args).then(status => ({status}));
+        return this.resolver.{{ resolve.delete_association(association) }}(source, args, req, info).then(status => ({status}));
     }
 
 {%- endfor %}

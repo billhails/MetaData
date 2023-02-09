@@ -42,11 +42,11 @@
         <reference name="owner" references="users" auth-role="owner"/>
         <!-- unions are discriminated foreign keys, this "about" union can refer to a user, post or comment -->
         <union name="about">
-            <reference name="user" references="users" inverse="comments_about_me"/>
+            <reference name="user" references="users" inverse="messages"/>
             <reference name="post" references="posts"/>
             <reference name="comment" references="comments" inverse="replies"/>
         </union>
-        <field name="private" type="boolean" default="false" auth-role="redact"/>
+        <field name="private" type="boolean" default="false" auth-role="private"/>
     </entity>
 
     <entity name="likes" auth-access="owner">

@@ -76,15 +76,6 @@ class Entity(Container):
         self.validate_auth_references('token', ['owner'])
         self.validate_components()
 
-    def has_auth_role(self):
-        return self.has_attribute_not('auth-role', 'none')
-
-    def has_auth_owner(self):
-        for reference in self.get_references():
-            if reference.is_auth_role('owner'):
-                return True
-        return False
-
     def validate_auth_fields(self, entity_role, field_roles):
         self.validate_auth_components(entity_role, field_roles, self.get_fields())
 
@@ -114,6 +105,27 @@ class Entity(Container):
     def validate_components(self):
         for component in self.components:
             component.validate()
+
+    def has_auth_role(self):
+        return self.has_attribute_not('auth-role', 'none')
+
+    def has_privacy_field(self):
+        for field in self.get_fields():
+            if field.is_auth_role('private'):
+                return True
+        return False
+
+    def get_privacy_field(self):
+        for field in self.get_fields():
+            if field.is_auth_role('private'):
+                return field
+        return None
+
+    def has_auth_owner(self):
+        for reference in self.get_references():
+            if reference.is_auth_role('owner'):
+                return True
+        return False
 
     def has_only_auth_components(self):
         for field in self.get_fields():

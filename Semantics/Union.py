@@ -23,12 +23,25 @@ class Union(Container):
     This class represents a <union> element (discriminated union of references)
     contained by an <entity> and containing <reference> elements
     """
+
     type = "Union"
     allowed_components = ['Reference']
 
+    def __init__(self, attributes, components):
+        super().__init__(attributes, components)
+        self.container = None
+
+    def is_auth_enabled(self):
+        return self.container.is_auth_enabled()
+
     def build(self, entity):
+        self.container = entity
         for component in self.components:
             component.build(entity, self)
 
+    
     def get_references(self):
         return self.components
+
+    def size(self):
+        return len(self.components)

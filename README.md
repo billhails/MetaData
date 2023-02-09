@@ -94,6 +94,8 @@ This is also useful because it will populate the database.
 If you'd like to see opentelemetry traces, install and run
 [Jaeger](https://www.jaegertracing.io/docs/1.41/getting-started/).
 The application will export telemetry to Jaeger if available.
+One really good reason for doing this is that the graphql-js opentelemetry plugin will
+log full errors with stack traces into jaeger, which are otherwise not available (WHY???!!!).
 
 ## Postman
 
@@ -162,7 +164,7 @@ Lots, but specifically
 * think about how to share templates across architectures - later (see [dev-notes](dev-notes.md))
 * think about using the null object pattern for redacted and/or missing data
 * enumerations - done
-* more data types (date, money, boolean, e-mail &c.)
+* more data types (date, money, e-mail, url &c.)
 * consider a Semantics.Type class to encapsulate the types of fields
 * add another demo with a very different use case (retail?)
 * add another architecture (php-mysql-rest?)
