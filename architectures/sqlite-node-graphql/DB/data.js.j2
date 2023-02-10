@@ -309,12 +309,20 @@ class Data {
             return;
         }
 {%-             endif %}
+{%-             if reference.get_referenced().is_auth_role('owner') and not reference.is_auth_role('owner') %}
+{#- this would be silly, but by the rules if a private entity has a direct reference to an owner other than its own, then it must always be private #}
+        model.{{ gql.field_label(entity.get_privacy_field()) }} = true;
+        return;
+{%-             endif %}
 {%-         endfor %}
 {%-         for union in entity.get_unions() %}
         switch (model.{{ gql.field_type(union) }}) {
 {%-             for reference in union.get_references() %}
             case "{{ database.name(reference) }}":
-{%-                 if reference.get_referenced().has_privacy_field() %}
+{%-                 if reference.get_referenced().is_auth_role('owner') and not reference.is_auth_role('owner') %}
+                model.{{ gql.field_label(entity.get_privacy_field()) }} = true;
+                return;
+{%-                 elif reference.get_referenced().has_privacy_field() %}
                 row = await this.get(`
                     SELECT count(*) AS count
                     FROM {{ database.name(reference.get_referenced()) }}

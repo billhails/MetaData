@@ -59,6 +59,13 @@
 
 {% macro add_association_label(association) %}add{{ association.get_name() | mixed_case | singular }}Association{% endmacro %}
 {% macro add_association_label_lhs(association, field) -%}
+{%-  if association.is_self_referential() -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- field.get_name() | mixed_case -}}
+    AndId
+{%-  else -%}
     add
     {{- association.get_name() | mixed_case | singular -}}
     AssociationBy
@@ -67,8 +74,15 @@
     And
     {{- association.get_rhs().get_name() | mixed_case -}}
     Id
+{%-  endif -%}
 {%- endmacro %}
 {% macro add_association_label_rhs(association, field) -%}
+{%-  if association.is_self_referential() -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationByIdAnd
+    {{- field.get_name() | mixed_case -}}
+{%-  else -%}
     add
     {{- association.get_name() | mixed_case | singular -}}
     AssociationBy
@@ -76,8 +90,24 @@
     IdAnd
     {{- association.get_rhs().get_name() | mixed_case -}}
     {{- field.get_name() | mixed_case -}}
+{%-  endif -%}
 {%- endmacro %}
 {% macro add_association_label_lhs_rhs(association, lhs_field, rhs_field) -%}
+{%- if association.is_self_referential() -%}
+{%-   if lhs_field.get_name() == rhs_field.get_name() -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- lhs_field.get_name() | mixed_case -}}
+{%-   else -%}
+    add
+    {{- association.get_name() | mixed_case | singular -}}
+    AssociationBy
+    {{- lhs_field.get_name() | mixed_case -}}
+    And
+    {{- rhs_field.get_name() | mixed_case -}}
+{%-   endif -%}
+{%- else -%}
     add
     {{- association.get_name() | mixed_case | singular -}}
     AssociationBy
@@ -86,6 +116,7 @@
     And
     {{- association.get_rhs().get_name() | mixed_case -}}
     {{- rhs_field.get_name() | mixed_case -}}
+{%- endif -%}
 {%- endmacro %}
 
 {% macro update_entity(entity) %}Update{{ entity.get_name() | mixed_case | singular }}{% endmacro %}

@@ -142,9 +142,10 @@ describe("comments", () => {
         });
         it("can be marked as public", async () => {
             expect.assertions(1);
-            const { loggedIn, id } = await getLoggedInUser();
-            const { id: about } = await getLoggedInUser();
-            const data = await createComment(loggedIn, about, 'user', false);
+            const { loggedIn: poster } = await getLoggedInUser();
+            const { loggedIn: commenter } = await getLoggedInUser();
+            const post = await createPost(poster);
+            const data = await createComment(commenter, post.addPost.id, 'post', false);
             expect(data.addComment?.private).toBe(false);
         });
     });
@@ -227,9 +228,16 @@ describe("comments", () => {
             expect.assertions(1);
             const { loggedIn: sender, id: senderId } = await getLoggedInUser();
             const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
-            const commentData = await createComment(sender, recipientId, 'user', false);
-            const replyData = await createComment(recipient, commentData.addComment.id, 'comment', false);
+            const postData = await createPost(sender);
+            const replyData = await createComment(recipient, postData.addPost.id, 'post', false);
             expect(replyData.addComment.private).toBe(false);
+        });
+        it ("are forced to be private if they refer to a user", async () => {
+            expect.assertions(1);
+            const { loggedIn: sender, id: senderId } = await getLoggedInUser();
+            const { loggedIn: recipient, id: recipientId } = await getLoggedInUser();
+            const commentData = await createComment(sender, recipientId, 'user', false);
+            expect(commentData.addComment.private).toBe(true);
         });
     });
 });
