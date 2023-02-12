@@ -19,9 +19,25 @@ from jinja2 import StrictUndefined, Environment, BaseLoader, TemplateNotFound
 import os
 import inflect
 import shutil
+import csv
 
 
 inflection = inflect.engine()
+
+def currencies():
+    first = True
+    headers = []
+    results = {}
+    with open('./data/currency-codes.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if first:
+                headers = row
+                first = False
+            else:
+                row_map = { x[0]: x[1] for x in zip(headers, row) }
+                results[row_map['ALPHABETIC_CODE']] = row_map
+    return results
 
 def mixed_case(string):
     """
@@ -78,6 +94,7 @@ class TemplateProcessor:
             self.input_roots.append(os.path.join(extra_root, architecture))
         print('input_roots', self.input_roots)
         self.semantics = semantics
+        self.currencies = currencies()
         self.output_root = output_root
         self.environment = Environment(autoescape=False, loader=MetaDataLoader(self.input_roots), undefined=StrictUndefined)
         self.environment.filters["singular"] = inflection.singular_noun
@@ -90,6 +107,7 @@ class TemplateProcessor:
         data['warning'] = "Automatically generated from architectures/{}/{} - DO NOT EDIT".format(self.architecture, template)
         data['output'] = self.output_root
         data['architecture'] = self.architecture
+        data['currencies'] = self.currencies
         print(template, '->', target)
         j2_template = self.environment.get_template(template)
         result = j2_template.render(data)

@@ -28,4 +28,5 @@ module.exports = {
 {% for association in schema.get_associations() %}
     {{ model.association(association) }}: require('./associations/{{ association.get_name() }}'),
 {% endfor %}
+    Money: require('./types/money.js'),
 };

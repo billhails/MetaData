@@ -38,6 +38,7 @@ const {
     GraphQLString,
     GraphQLID,
     GraphQLSchema,
+    Kind,
     printSchema
 } = require('graphql');
 const logger = require('../Utils/logger');
@@ -121,6 +122,32 @@ function build(catalogue, resolver) {
         }
     }));
     catalogue.addType('{{ gql.non_null(gql.page_info()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.page_info() }}')));
+
+    catalogue.addType('{{ gql.money() }}', () => new GraphQLScalarType({
+        name: 'Money',
+        description: 'A money representation: <currency> <int>.<int>',
+        serialize: (value) => {
+            if (value instanceof Model.Money) {
+                return value.toString();
+            }
+            throw new Error('GraphQL Money scalar serializer expected a Money object');
+        },
+        parseValue(value) {
+            if (typeof value == 'string') {
+                const money = new Model.Money(value);
+                return money;
+            }
+            throw new Error('GraphQL Money parser expected a string');
+        },
+        parseLiteral(ast) {
+            if (ast.kind === Kind.STRING) {
+                return new Model.Money(ast.value);
+            }
+            return null;
+        }
+    }));
+
+    catalogue.addType('{{ gql.non_null(gql.money()) }}', () => new GraphQLNonNull(catalogue.getType('{{ gql.money() }}')));
 
 {%-     for enum in schema.get_enums() %}
 

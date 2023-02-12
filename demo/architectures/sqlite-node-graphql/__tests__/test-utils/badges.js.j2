@@ -23,15 +23,16 @@ const { gql } = require('../test-utils/graphql');
 function randomBadge(awardedTo, badge=false) {
     return {
         badge: badge || faker.helpers.arrayElement(['hero', 'star']),
-        awardedTo
+        awardedTo,
+        amount: "USD 12.00"
     }
 }
 
 function createBadgeMutation(awardedTo, badgeEnum=false) {
     const badge = randomBadge(awardedTo, badgeEnum);
     return {
-        mutation: gql`mutation AddBadge($badge: BadgeEnum!, $awardedTo: ID!) {
-            addBadge(input: {badge: $badge, awardedTo: $awardedTo}) {
+        mutation: gql`mutation AddBadge($badge: BadgeEnum!, $awardedTo: ID!, $amount: Money!) {
+            addBadge(input: {badge: $badge, awardedTo: $awardedTo, amount: $amount}) {
                 id
                 badge
                 awardedTo {
@@ -40,11 +41,13 @@ function createBadgeMutation(awardedTo, badgeEnum=false) {
                 awardedBy {
                     id
                 }
+                amount
             }
         }`,
         variables: {
             badge: badge.badge,
-            awardedTo: badge.awardedTo
+            awardedTo: badge.awardedTo,
+            amount: badge.amount
         }
     }
 }

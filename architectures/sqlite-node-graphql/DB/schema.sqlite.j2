@@ -20,18 +20,9 @@
 -- The SQLite database schema
 
 {%- macro sqlite_type(type, name) %}
-{%- if type == "string" %}TEXT
-{%- elif type == "title" %}TEXT
-{%- elif type == "text" %}TEXT
-{%- elif type == "small_string" %}TEXT
-{%- elif type == "email" %}TEXT
-{%- elif type == "name" %}TEXT
-{%- elif type == "password" %}TEXT
-{%- elif type == "token" %}TEXT
-{%- elif type == "guid" %}TEXT CHECK(LENGTH(`{{ name }}` == 36))
-{%- elif type == "date" %}TEXT
+{%- if type == "guid" %}TEXT CHECK(LENGTH(`{{ name }}` == 36))
 {%- elif type == "boolean" %}INTEGER CHECK(`{{ name }}` IN (0, 1))
-{%- else %}???
+{%- else %}TEXT
 {%- endif %}
 {%- endmacro %}
 
@@ -40,18 +31,8 @@ TEXT NOT NULL DEFAULT "{{ enum.get_first_option().get_name() }}" CHECK(`{{ datab
 {%- endmacro %}
 
 {%- macro sqlite_make_type(type, value) %}
-{%- if type == "string" %}"{{ value }}"
-{%- elif type == "title" %}"{{ value }}"
-{%- elif type == "text" %}"{{ value }}"
-{%- elif type == "small_string" %}"{{ value }}"
-{%- elif type == "email" %}"{{ value }}"
-{%- elif type == "name" %}"{{ value }}"
-{%- elif type == "password" %}"{{ value }}"
-{%- elif type == "token" %}"{{ value }}"
-{%- elif type == "guid" %}"{{ value }}"
-{%- elif type == "date" %}"{{ value }}"
-{%- elif type == "boolean" %}{% if value == "true" %}1{% else %}0{% endif %}
-{%- else %}???
+{%- if type == "boolean" %}{% if value == "true" %}1{% else %}0{% endif %}
+{%- else %}"{{ value }}"
 {%- endif %}
 {%- endmacro %}
 

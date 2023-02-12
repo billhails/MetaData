@@ -20,6 +20,7 @@
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../../Utils/logger');
 const util = require('util');
+const Money = require('../types/money');
 
 {%- import 'macros/gql.j2h' as gql %}
 {%- import 'macros/database.j2h' as database %}
@@ -34,12 +35,24 @@ class {{ model.name(entity) }} {
 {%- for field in entity.get_fields() %}
 {%-     if field.has_default() %}
         if ('{{ gql.field_label(field) }}' in args) {
+{%-         if field.get_type() == "money" %}
+            this.{{ gql.field_label(field) }} = this.ensureMoney(args.{{ gql.field_label(field) }});
+{%-         else %}
             this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
+{%-         endif %}
         } else {
+{%-         if field.get_type() == "money" %}
+            this.{{ gql.field_label(field) }} = this.ensureMoney({{ model.convert_default(field) }});
+{%-         else %}
             this.{{ gql.field_label(field) }} = {{ model.convert_default(field) }};
+{%-         endif %}
         }
 {%-     else %}
+{%-         if field.get_type() == "money" %}
+        this.{{ gql.field_label(field) }} = this.ensureMoney(args.{{ gql.field_label(field) }});
+{%-         else %}
         this.{{ gql.field_label(field) }} = args.{{ gql.field_label(field) }};
+{%-         endif %}
 {%-     endif %}
 {%- endfor %}
 {%- for enum in entity.get_enums() %}
@@ -59,6 +72,16 @@ class {{ model.name(entity) }} {
             }
         }
 {%- endfor %}
+    }
+
+    ensureMoney(value) {
+        if (!value) {
+            return null;
+        }
+        if (typeof value === 'object') {
+            return value;
+        }
+        return new Money(value);
     }
 
     toJSON() {

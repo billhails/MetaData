@@ -25,6 +25,7 @@
 {% macro status() %}status{% endmacro %}
 {% macro cursor() %}cursor{% endmacro %}
 {% macro page_info() %}pageInfo{% endmacro %}
+{% macro money() %}money{% endmacro %}
 
 {% macro field_label(field) %}{{ field.get_name() | camel_case }}{% endmacro %}
 {% macro field_type(field) %}{{ field_label(field) }}Type{% endmacro %}
@@ -43,7 +44,15 @@
 {% macro other_column(entity, association) %}{{ association.get_other_column(entity) | camel_case }}{% endmacro %}
 
 {% macro graphql_type(type) %}{% if type == "boolean" %}GraphQLBoolean{% else %}GraphQLString{% endif %}{% endmacro %}
-{% macro catalogue_type(type) %}{% if type == "boolean" %}boolean{% else %}string{% endif %}{% endmacro %}
+{% macro catalogue_type(type) -%}
+{%- if type == "boolean" -%}
+    boolean
+{%- elif type == "money" -%}
+    money
+{%- else -%}
+    string
+{%- endif -%}
+{%- endmacro %}
 
 {% macro schema_enum_type(enum) %}{{ enum.get_name() | mixed_case }}Enum{% endmacro %}
 {% macro union_enum_type(entity, union) %}{{ entity.get_name() | mixed_case }}{{ union.get_name() | mixed_case }}Enum{% endmacro %}

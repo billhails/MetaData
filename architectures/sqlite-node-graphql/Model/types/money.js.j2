@@ -1,0 +1,76 @@
+{#
+ #  MetaData - API Generator.
+ #  Copyright (C) 2022-2023  Bill Hails
+ #
+ #  This program is free software: you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+ #  the Free Software Foundation, either version 3 of the License, or
+ #  (at your option) any later version.
+ #
+ #  This program is distributed in the hope that it will be useful,
+ #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #  GNU General Public License for more details.
+ #
+ #  You should have received a copy of the GNU General Public License
+ #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-#}
+// {{ warning }}
+
+const sprintf = require('sprintf-js').sprintf;
+
+class Money {
+    currencies = {
+{%- for currency in currencies %}
+        "{{ currency }}": {
+            "alphabeticCode": "{{ currency }}",
+            "numericCode": {{ currencies[currency].NUMERIC_CODE }},
+            "minorUnit": {{ currencies[currency].MINOR_UNIT }},
+            "entity": "{{ currencies[currency].ENTITY }}"
+        },
+{%- endfor %}
+    };
+
+    currencyRegex = /^([A-Z]{3}) ([0-9]+)(?:\.([0-9]+))?$/g;
+
+    constructor (stringValue) {
+        const {dollarAmount, centAmount, currency} = this.parse(stringValue);
+        this.dollarAmount = dollarAmount;
+        this.centAmount = centAmount;
+        this.currency = currency;
+    }
+
+    parse(stringValue) {
+
+        const parts = this.currencyRegex.exec(stringValue);
+
+        if (parts === null) {
+            throw new Error(`Money failed to parse string "${stringValue}"`);
+        }
+        parts.shift();
+        const [name, dollarAmount, centAmount] = parts;
+        if (!(name in this.currencies)) {
+            throw new Error(`Money failed to recognise currency ${name}`);
+        }
+        const currency = this.currencies[name];
+        if (currency.minorUnit) {
+            if (centAmount === null || centAmount.length != currency.minorUnit) {
+                throw new Error(`Money value ${stringValue} (${currency.entity}) should have ${currency.minorUnit} decimal places`);
+            }
+        } else {
+            if (centAmount !== null) {
+                throw new Error(`Money value ${stringValue} (${currency.entity}) should have no decimal places`);
+            }
+        }
+        return {dollarAmount: parseInt(dollarAmount, 10), centAmount: parseInt(centAmount || "0", 10), currency};
+    }
+
+    toString() {
+        if (this.currency.minorUnit) {
+            return sprintf(`%s %d.%0${this.currency.minorUnit}d`, this.currency.alphabeticCode, this.dollarAmount, this.centAmount);
+        }
+        return sprintf(`%s %d`, this.currency.alphabeticCode, this.dollarAmount);
+    }
+}
+
+module.exports = Money;

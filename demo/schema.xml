@@ -72,6 +72,7 @@
         <description>Awards given to users by users</description>
         <!-- enum name must match -->
         <enum name="badge"/>
+        <field name="amount" type="money"/>
         <reference name="awarded_to" references="users" inverse="badges_for_me"/>
         <reference name="awarded_by" references="users" inverse="badges_from_me" auth-role="owner"/>
     </entity>
