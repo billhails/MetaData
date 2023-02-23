@@ -17,6 +17,7 @@ On Unix/Linux, clone the repo, then in the root directory do
 ```commandline
 python --version # requires 3.x
 virtualenv --python=pythonX.Y `pwd`/venv # use the python version output from the previous command
+source ./venv/bin/activate
 pip install -r requirements.txt
 ```
 
